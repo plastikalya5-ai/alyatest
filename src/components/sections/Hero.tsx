@@ -97,7 +97,7 @@ export default function Hero() {
               className="display"
               style={{ fontSize: "clamp(32px, 4vw, 52px)", color: "var(--orange)" }}
             >
-              <span data-target={s.num} className="count-up">{s.num}</span>{s.suffix}
+              <span data-target={s.num} data-suffix={s.suffix} className="count-up">{s.num}{s.suffix}</span>
             </div>
             <div className="eyebrow" style={{ fontSize: 10, color: "#adb2a5" }}>{s.label}</div>
           </div>

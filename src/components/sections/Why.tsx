@@ -34,7 +34,7 @@ export default function Why() {
             >
               <div className="display" style={{ fontSize: "clamp(40px, 5vw, 72px)", color: "var(--orange)", marginBottom: 12 }}>
                 {r.num > 0 ? (
-                  <><span data-target={r.num} className="count-up">{r.num}</span>{r.suffix}</>
+                  <span data-target={r.num} data-suffix={r.suffix} className="count-up">{r.num}{r.suffix}</span>
                 ) : (
                   r.suffix
                 )}

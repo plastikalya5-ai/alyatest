@@ -113,22 +113,26 @@ export default function Animations() {
           });
         });
 
-        // ── Why section — sayaç animasyonu ─────────────────────
+        // ── Count-up — rakam + suffix ───────────────────────────
         gsap.utils.toArray<HTMLElement>(".count-up").forEach((el) => {
           const target = parseFloat(el.dataset.target || "0");
+          const suffix = el.dataset.suffix || "";
           const isFloat = el.dataset.target?.includes(".");
+          // Başlangıçta 0 göster
+          el.textContent = "0" + suffix;
           ScrollTrigger.create({
             trigger: el,
             start: "top 85%",
             onEnter: () => {
-              gsap.from({ val: 0 }, {
+              const obj = { val: 0 };
+              gsap.to(obj, {
                 val: target,
                 duration: 1.8,
                 ease: "power2.out",
-                onUpdate: function () {
-                  el.textContent = isFloat
-                    ? this.targets()[0].val.toFixed(1)
-                    : Math.round(this.targets()[0].val).toString();
+                onUpdate: () => {
+                  el.textContent = (isFloat
+                    ? obj.val.toFixed(1)
+                    : Math.round(obj.val).toString()) + suffix;
                 },
               });
             },
