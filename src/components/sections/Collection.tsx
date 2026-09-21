@@ -2,122 +2,140 @@
 import { useRef, useState } from "react";
 import { IMG } from "@/data/images";
 
-const items = [
-  { code: "ALY-201", name: "VENÜS",        sub: "Menekşe Saksı",   img: IMG.venus,    cat: "Saksı"     },
-  { code: "ALY-601", name: "UFO",          sub: "Yuvarlak Saksı",  img: IMG.ufo,      cat: "Saksı"     },
-  { code: "ALY-333", name: "DANTEL",       sub: "Örgü Sepet",      img: IMG.orgu,     cat: "Sepet"     },
-  { code: "ALY-101", name: "3D MAVİ",      sub: "3D Geometrik",    img: IMG.d3mavi,   cat: "Saksı"     },
-  { code: "ALY-441", name: "VENÜS ASKILI", sub: "Askılı Saksı",    img: IMG.venusAsk, cat: "Saksı"     },
-  { code: "ALY-311", name: "BALKON 3D",    sub: "Balkon Saksısı",  img: IMG.balkon,   cat: "Saksı"     },
-  { code: "ALY-502", name: "SANDIK",       sub: "Depolama Sandığı",img: IMG.sandik,   cat: "Depolama"  },
-  { code: "ALY-711", name: "ÇAMAŞIR",      sub: "Çamaşır Sepeti",  img: IMG.camasir,  cat: "Ev"        },
-  { code: "ALY-212", name: "KRISTAL",      sub: "Kristal Saksı",   img: IMG.kristal,  cat: "Saksı"     },
-  { code: "ALY-555", name: "KAKTÜS",       sub: "Kozalak Saksı",   img: IMG.kaktus,   cat: "Saksı"     },
+const ITEMS = [
+  { code: "ALY-201", name: "VENÜS",         sub: "Menekşe Saksı",    img: IMG.venus    },
+  { code: "ALY-601", name: "UFO",           sub: "Yuvarlak Saksı",   img: IMG.ufo      },
+  { code: "ALY-333", name: "DANTEL",        sub: "Örgü Sepet",       img: IMG.orgu     },
+  { code: "ALY-101", name: "3D MAVİ",       sub: "3D Geometrik",     img: IMG.d3mavi   },
+  { code: "ALY-441", name: "VENÜS ASKILI",  sub: "Askılı Saksı",     img: IMG.venusAsk },
+  { code: "ALY-311", name: "BALKON 3D",     sub: "Balkon Saksısı",   img: IMG.balkon   },
+  { code: "ALY-502", name: "SANDIK",        sub: "Depolama Sandığı", img: IMG.sandik   },
+  { code: "ALY-212", name: "KRİSTAL",       sub: "Kristal Saksı",    img: IMG.kristal  },
+  { code: "ALY-555", name: "KAKTÜS",        sub: "Kozalak Saksı",    img: IMG.kaktus   },
+  { code: "ALY-711", name: "ÇAMAŞIR",       sub: "Çamaşır Sepeti",   img: IMG.camasir  },
 ];
 
 export default function Collection() {
-  const ref = useRef<HTMLDivElement>(null);
-  const [active, setActive] = useState(0);
-  const isDrag = useRef(false);
-  const startX = useRef(0);
-  const scrollL = useRef(0);
+  const ref    = useRef<HTMLDivElement>(null);
+  const [idx, setIdx] = useState(0);
+  const drag   = useRef({ active: false, startX: 0, scrollL: 0 });
 
-  const onDown  = (e: React.MouseEvent) => { isDrag.current = true; startX.current = e.pageX; scrollL.current = ref.current!.scrollLeft; };
-  const onMove  = (e: React.MouseEvent) => { if (!isDrag.current || !ref.current) return; e.preventDefault(); ref.current.scrollLeft = scrollL.current - (e.pageX - startX.current); };
-  const onUp    = () => { isDrag.current = false; };
+  const onDown = (e: React.MouseEvent) => {
+    drag.current = { active: true, startX: e.pageX, scrollL: ref.current!.scrollLeft };
+    ref.current!.style.cursor = "grabbing";
+  };
+  const onMove = (e: React.MouseEvent) => {
+    if (!drag.current.active || !ref.current) return;
+    e.preventDefault();
+    ref.current.scrollLeft = drag.current.scrollL - (e.pageX - drag.current.startX);
+  };
+  const onUp = () => {
+    drag.current.active = false;
+    if (ref.current) ref.current.style.cursor = "grab";
+  };
+
+  const goTo = (i: number) => {
+    setIdx(i);
+    const el = ref.current?.children[i] as HTMLElement;
+    el?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
+  };
 
   return (
-    <section id="collection" style={{ background: "var(--bg)", paddingBlock: "clamp(80px,10vw,140px)" }}>
-
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-12" style={{ paddingInline: "var(--pad)" }}>
+    <section id="collection" style={{ background: "var(--bg)", paddingBlock: "clamp(72px,9vw,130px)" }}>
+      {/* Başlık */}
+      <div className="pad flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
         <div>
-          <p className="eyebrow reveal-up" style={{ color: "var(--orange)", marginBottom: 14 }}>— Tüm Koleksiyon</p>
-          <div className="clip">
-            <h2 className="display reveal-up delay-1" style={{ fontSize: "clamp(48px,8vw,110px)" }}>200+ MODEL</h2>
-          </div>
+          <p className="eyebrow mb-3" data-reveal style={{ color: "var(--orange)" }}>— Tüm Koleksiyon</p>
+          <h2 className="heading" data-reveal data-delay="1" style={{ fontSize: "clamp(44px,7vw,96px)" }}>
+            200+ MODEL
+          </h2>
         </div>
-        <p className="reveal-fade" style={{ fontSize: 13, color: "var(--muted)", maxWidth: 180, lineHeight: 1.7 }}>
-          Sürükle veya parmakla kaydır
-        </p>
+        <p className="eyebrow" data-reveal style={{ color: "var(--muted)" }}>Sürükle veya kaydır</p>
       </div>
 
-      {/* Track */}
-      <div ref={ref}
-        className="flex no-scrollbar overflow-x-auto reveal-fade"
+      {/* Scroll track */}
+      <div
+        ref={ref}
+        className="flex overflow-x-auto"
         style={{
           paddingInline: "var(--pad)",
           gap: 10,
           scrollSnapType: "x mandatory",
           WebkitOverflowScrolling: "touch",
+          scrollbarWidth: "none",
           cursor: "grab",
         }}
-        onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}
+        onMouseDown={onDown}
+        onMouseMove={onMove}
+        onMouseUp={onUp}
+        onMouseLeave={onUp}
+        onScroll={() => {
+          if (!ref.current) return;
+          const { scrollLeft, clientWidth } = ref.current;
+          const w = clientWidth * 0.72;
+          setIdx(Math.round(scrollLeft / w));
+        }}
       >
-        {items.map((item, i) => (
-          <a key={item.code} href="#contact"
+        {ITEMS.map((item, i) => (
+          <div key={item.code}
             className="group relative flex-none overflow-hidden"
             style={{
-              width: "clamp(240px, 32vw, 400px)",
-              aspectRatio: "0.75",
+              width: "clamp(220px, 68vw, 380px)",
+              aspectRatio: "0.72",
               scrollSnapAlign: "start",
-              background: i % 3 === 0 ? "var(--bg3)" : i % 3 === 1 ? "#141814" : "#131713",
-              display: "block",
-            }}
-            onMouseEnter={() => setActive(i)}
-          >
+              background: i % 2 === 0 ? "var(--bg3)" : "var(--bg4)",
+            }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={item.img} alt={item.name}
-              className="absolute inset-0 w-full h-full object-contain p-8 transition-transform duration-700 group-hover:scale-105" />
+              className="absolute inset-0 w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"
+              style={{ padding: "clamp(20px,5vw,48px)" }} />
 
-            {/* Gradient overlay */}
-            <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(10,13,11,1) 0%, rgba(10,13,11,0.5) 40%, transparent 100%)" }} />
+            {/* Gradient */}
+            <div className="absolute inset-0" style={{
+              background: "linear-gradient(to top, rgba(11,14,11,0.95) 0%, rgba(11,14,11,0.3) 45%, transparent 100%)"
+            }} />
 
-            {/* Bottom info */}
-            <div className="absolute bottom-0 left-0 right-0 p-6">
-              <p className="eyebrow mb-2" style={{ color: "var(--orange)", fontSize: 9 }}>{item.code} · {item.cat}</p>
-              <h3 className="display" style={{ fontSize: "clamp(24px,4vw,38px)", color: "var(--light)", marginBottom: 4 }}>{item.name}</h3>
+            {/* Info */}
+            <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-6">
+              <p className="eyebrow mb-1.5" style={{ color: "var(--orange)", fontSize: 9 }}>{item.code}</p>
+              <h3 className="heading" style={{ fontSize: "clamp(22px,5vw,36px)", color: "var(--light)", marginBottom: 3 }}>
+                {item.name}
+              </h3>
               <p style={{ fontSize: 12, color: "var(--muted)" }}>{item.sub}</p>
             </div>
 
             {/* Index */}
-            <div className="absolute top-5 right-5">
+            <div className="absolute top-4 right-4">
               <span className="eyebrow" style={{ fontSize: 9, color: "rgba(255,255,255,0.2)" }}>
                 {String(i + 1).padStart(2, "0")}
               </span>
             </div>
-
-            {/* Hover CTA */}
-            <div className="absolute top-5 left-5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-              <span className="eyebrow" style={{ fontSize: 9, padding: "5px 10px", background: "var(--orange)", color: "#fff" }}>
-                Teklif →
-              </span>
-            </div>
-          </a>
+          </div>
         ))}
 
-        {/* Last card — CTA */}
-        <div className="flex-none flex flex-col items-start justify-end p-8"
-          style={{ width: "clamp(180px, 22vw, 280px)", aspectRatio: "0.75", scrollSnapAlign: "start", background: "var(--orange)" }}>
-          <p className="eyebrow mb-4" style={{ color: "rgba(255,255,255,0.6)" }}>Tüm Katalog</p>
-          <h3 className="display" style={{ fontSize: "clamp(28px,4vw,44px)", color: "#fff", marginBottom: 24 }}>
-            200+<br />ÜRÜN
+        {/* Son kart — CTA */}
+        <a href="#contact"
+          className="relative flex-none flex flex-col justify-end p-6 sm:p-8"
+          style={{ width: "clamp(160px, 50vw, 260px)", aspectRatio: "0.72", scrollSnapAlign: "start", background: "var(--orange)" }}>
+          <p className="eyebrow mb-3" style={{ color: "rgba(255,255,255,0.6)" }}>Tüm Katalog</p>
+          <h3 className="heading" style={{ fontSize: "clamp(26px,5vw,40px)", color: "#fff", marginBottom: 20 }}>
+            KATALOG<br />İSTE
           </h3>
-          <a href="#contact" className="eyebrow" style={{ color: "#fff", borderBottom: "1px solid rgba(255,255,255,0.5)", paddingBottom: 4 }}>
-            Katalog İste →
-          </a>
-        </div>
+          <span className="eyebrow" style={{ color: "#fff", borderBottom: "1px solid rgba(255,255,255,0.5)", paddingBottom: 4, display: "inline-block" }}>
+            Formu Doldur →
+          </span>
+        </a>
       </div>
 
       {/* Dots */}
-      <div className="flex justify-center gap-2 mt-8" style={{ paddingInline: "var(--pad)" }}>
-        {items.map((_, i) => (
-          <button key={i} onClick={() => {
-            setActive(i);
-            const el = ref.current?.children[i] as HTMLElement;
-            el?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
-          }}
-            style={{ width: i === active ? 28 : 6, height: 6, borderRadius: 3, background: i === active ? "var(--orange)" : "rgba(255,255,255,0.15)", transition: "all 0.3s", border: 0, cursor: "pointer", padding: 0 }} />
+      <div className="flex justify-center gap-1.5 mt-6">
+        {ITEMS.map((_, i) => (
+          <button key={i} onClick={() => goTo(i)} aria-label={`Ürün ${i + 1}`}
+            style={{
+              width: i === idx ? 24 : 6, height: 6, borderRadius: 3,
+              background: i === idx ? "var(--orange)" : "rgba(255,255,255,0.15)",
+              transition: "all 0.3s", border: 0, padding: 0, cursor: "pointer"
+            }} />
         ))}
       </div>
     </section>

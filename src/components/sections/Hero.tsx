@@ -2,103 +2,105 @@ import { IMG } from "@/data/images";
 
 export default function Hero() {
   return (
-    <section id="hero" className="relative grain overflow-hidden grid-overlay"
-      style={{ height: "100svh", minHeight: 680, background: "var(--bg)" }}>
+    <section id="hero" className="relative grain overflow-hidden"
+      style={{ minHeight: "100svh", background: "var(--bg)", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
 
-      {/* ── Background image ─────────────────────── */}
-      <div className="hero-bg absolute inset-0 origin-center"
-        style={{ transform: "scale(1.08)", willChange: "transform", transition: "transform 0.1s linear" }}>
+      {/* BG görseli — parallax ile hareket eder */}
+      <div className="js-hero-bg absolute inset-0"
+        style={{ transform: "scale(1.06)", willChange: "transform", zIndex: 0 }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={IMG.fikir} alt=""
+        <img src={IMG.fikir} alt="" aria-hidden
           className="absolute inset-0 w-full h-full object-cover"
-          style={{ objectPosition: "60% center", opacity: 0.22 }} />
-        {/* Multi-layer gradient */}
+          style={{ objectPosition: "55% center", opacity: 0.35 }} />
         <div className="absolute inset-0" style={{
-          background: `
-            linear-gradient(to right,  rgba(10,13,11,0.98) 0%, rgba(10,13,11,0.6) 55%, rgba(10,13,11,0.85) 100%),
-            linear-gradient(to bottom, rgba(10,13,11,0.0)  0%, rgba(10,13,11,0.0) 50%, rgba(10,13,11,1.0)  100%)
-          `
+          background:
+            "linear-gradient(to bottom, rgba(11,14,11,0.55) 0%, rgba(11,14,11,0.2) 40%, rgba(11,14,11,0.92) 100%)"
         }} />
       </div>
 
-      {/* ── Floating product image ───────────────── */}
-      <div className="hidden lg:block absolute"
-        style={{ right: "4%", top: "8%", width: "38%", height: "88%", zIndex: 4, pointerEvents: "none" }}>
+      {/* Ürün görseli — hem mobil hem desktop */}
+      <div className="absolute z-[2]"
+        style={{
+          right: 0,
+          top: "6%",
+          width: "clamp(180px, 45%, 520px)",
+          height: "80%",
+          pointerEvents: "none",
+        }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={IMG.kordon} alt="Kordon Saksı"
-          className="hero-product w-full h-full object-contain"
+        <img src={IMG.kordon} alt="Kordon Saksı ALY-10/03"
+          className="js-hero-product w-full h-full object-contain"
           style={{
-            transform: "rotate(-6deg)",
-            filter: "drop-shadow(0 60px 120px rgba(0,0,0,0.8)) drop-shadow(0 0 40px rgba(229,98,42,0.08))",
+            filter: "drop-shadow(0 40px 80px rgba(0,0,0,0.7))",
             willChange: "transform",
           }} />
       </div>
 
-      {/* ── Orange vertical accent ───────────────── */}
-      <div className="absolute hidden lg:block" style={{ left: "calc(var(--pad) - 1px)", top: 0, bottom: 0, width: 1, background: "linear-gradient(to bottom, transparent 0%, var(--orange) 30%, var(--orange) 70%, transparent 100%)", opacity: 0.3 }} />
+      {/* İnce turuncu çizgi — sol */}
+      <div className="absolute left-0 top-[15%] bottom-[15%] w-px z-[3]"
+        style={{ background: "linear-gradient(to bottom, transparent, var(--orange) 30%, var(--orange) 70%, transparent)" }} />
 
-      {/* ── Content ──────────────────────────────── */}
-      <div className="relative z-10 h-full flex flex-col justify-end" style={{ paddingInline: "var(--pad)", paddingBottom: "clamp(48px,7vh,100px)" }}>
+      {/* İçerik */}
+      <div className="relative z-[5] pad" style={{ paddingBottom: "clamp(48px, 8vh, 100px)", paddingTop: 90 }}>
 
         {/* Overline */}
-        <div className="flex items-center gap-4 mb-8 reveal-up">
-          <div style={{ width: 40, height: 1, background: "var(--orange)" }} />
-          <span className="eyebrow" style={{ color: "var(--orange)", letterSpacing: "0.3em" }}>
-            Plastik Ürün Üreticisi · 1968
-          </span>
+        <div className="flex items-center gap-3 mb-6" data-reveal data-delay="1">
+          <div style={{ width: 32, height: 1, background: "var(--orange)" }} />
+          <span className="eyebrow" style={{ color: "var(--orange)" }}>Plastik Ürün Üreticisi · 1968</span>
         </div>
 
-        {/* Headline */}
-        <div className="mb-10">
-          <div className="clip reveal-up delay-1">
-            <h1 className="display" style={{ fontSize: "clamp(76px, 14vw, 210px)", lineHeight: 0.84, color: "var(--light)" }}>
-              FORM
-            </h1>
-          </div>
-          <div className="clip reveal-up delay-2">
-            <h1 className="display serif-italic" style={{ fontSize: "clamp(76px, 14vw, 210px)", lineHeight: 0.84, color: "transparent", WebkitTextStroke: "1.5px rgba(229,98,42,0.6)", letterSpacing: "-0.03em" }}>
-              &amp; Fonksiyon
-            </h1>
-          </div>
+        {/* Başlık */}
+        <div className="clip mb-4" data-reveal data-delay="2">
+          <h1 className="heading" style={{ fontSize: "clamp(64px, 14vw, 200px)", color: "var(--light)", maxWidth: "65%" }}>
+            FORM
+          </h1>
+        </div>
+        <div className="clip mb-10" data-reveal data-delay="3">
+          <h1 className="heading" style={{
+            fontSize: "clamp(64px, 14vw, 200px)",
+            color: "transparent",
+            WebkitTextStroke: "1.5px rgba(229,95,40,0.55)",
+            maxWidth: "65%",
+            fontStyle: "italic",
+          }}>
+            &amp; FONKSİYON
+          </h1>
         </div>
 
-        {/* Sub + Stats row */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-8 reveal-up delay-3">
-          <p style={{ maxWidth: 360, fontSize: "clamp(14px,1.4vw,17px)", lineHeight: 1.8, color: "var(--muted)", fontWeight: 300 }}>
-            55 yıllık üretim deneyimi.<br className="hidden sm:block" />
-            200+ model · 20+ ülke ihracatı.
+        {/* Alt satır: metin + stats */}
+        <div className="flex flex-col sm:flex-row sm:items-end gap-8 sm:gap-16 mb-10" data-reveal data-delay="4">
+          <p style={{ maxWidth: 340, fontSize: "clamp(14px,1.4vw,16px)", lineHeight: 1.8, color: "var(--muted)", fontWeight: 300 }}>
+            55 yıllık üretim deneyimi. Saksı, sepet,
+            sandık ve ev ürünlerinde 200+ model.
+            20+ ülke ihracatı.
           </p>
 
-          {/* Stats */}
-          <div className="flex items-end gap-8 sm:gap-12">
+          <div className="flex gap-8 sm:gap-12">
             {[
               { n: 55,  s: "+", l: "Yıl"   },
               { n: 200, s: "+", l: "Model" },
               { n: 20,  s: "+", l: "Ülke"  },
             ].map(st => (
               <div key={st.l}>
-                <div className="display" style={{ fontSize: "clamp(34px,5vw,64px)", color: "var(--orange)", lineHeight: 1 }}>
+                <div className="heading" style={{ fontSize: "clamp(32px,5vw,60px)", color: "var(--orange)", lineHeight: 1 }}>
                   <span data-count={st.n} data-suffix={st.s}>{st.n}{st.s}</span>
                 </div>
-                <div className="eyebrow mt-2" style={{ color: "var(--muted)" }}>{st.l}</div>
+                <div className="eyebrow mt-1.5" style={{ color: "var(--muted)" }}>{st.l}</div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* CTA Row */}
-        <div className="flex items-center gap-6 mt-10 reveal-up delay-4">
-          <a href="#products" className="btn-orange">
-            Ürünleri Keşfet →
-          </a>
-          <a href="#contact" className="btn-outline">
-            Teklif Al
-          </a>
+        {/* CTA'lar */}
+        <div className="flex flex-wrap gap-3" data-reveal data-delay="5">
+          <a href="#products" className="btn btn-fill">Ürünleri Keşfet →</a>
+          <a href="#contact"  className="btn btn-line">Teklif Al</a>
         </div>
       </div>
 
-      {/* ── Bottom gradient ───────────────────────── */}
-      <div className="absolute bottom-0 left-0 right-0 h-px" style={{ background: "linear-gradient(to right, var(--orange), transparent)" }} />
+      {/* Alt çizgi */}
+      <div className="absolute bottom-0 left-0 w-32 h-px z-[5]"
+        style={{ background: "var(--orange)" }} />
     </section>
   );
 }

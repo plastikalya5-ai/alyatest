@@ -3,88 +3,20 @@ import { useEffect } from "react";
 
 export default function Animations() {
   useEffect(() => {
-    // ── Scroll reveal ──────────────────────────────────────────
-    const targets = document.querySelectorAll<HTMLElement>(".reveal-up, .reveal-fade, .clip-reveal");
-    const io = new IntersectionObserver((entries) => {
-      entries.forEach(e => {
-        if (e.isIntersecting) {
-          e.target.classList.add("in");
-          io.unobserve(e.target);
+    // ── Scroll Reveal ──────────────────────────────
+    const revealAll = () => {
+      document.querySelectorAll<HTMLElement>("[data-reveal]").forEach(el => {
+        const rect = el.getBoundingClientRect();
+        if (rect.top < window.innerHeight * 0.92) {
+          el.classList.add("visible");
         }
       });
-    }, { threshold: 0.12, rootMargin: "0px 0px -40px 0px" });
-    targets.forEach(el => io.observe(el));
-
-    // ── Smooth scroll (no lib) ─────────────────────────────────
-    let lenisRaf: number;
-    let currentY = window.scrollY;
-    let targetY  = window.scrollY;
-    const ease   = 0.092;
-    let ticking  = false;
-
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      targetY = Math.max(0, Math.min(document.body.scrollHeight - window.innerHeight, targetY + e.deltaY * 1.1));
-      if (!ticking) {
-        ticking = true;
-        const tick = () => {
-          currentY += (targetY - currentY) * ease;
-          if (Math.abs(targetY - currentY) < 0.5) { currentY = targetY; ticking = false; }
-          window.scrollTo(0, currentY);
-          if (ticking) lenisRaf = requestAnimationFrame(tick);
-        };
-        lenisRaf = requestAnimationFrame(tick);
-      }
     };
+    // İlk render için hemen çalıştır
+    revealAll();
+    window.addEventListener("scroll", revealAll, { passive: true });
 
-    // Only desktop smooth scroll (touch devices handle own momentum)
-    const isMobile = window.matchMedia("(pointer: coarse)").matches;
-    if (!isMobile) window.addEventListener("wheel", onWheel, { passive: false });
-
-    // ── Hero product parallax ──────────────────────────────────
-    const heroProduct = document.querySelector<HTMLElement>(".hero-product");
-    const heroBg      = document.querySelector<HTMLElement>(".hero-bg");
-
-    const onScroll = () => {
-      const sy = window.scrollY;
-      if (heroProduct) heroProduct.style.transform = `rotate(-6deg) translateY(${sy * 0.18}px)`;
-      if (heroBg)      heroBg.style.transform      = `scale(1.08) translateY(${sy * 0.08}px)`;
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-
-    // ── Mouse parallax on hero ────────────────────────────────
-    const heroSection = document.querySelector<HTMLElement>("#hero");
-    const onMouseMove = (e: MouseEvent) => {
-      if (!heroSection) return;
-      const rect  = heroSection.getBoundingClientRect();
-      if (rect.bottom < 0) return;
-      const x = (e.clientX / window.innerWidth - 0.5) * 14;
-      const y = (e.clientY / window.innerHeight - 0.5) * 8;
-      if (heroBg) heroBg.style.transform = `scale(1.08) translate(${x * 0.4}px, ${y * 0.4}px)`;
-      if (heroProduct) {
-        heroProduct.style.transform = `rotate(-6deg) translate(${x * 0.6}px, ${y * 0.5}px)`;
-      }
-    };
-    window.addEventListener("mousemove", onMouseMove);
-
-    // ── Cursor ────────────────────────────────────────────────
-    const cursor = document.querySelector<HTMLElement>(".custom-cursor");
-    if (cursor) {
-      let cx = 0, cy = 0;
-      const onCursorMove = (e: MouseEvent) => {
-        cx = e.clientX; cy = e.clientY;
-        cursor.style.left = cx + "px";
-        cursor.style.top  = cy + "px";
-        cursor.style.opacity = "1";
-      };
-      document.addEventListener("mousemove", onCursorMove);
-      document.querySelectorAll("a, button").forEach(el => {
-        el.addEventListener("mouseenter", () => cursor.classList.add("big"));
-        el.addEventListener("mouseleave", () => cursor.classList.remove("big"));
-      });
-    }
-
-    // ── Count-up via IntersectionObserver ────────────────────
+    // ── Count-up ──────────────────────────────────
     document.querySelectorAll<HTMLElement>("[data-count]").forEach(el => {
       const target = parseInt(el.dataset.count!);
       const suffix = el.dataset.suffix || "";
@@ -92,27 +24,92 @@ export default function Animations() {
       const obs = new IntersectionObserver(([entry]) => {
         if (!entry.isIntersecting) return;
         obs.disconnect();
-        const dur = 1600;
-        const start = performance.now();
+        const dur = 1500;
+        const t0 = performance.now();
         const tick = (now: number) => {
-          const p = Math.min((now - start) / dur, 1);
-          const v = Math.round((1 - Math.pow(1 - p, 3)) * target);
-          el.textContent = v + suffix;
+          const p = Math.min((now - t0) / dur, 1);
+          el.textContent = Math.round((1 - Math.pow(1 - p, 3)) * target) + suffix;
           if (p < 1) requestAnimationFrame(tick);
         };
         requestAnimationFrame(tick);
-      }, { threshold: 0.5 });
+      }, { threshold: 0.4 });
       obs.observe(el);
     });
 
+    // ── Hero Parallax (scroll) ─────────────────────
+    const heroBg  = document.querySelector<HTMLElement>(".js-hero-bg");
+    const heroPrd = document.querySelector<HTMLElement>(".js-hero-product");
+
+    const onScroll = () => {
+      const sy = window.scrollY;
+      if (heroBg)  heroBg.style.transform  = `scale(1.06) translateY(${sy * 0.06}px)`;
+      if (heroPrd) heroPrd.style.transform = `translateY(${sy * 0.12}px)`;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    // ── Mouse parallax on hero ─────────────────────
+    const onMouse = (e: MouseEvent) => {
+      if (window.scrollY > window.innerHeight * 0.5) return;
+      const x = (e.clientX / window.innerWidth  - 0.5) * 12;
+      const y = (e.clientY / window.innerHeight - 0.5) * 8;
+      if (heroBg)  heroBg.style.transform  = `scale(1.06) translate(${x * 0.3}px, ${y * 0.3}px)`;
+      if (heroPrd) heroPrd.style.transform = `translate(${x * 0.5}px, ${y * 0.4}px)`;
+    };
+    window.addEventListener("mousemove", onMouse);
+
+    // ── Custom cursor ─────────────────────────────
+    const dot  = document.querySelector<HTMLElement>(".cursor-dot");
+    const ring = document.querySelector<HTMLElement>(".cursor-ring");
+    const isFine = window.matchMedia("(pointer: fine)").matches;
+
+    if (isFine && dot && ring) {
+      let rx = 0, ry = 0;
+      let mx = 0, my = 0;
+      let rafId: number;
+
+      const moveDot = (e: MouseEvent) => {
+        mx = e.clientX; my = e.clientY;
+        dot.style.left = mx + "px";
+        dot.style.top  = my + "px";
+        dot.style.opacity = "1";
+        ring.style.opacity = "1";
+      };
+
+      const animateRing = () => {
+        rx += (mx - rx) * 0.12;
+        ry += (my - ry) * 0.12;
+        ring.style.left = rx + "px";
+        ring.style.top  = ry + "px";
+        rafId = requestAnimationFrame(animateRing);
+      };
+      rafId = requestAnimationFrame(animateRing);
+
+      document.addEventListener("mousemove", moveDot);
+      document.querySelectorAll("a, button").forEach(el => {
+        el.addEventListener("mouseenter", () => ring.classList.add("hovered"));
+        el.addEventListener("mouseleave", () => ring.classList.remove("hovered"));
+      });
+
+      return () => {
+        window.removeEventListener("scroll", revealAll);
+        window.removeEventListener("scroll", onScroll);
+        window.removeEventListener("mousemove", onMouse);
+        document.removeEventListener("mousemove", moveDot);
+        cancelAnimationFrame(rafId);
+      };
+    }
+
     return () => {
-      io.disconnect();
-      cancelAnimationFrame(lenisRaf);
-      if (!isMobile) window.removeEventListener("wheel", onWheel);
+      window.removeEventListener("scroll", revealAll);
       window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mousemove", onMouse);
     };
   }, []);
 
-  return <div className="custom-cursor" style={{ opacity: 0 }} />;
+  return (
+    <>
+      <div className="cursor-dot" style={{ opacity: 0 }} />
+      <div className="cursor-ring" style={{ opacity: 0 }} />
+    </>
+  );
 }
