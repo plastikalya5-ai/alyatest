@@ -1,120 +1,100 @@
 "use client";
-import Image from "next/image";
 import { useEffect, useRef } from "react";
-
-const stats = [
-  { num: 55,  suffix: "+", label: "Yıl Deneyim" },
-  { num: 20,  suffix: "+", label: "Ülke İhracat" },
-  { num: 200, suffix: "+", label: "Ürün Modeli" },
-];
-
-function CountUp({ target, suffix }: { target: number; suffix: string }) {
-  const ref = useRef<HTMLSpanElement>(null);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    // Hero ekranda zaten görünür — kısa delay sonra başlat
-    const timer = setTimeout(() => {
-      const duration = 1400;
-      const start = performance.now();
-      const tick = (now: number) => {
-        const progress = Math.min((now - start) / duration, 1);
-        const eased = 1 - Math.pow(1 - progress, 3);
-        el.textContent = Math.round(eased * target) + suffix;
-        if (progress < 1) requestAnimationFrame(tick);
-      };
-      requestAnimationFrame(tick);
-    }, 1200); // hero animasyonu bittikten sonra
-    return () => clearTimeout(timer);
-  }, [target, suffix]);
-
-  return <span ref={ref}>0{suffix}</span>;
-}
+import { IMG } from "@/data/images";
 
 export default function Hero() {
+  const videoRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
+    const onMove = (e: MouseEvent) => {
+      const x = (e.clientX / window.innerWidth - 0.5) * 12;
+      const y = (e.clientY / window.innerHeight - 0.5) * 8;
+      el.style.transform = `translate(${x}px, ${y}px) scale(1.05)`;
+    };
+    window.addEventListener("mousemove", onMove);
+    return () => window.removeEventListener("mousemove", onMove);
+  }, []);
+
   return (
-    <section
-      id="hero"
-      className="relative overflow-hidden"
-      style={{ height: "100svh", minHeight: 730, background: "#191c19" }}
-    >
-      {/* Gradient */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{ background: "radial-gradient(ellipse at 68% 53%, #384136 0, transparent 57%)", opacity: 0.55 }}
-      />
+    <section className="relative overflow-hidden noise" style={{ height: "100svh", minHeight: 700, background: "var(--dark)" }}>
 
-      {/* Kicker */}
-      <p className="absolute eyebrow reveal" style={{ top: 115, left: "var(--pad)", color: "#adb2a5", fontSize: 11 }}>
-        ALYAPLAS PLASTİK SAN. TİC. LTD. ŞTİ. — İSTANBUL OSB
-        <br />
-        1968&apos;DEN BERİ &nbsp;·&nbsp; 20+ ÜLKE İHRACAT &nbsp;·&nbsp; B2B TOPLU SİPARİŞ
-      </p>
-
-      {/* Title */}
-      <h1
-        className="absolute display"
-        style={{
-          top: "23%", left: "var(--pad)",
-          fontSize: "clamp(86px, min(12.4vw, 18.5svh), 205px)",
-          width: "70%", zIndex: 2, pointerEvents: "none",
-        }}
-      >
-        {["GÜNLÜK", "HAYATA", "YENİ BİR", "FORM."].map((word, i) => (
-          <span key={i} className="block overflow-hidden" style={{ paddingBottom: "0.07em", marginBottom: "-0.07em" }}>
-            <span
-              className="hero-line block"
-              style={i === 1 ? { WebkitTextStroke: "1px #d4d6c8", color: "transparent" } : {}}
-            >
-              {word}
-            </span>
-          </span>
-        ))}
-      </h1>
-
-      {/* Product */}
-      <div className="absolute" style={{ inset: "14% 3% 5% 40%", zIndex: 3, pointerEvents: "none", display: "grid", placeItems: "center" }}>
-        <Image
-          src="https://res.cloudinary.com/dy7dekame/image/upload/v1789927643/Kordon_Dik_Ayakli_Sak_hf24qs.webp"
-          alt="Kordon Saksı ALY-10/03"
-          width={600} height={800} priority
-          className="hero-product-img"
-          style={{ width: "auto", height: "100%", maxHeight: 850, objectFit: "contain", transform: "rotate(-8deg)", willChange: "transform" }}
-        />
+      {/* BG Image — parallax */}
+      <div ref={videoRef} className="absolute inset-0 transition-transform duration-700 ease-out" style={{ willChange: "transform" }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={IMG.hero1} alt="" className="absolute inset-0 w-full h-full object-cover opacity-30" style={{ objectPosition: "center 30%" }} />
+        <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, rgba(14,18,16,0.95) 0%, rgba(14,18,16,0.5) 50%, rgba(14,18,16,0.8) 100%)" }} />
       </div>
 
-      {/* Label */}
-      <p className="absolute eyebrow hero-bottom-el"
-        style={{ right: "var(--pad)", top: "34%", writingMode: "vertical-rl", zIndex: 4, color: "#c6cbbd", fontSize: 11 }}>
-        KORDON / ALY-10/03
-      </p>
+      {/* Grid overlay */}
+      <div className="absolute inset-0 pointer-events-none" style={{
+        backgroundImage: "linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)",
+        backgroundSize: "80px 80px"
+      }} />
 
-      {/* Stats */}
-      <div className="absolute flex gap-8" style={{ bottom: 110, left: "var(--pad)", zIndex: 5 }}>
-        {stats.map((s) => (
-          <div key={s.label} className="hero-stat">
-            <div className="display" style={{ fontSize: "clamp(32px, 4vw, 52px)", color: "var(--orange)" }}>
-              <CountUp target={s.num} suffix={s.suffix} />
-            </div>
-            <div className="eyebrow" style={{ fontSize: 10, color: "#adb2a5" }}>{s.label}</div>
+      {/* Top bar */}
+      <div className="absolute top-24 left-0 right-0 flex justify-between items-center" style={{ paddingInline: "var(--pad)" }}>
+        <span className="eyebrow" style={{ color: "var(--muted)" }}>1968 — 2026</span>
+        <span className="eyebrow" style={{ color: "var(--muted)" }}>İSTANBUL OSB</span>
+      </div>
+
+      {/* Main content */}
+      <div className="absolute inset-0 flex flex-col justify-end" style={{ paddingInline: "var(--pad)", paddingBottom: "clamp(60px,8vh,120px)" }}>
+
+        {/* Overline */}
+        <div className="flex items-center gap-4 mb-6 hero-line">
+          <div className="h-px w-12" style={{ background: "var(--orange)" }} />
+          <span className="eyebrow" style={{ color: "var(--orange)" }}>Plastik Ürün Üreticisi</span>
+        </div>
+
+        {/* Title */}
+        <h1 className="display hero-line" style={{ fontSize: "clamp(72px,12vw,200px)", maxWidth: "80%", marginBottom: 32 }}>
+          FORM<br />
+          <span style={{ WebkitTextStroke: "1.5px rgba(255,255,255,0.3)", color: "transparent" }}>VE</span><br />
+          FONKSİYON.
+        </h1>
+
+        {/* Bottom row */}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-8">
+          <p className="hero-line" style={{ maxWidth: 340, fontSize: "clamp(14px,1.5vw,17px)", lineHeight: 1.7, color: "var(--muted)", fontWeight: 300 }}>
+            55 yıllık üretim deneyimi. Saksı, sepet, sandık ve depolama ürünlerinde 200+ model. 20+ ülke ihracat.
+          </p>
+
+          {/* Stats */}
+          <div className="flex gap-8 sm:gap-12 hero-line">
+            {[
+              { n: "55+", l: "Yıl" },
+              { n: "200+", l: "Model" },
+              { n: "20+", l: "Ülke" },
+            ].map(s => (
+              <div key={s.l} className="text-center sm:text-left">
+                <div className="display" style={{ fontSize: "clamp(28px,4vw,52px)", color: "var(--orange)" }}>{s.n}</div>
+                <div className="eyebrow mt-1" style={{ color: "var(--muted)" }}>{s.l}</div>
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
+
+        {/* Scroll cue */}
+        <div className="flex items-center gap-3 mt-10 hero-line">
+          <div className="relative w-6 h-10 rounded-full border flex justify-center pt-2" style={{ borderColor: "rgba(255,255,255,0.2)" }}>
+            <div className="w-1 h-2 rounded-full animate-bounce" style={{ background: "var(--orange)" }} />
+          </div>
+          <span className="eyebrow" style={{ color: "var(--muted)", fontSize: 10 }}>Kaydır</span>
+        </div>
       </div>
 
-      {/* Bottom */}
-      <div className="absolute flex justify-between items-end"
-        style={{ bottom: 36, left: "var(--pad)", right: "var(--pad)", zIndex: 5 }}>
-        <a href="#product-story"
-          className="hero-bottom-el flex items-center gap-10 text-xs uppercase tracking-widest hover:opacity-70 transition-opacity">
-          <span className="text-2xl">↓</span>
-          KAYDIR &amp; KEŞFET
-        </a>
-        <p className="hero-bottom-el"
-          style={{ fontSize: 13, lineHeight: 1.6, width: 190, marginRight: "12%", color: "#adb2a5" }}>
-          Bir saksıdan fazlası. Yaşamın içindeki formlar.
-        </p>
+      {/* Hero product — right side */}
+      <div className="absolute hidden lg:block" style={{ right: "6%", top: "12%", bottom: "8%", width: "36%", zIndex: 5 }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={IMG.kordon} alt="Kordon Saksı"
+          className="hero-product-img w-full h-full object-contain"
+          style={{ transform: "rotate(-6deg)", filter: "drop-shadow(0 40px 80px rgba(0,0,0,0.6))", willChange: "transform" }} />
       </div>
+
+      {/* Orange accent line */}
+      <div className="absolute bottom-0 left-0 h-1" style={{ width: "clamp(80px,15vw,200px)", background: "var(--orange)" }} />
     </section>
   );
 }

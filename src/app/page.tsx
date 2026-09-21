@@ -1,17 +1,16 @@
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import Animations from "@/components/layout/Animations";
-import Hero from "@/components/sections/Hero";
-import Story from "@/components/sections/Story";
-import Collection from "@/components/sections/Collection";
-import Products from "@/components/sections/Products";
-import Export from "@/components/sections/Export";
-import Why from "@/components/sections/Why";
-import Making from "@/components/sections/Making";
-import History from "@/components/sections/History";
-import Contact from "@/components/sections/Contact";
-import WhatsAppFab from "@/components/ui/WhatsAppFab";
 import Cursor from "@/components/ui/Cursor";
+import WhatsAppFab from "@/components/ui/WhatsAppFab";
+import Hero from "@/components/sections/Hero";
+import Marquee from "@/components/sections/Marquee";
+import FeaturedProducts from "@/components/sections/FeaturedProducts";
+import Collection from "@/components/sections/Collection";
+import FullscreenFeature from "@/components/sections/FullscreenFeature";
+import Why from "@/components/sections/Why";
+import Export from "@/components/sections/Export";
+import Contact from "@/components/sections/Contact";
 
 export default function Home() {
   return (
@@ -21,13 +20,12 @@ export default function Home() {
       <Header />
       <main>
         <Hero />
-        <Story />
+        <Marquee />
+        <FeaturedProducts />
         <Collection />
-        <Products />
-        <Making />
-        <Export />
+        <FullscreenFeature />
         <Why />
-        <History />
+        <Export />
         <Contact />
       </main>
       <Footer />
