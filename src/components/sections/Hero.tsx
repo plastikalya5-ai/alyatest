@@ -1,11 +1,36 @@
 "use client";
 import Image from "next/image";
+import { useEffect, useRef } from "react";
 
 const stats = [
-  { num: "55", suffix: "+", label: "Yıl Deneyim" },
-  { num: "20", suffix: "+", label: "Ülke İhracat" },
-  { num: "200", suffix: "+", label: "Ürün Modeli" },
+  { num: 55,  suffix: "+", label: "Yıl Deneyim" },
+  { num: 20,  suffix: "+", label: "Ülke İhracat" },
+  { num: 200, suffix: "+", label: "Ürün Modeli" },
 ];
+
+function CountUp({ target, suffix }: { target: number; suffix: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // Hero ekranda zaten görünür — kısa delay sonra başlat
+    const timer = setTimeout(() => {
+      const duration = 1400;
+      const start = performance.now();
+      const tick = (now: number) => {
+        const progress = Math.min((now - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        el.textContent = Math.round(eased * target) + suffix;
+        if (progress < 1) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }, 1200); // hero animasyonu bittikten sonra
+    return () => clearTimeout(timer);
+  }, [target, suffix]);
+
+  return <span ref={ref}>0{suffix}</span>;
+}
 
 export default function Hero() {
   return (
@@ -17,17 +42,11 @@ export default function Hero() {
       {/* Gradient */}
       <div
         className="absolute inset-0 pointer-events-none"
-        style={{
-          background: "radial-gradient(ellipse at 68% 53%, #384136 0, transparent 57%)",
-          opacity: 0.55,
-        }}
+        style={{ background: "radial-gradient(ellipse at 68% 53%, #384136 0, transparent 57%)", opacity: 0.55 }}
       />
 
       {/* Kicker */}
-      <p
-        className="absolute eyebrow reveal"
-        style={{ top: 115, left: "var(--pad)", color: "#adb2a5", fontSize: 11 }}
-      >
+      <p className="absolute eyebrow reveal" style={{ top: 115, left: "var(--pad)", color: "#adb2a5", fontSize: 11 }}>
         ALYAPLAS PLASTİK SAN. TİC. LTD. ŞTİ. — İSTANBUL OSB
         <br />
         1968&apos;DEN BERİ &nbsp;·&nbsp; 20+ ÜLKE İHRACAT &nbsp;·&nbsp; B2B TOPLU SİPARİŞ
@@ -37,13 +56,9 @@ export default function Hero() {
       <h1
         className="absolute display"
         style={{
-          top: "23%",
-          left: "var(--pad)",
+          top: "23%", left: "var(--pad)",
           fontSize: "clamp(86px, min(12.4vw, 18.5svh), 205px)",
-          width: "70%",
-          zIndex: 2,
-          pointerEvents: "none",
-          overflow: "hidden",
+          width: "70%", zIndex: 2, pointerEvents: "none",
         }}
       >
         {["GÜNLÜK", "HAYATA", "YENİ BİR", "FORM."].map((word, i) => (
@@ -59,33 +74,19 @@ export default function Hero() {
       </h1>
 
       {/* Product */}
-      <div
-        className="absolute"
-        style={{ inset: "14% 3% 5% 40%", zIndex: 3, pointerEvents: "none", display: "grid", placeItems: "center" }}
-      >
+      <div className="absolute" style={{ inset: "14% 3% 5% 40%", zIndex: 3, pointerEvents: "none", display: "grid", placeItems: "center" }}>
         <Image
           src="https://res.cloudinary.com/dy7dekame/image/upload/v1789927643/Kordon_Dik_Ayakli_Sak_hf24qs.webp"
           alt="Kordon Saksı ALY-10/03"
-          width={600}
-          height={800}
-          priority
+          width={600} height={800} priority
           className="hero-product-img"
-          style={{
-            width: "auto",
-            height: "100%",
-            maxHeight: 850,
-            objectFit: "contain",
-            transform: "rotate(-8deg)",
-            willChange: "transform",
-          }}
+          style={{ width: "auto", height: "100%", maxHeight: 850, objectFit: "contain", transform: "rotate(-8deg)", willChange: "transform" }}
         />
       </div>
 
       {/* Label */}
-      <p
-        className="absolute eyebrow hero-bottom-el"
-        style={{ right: "var(--pad)", top: "34%", writingMode: "vertical-rl", zIndex: 4, color: "#c6cbbd", fontSize: 11 }}
-      >
+      <p className="absolute eyebrow hero-bottom-el"
+        style={{ right: "var(--pad)", top: "34%", writingMode: "vertical-rl", zIndex: 4, color: "#c6cbbd", fontSize: 11 }}>
         KORDON / ALY-10/03
       </p>
 
@@ -93,11 +94,8 @@ export default function Hero() {
       <div className="absolute flex gap-8" style={{ bottom: 110, left: "var(--pad)", zIndex: 5 }}>
         {stats.map((s) => (
           <div key={s.label} className="hero-stat">
-            <div
-              className="display"
-              style={{ fontSize: "clamp(32px, 4vw, 52px)", color: "var(--orange)" }}
-            >
-              <span data-target={s.num} data-suffix={s.suffix} className="count-up">{s.num}{s.suffix}</span>
+            <div className="display" style={{ fontSize: "clamp(32px, 4vw, 52px)", color: "var(--orange)" }}>
+              <CountUp target={s.num} suffix={s.suffix} />
             </div>
             <div className="eyebrow" style={{ fontSize: 10, color: "#adb2a5" }}>{s.label}</div>
           </div>
@@ -105,21 +103,15 @@ export default function Hero() {
       </div>
 
       {/* Bottom */}
-      <div
-        className="absolute flex justify-between items-end"
-        style={{ bottom: 36, left: "var(--pad)", right: "var(--pad)", zIndex: 5 }}
-      >
-        <a
-          href="#product-story"
-          className="hero-bottom-el flex items-center gap-10 text-xs uppercase tracking-widest hover:opacity-70 transition-opacity"
-        >
+      <div className="absolute flex justify-between items-end"
+        style={{ bottom: 36, left: "var(--pad)", right: "var(--pad)", zIndex: 5 }}>
+        <a href="#product-story"
+          className="hero-bottom-el flex items-center gap-10 text-xs uppercase tracking-widest hover:opacity-70 transition-opacity">
           <span className="text-2xl">↓</span>
           KAYDIR &amp; KEŞFET
         </a>
-        <p
-          className="hero-bottom-el"
-          style={{ fontSize: 13, lineHeight: 1.6, width: 190, marginRight: "12%", color: "#adb2a5" }}
-        >
+        <p className="hero-bottom-el"
+          style={{ fontSize: 13, lineHeight: 1.6, width: 190, marginRight: "12%", color: "#adb2a5" }}>
           Bir saksıdan fazlası. Yaşamın içindeki formlar.
         </p>
       </div>

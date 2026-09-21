@@ -1,11 +1,53 @@
+"use client";
+import { useEffect, useRef } from "react";
+
 const reasons = [
-  { num: 55, suffix: " yıl+", title: "Sektör Deneyimi", desc: "1968'den bu yana plastik ürün üretimindeki kesintisiz birikim." },
-  { num: 20, suffix: " ülke+", title: "İhracat Ağı", desc: "Avrupa, Orta Doğu ve Afrika'ya düzenli ihracat. Uluslararası lojistik desteği." },
-  { num: 200, suffix: "+", title: "Ürün Yelpazesi", desc: "Saksı, sepet, sandık ve depolama kategorilerinde geniş model portföyü." },
-  { num: 100, suffix: "%", title: "Yerli Üretim", desc: "İstanbul Başakşehir'deki tesisimizde tasarlanan ve üretilen ürünler." },
-  { num: 72, suffix: " sa", title: "Hızlı Yanıt", desc: "Teklif taleplerinize 72 saat içinde dönüş garantisi." },
-  { num: 0, suffix: "B2B", title: "Toplu Sipariş", desc: "Kalıptan rafa tam tedarik zinciri. Esnek minimum sipariş miktarı." },
+  { num: 55,  suffix: " yıl+", title: "Sektör Deneyimi",  desc: "1968'den bu yana plastik ürün üretimindeki kesintisiz birikim." },
+  { num: 20,  suffix: " ülke+", title: "İhracat Ağı",     desc: "Avrupa, Orta Doğu ve Afrika'ya düzenli ihracat. Uluslararası lojistik desteği." },
+  { num: 200, suffix: "+",      title: "Ürün Yelpazesi",  desc: "Saksı, sepet, sandık ve depolama kategorilerinde geniş model portföyü." },
+  { num: 100, suffix: "%",      title: "Yerli Üretim",    desc: "İstanbul Başakşehir'deki tesisimizde tasarlanan ve üretilen ürünler." },
+  { num: 72,  suffix: " sa",    title: "Hızlı Yanıt",     desc: "Teklif taleplerinize 72 saat içinde dönüş garantisi." },
+  { num: 0,   suffix: "B2B",    title: "Toplu Sipariş",   desc: "Kalıptan rafa tam tedarik zinciri. Esnek minimum sipariş miktarı." },
 ];
+
+function CountUp({ target, suffix }: { target: number; suffix: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const started = useRef(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || target === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !started.current) {
+          started.current = true;
+          const duration = 1800;
+          const start = performance.now();
+          const tick = (now: number) => {
+            const progress = Math.min((now - start) / duration, 1);
+            // ease out
+            const eased = 1 - Math.pow(1 - progress, 3);
+            const val = Math.round(eased * target);
+            el.textContent = val + suffix;
+            if (progress < 1) requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.3 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [target, suffix]);
+
+  return (
+    <span ref={ref}>
+      {target === 0 ? suffix : `0${suffix}`}
+    </span>
+  );
+}
 
 export default function Why() {
   return (
@@ -26,18 +68,10 @@ export default function Why() {
           className="grid"
           style={{ gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1px", background: "#ffffff10" }}
         >
-          {reasons.map((r, i) => (
-            <div
-              key={r.title}
-              className="why-card"
-              style={{ background: "#1a1f1a", padding: "40px 32px" }}
-            >
+          {reasons.map((r) => (
+            <div key={r.title} className="why-card" style={{ background: "#1a1f1a", padding: "40px 32px" }}>
               <div className="display" style={{ fontSize: "clamp(40px, 5vw, 72px)", color: "var(--orange)", marginBottom: 12 }}>
-                {r.num > 0 ? (
-                  <span data-target={r.num} data-suffix={r.suffix} className="count-up">{r.num}{r.suffix}</span>
-                ) : (
-                  r.suffix
-                )}
+                <CountUp target={r.num} suffix={r.suffix} />
               </div>
               <h3 style={{ fontSize: 17, fontWeight: 600, marginBottom: 12 }}>{r.title}</h3>
               <p style={{ fontSize: 14, lineHeight: 1.7, color: "#aeb5a7" }}>{r.desc}</p>

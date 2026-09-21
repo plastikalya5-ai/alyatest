@@ -113,32 +113,7 @@ export default function Animations() {
           });
         });
 
-        // ── Count-up — rakam + suffix ───────────────────────────
-        gsap.utils.toArray<HTMLElement>(".count-up").forEach((el) => {
-          const target = parseFloat(el.dataset.target || "0");
-          const suffix = el.dataset.suffix || "";
-          const isFloat = el.dataset.target?.includes(".");
-          // Başlangıçta 0 göster
-          el.textContent = "0" + suffix;
-          ScrollTrigger.create({
-            trigger: el,
-            start: "top 85%",
-            onEnter: () => {
-              const obj = { val: 0 };
-              gsap.to(obj, {
-                val: target,
-                duration: 1.8,
-                ease: "power2.out",
-                onUpdate: () => {
-                  el.textContent = (isFloat
-                    ? obj.val.toFixed(1)
-                    : Math.round(obj.val).toString()) + suffix;
-                },
-              });
-            },
-            once: true,
-          });
-        });
+        // ── Count-up — bileşenler kendi IntersectionObserver'ını yönetiyor
 
         // ── Making steps — sırayla ─────────────────────────────
         gsap.utils.toArray<HTMLElement>(".making-step").forEach((el, i) => {
