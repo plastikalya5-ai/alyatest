@@ -1,92 +1,113 @@
 "use client";
 import { useState, useEffect } from "react";
+import Link from "next/link";
+
+const links = [
+  { href: "#products",    label: "Ürünler" },
+  { href: "#collection",  label: "Koleksiyon" },
+  { href: "#why",         label: "Neden Alya" },
+  { href: "#contact",     label: "İletişim" },
+];
 
 export default function Header() {
-  const [scrolled, setScrolled] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled,  setScrolled]  = useState(false);
+  const [menuOpen,  setMenuOpen]  = useState(false);
 
   useEffect(() => {
-    const fn = () => setScrolled(window.scrollY > 60);
+    const fn = () => setScrolled(window.scrollY > 80);
     window.addEventListener("scroll", fn, { passive: true });
     return () => window.removeEventListener("scroll", fn);
   }, []);
 
-  const links = [
-    { href: "#products", label: "Ürünler" },
-    { href: "#collection", label: "Koleksiyon" },
-    { href: "#why", label: "Neden Alya" },
-    { href: "#contact", label: "İletişim" },
-  ];
-
   return (
     <>
-      <header className={`fixed top-0 left-0 right-0 z-[90] flex items-center justify-between transition-all duration-500 ${scrolled ? "py-3" : "py-5"}`}
+      {/* ── Main header ───────────────────────────────── */}
+      <header
+        className="fixed inset-x-0 top-0 z-[80] flex items-center justify-between transition-all duration-500"
         style={{
+          height: scrolled ? 64 : 80,
           paddingInline: "var(--pad)",
-          background: scrolled ? "rgba(14,18,16,0.92)" : "transparent",
-          backdropFilter: scrolled ? "blur(20px)" : "none",
-          borderBottom: scrolled ? "1px solid rgba(255,255,255,0.06)" : "1px solid transparent",
-        }}>
-
+          background:    scrolled ? "rgba(10,13,11,0.88)" : "transparent",
+          backdropFilter: scrolled ? "blur(24px) saturate(180%)" : "none",
+          borderBottom:  scrolled ? "1px solid rgba(255,255,255,0.06)" : "1px solid transparent",
+        }}
+      >
         {/* Logo */}
-        <a href="/" className="flex items-baseline gap-1 group">
-          <span className="font-black text-white tracking-tighter" style={{ fontSize: "clamp(15px,2vw,19px)", fontFamily: "var(--display)", letterSpacing: "-0.04em" }}>
+        <Link href="/" aria-label="Alya Plastik" className="flex items-baseline gap-px">
+          <span className="display text-white" style={{ fontSize: "clamp(17px,2.2vw,22px)", letterSpacing: "-0.04em" }}>
             ALYA
           </span>
-          <span className="font-black tracking-tighter" style={{ fontSize: "clamp(15px,2vw,19px)", fontFamily: "var(--display)", letterSpacing: "-0.04em", color: "var(--orange)" }}>
+          <span className="display" style={{ fontSize: "clamp(17px,2.2vw,22px)", letterSpacing: "-0.04em", color: "var(--orange)" }}>
             PLASTİK
           </span>
-          <span className="text-[10px] tracking-widest uppercase ml-2 hidden sm:inline" style={{ color: "var(--muted)", fontWeight: 400 }}>
-            1968
-          </span>
-        </a>
+        </Link>
 
-        {/* Nav - desktop */}
-        <nav className="hidden md:flex items-center gap-8">
+        {/* Desktop nav */}
+        <nav className="hidden md:flex items-center gap-10">
           {links.map(l => (
             <a key={l.href} href={l.href}
-              className="text-xs uppercase tracking-widest transition-colors duration-200 hover:text-white"
+              className="eyebrow transition-colors duration-200 hover:text-white"
               style={{ color: "var(--muted)" }}>
               {l.label}
             </a>
           ))}
         </nav>
 
-        {/* CTA */}
-        <div className="flex items-center gap-4">
-          <a href="https://wa.me/905357616524" target="_blank" rel="noopener noreferrer"
-            className="hidden md:flex items-center gap-2 text-xs uppercase tracking-widest font-semibold px-5 py-2.5 transition-all duration-200 hover:opacity-90"
-            style={{ background: "var(--orange)", color: "var(--dark)" }}>
-            Teklif Al
-          </a>
-          <button onClick={() => setMenuOpen(!menuOpen)}
-            className="md:hidden flex flex-col justify-center gap-1.5 p-2 w-10 h-10"
-            aria-label="Menü">
-            <span className={`block h-px transition-all duration-300 ${menuOpen ? "rotate-45 translate-y-2" : ""}`}
-              style={{ background: "var(--light)", width: 22 }} />
-            <span className={`block h-px transition-all duration-300 ${menuOpen ? "opacity-0" : ""}`}
-              style={{ background: "var(--light)", width: 16 }} />
-            <span className={`block h-px transition-all duration-300 ${menuOpen ? "-rotate-45 -translate-y-2" : ""}`}
-              style={{ background: "var(--light)", width: 22 }} />
-          </button>
-        </div>
+        {/* Desktop CTA */}
+        <a href="https://wa.me/905357616524" target="_blank" rel="noopener noreferrer"
+          className="btn-orange hidden md:inline-flex" style={{ padding: "11px 24px", fontSize: 10 }}>
+          Teklif Al →
+        </a>
+
+        {/* Hamburger */}
+        <button onClick={() => setMenuOpen(p => !p)} aria-label="Menü"
+          className="md:hidden relative w-8 h-8 flex flex-col justify-center gap-[6px]">
+          {[0, 1, 2].map(i => (
+            <span key={i} className="block h-px transition-all duration-300 origin-center"
+              style={{
+                background: "var(--light)",
+                width: i === 1 ? (menuOpen ? 0 : 20) : 26,
+                opacity:    i === 1 ? (menuOpen ? 0 : 1) : 1,
+                transform:  i === 0 && menuOpen ? "rotate(45deg) translate(4px,4px)"
+                          : i === 2 && menuOpen ? "rotate(-45deg) translate(4px,-4px)"
+                          : "none",
+              }} />
+          ))}
+        </button>
       </header>
 
-      {/* Mobile menu */}
-      <div className={`fixed inset-x-0 z-[89] flex flex-col transition-all duration-500 ${menuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
-        style={{ top: 65, background: "rgba(14,18,16,0.98)", backdropFilter: "blur(20px)", paddingInline: "var(--pad)", paddingBottom: 32, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-        {links.map((l, i) => (
-          <a key={l.href} href={l.href} onClick={() => setMenuOpen(false)}
-            className="py-4 text-2xl font-light border-b transition-colors hover:text-white"
-            style={{ borderColor: "rgba(255,255,255,0.06)", color: "var(--muted)", transitionDelay: menuOpen ? `${i*60}ms` : "0ms" }}>
-            {l.label}
+      {/* ── Mobile menu ───────────────────────────────── */}
+      <div
+        className="fixed inset-x-0 z-[79] md:hidden transition-all duration-500 overflow-hidden"
+        style={{
+          top: 64,
+          maxHeight: menuOpen ? "100svh" : 0,
+          background: "rgba(10,13,11,0.98)",
+          backdropFilter: "blur(24px)",
+          borderBottom: menuOpen ? "1px solid rgba(255,255,255,0.06)" : "none",
+        }}
+      >
+        <div style={{ paddingInline: "var(--pad)", paddingBlock: 24 }}>
+          {links.map((l, i) => (
+            <a key={l.href} href={l.href} onClick={() => setMenuOpen(false)}
+              className="block py-5 border-b transition-colors hover:text-white"
+              style={{
+                borderColor: "rgba(255,255,255,0.06)",
+                color: "var(--muted)",
+                fontSize: "clamp(26px,7vw,38px)",
+                fontFamily: "var(--display)",
+                letterSpacing: "-0.03em",
+                textTransform: "uppercase",
+                transitionDelay: menuOpen ? `${i * 55}ms` : "0ms",
+              }}>
+              {l.label}
+            </a>
+          ))}
+          <a href="https://wa.me/905357616524" target="_blank" rel="noopener noreferrer"
+            className="btn-orange w-full justify-center mt-6">
+            WhatsApp ile Teklif Al →
           </a>
-        ))}
-        <a href="https://wa.me/905357616524" target="_blank" rel="noopener noreferrer"
-          className="mt-6 py-3.5 text-center text-sm font-semibold uppercase tracking-widest"
-          style={{ background: "var(--orange)", color: "var(--dark)" }}>
-          WhatsApp ile Teklif Al
-        </a>
+        </div>
       </div>
     </>
   );

@@ -1,15 +1,15 @@
-export default function Marquee() {
-  const items = ["Plastik Saksı", "Depolama", "Sepet", "Sandık", "İhracat", "B2B", "1968'den Beri", "İstanbul OSB", "200+ Model", "20+ Ülke"];
-  const doubled = [...items, ...items];
+const items = ["Plastik Saksı","Bahçe","Depolama","Sepet","Sandık","B2B","İhracat","1968","Türkiye","200+ Model","20+ Ülke","İstanbul OSB"];
 
+export default function Marquee() {
+  const doubled = [...items, ...items];
   return (
-    <div className="overflow-hidden relative" style={{ background: "var(--orange)", paddingBlock: 14 }}>
-      <div className="marquee-inner">
+    <div className="overflow-hidden relative" style={{ background: "var(--orange)", paddingBlock: 12 }}>
+      <div className="marquee-track select-none">
         {doubled.map((item, i) => (
-          <span key={i} className="flex items-center gap-6 px-6 whitespace-nowrap"
-            style={{ fontFamily: "var(--display)", fontSize: "clamp(13px,1.5vw,18px)", color: "var(--dark)", letterSpacing: "0.05em" }}>
+          <span key={i} className="inline-flex items-center gap-5 pr-5"
+            style={{ fontFamily: "var(--display)", fontSize: "clamp(11px,1.4vw,15px)", color: "#fff", letterSpacing: "0.08em", whiteSpace: "nowrap" }}>
             {item}
-            <span style={{ color: "rgba(0,0,0,0.3)" }}>·</span>
+            <span style={{ opacity: 0.35, fontSize: 8 }}>◆</span>
           </span>
         ))}
       </div>

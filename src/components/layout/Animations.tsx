@@ -3,198 +3,116 @@ import { useEffect } from "react";
 
 export default function Animations() {
   useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let ctx: any = null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let lenis: any = null;
-
-    (async () => {
-      const { default: Lenis } = await import("@studio-freight/lenis");
-      const gsap = (await import("gsap")).default;
-      const { ScrollTrigger } = await import("gsap/ScrollTrigger");
-      const { TextPlugin } = await import("gsap/TextPlugin");
-
-      gsap.registerPlugin(ScrollTrigger, TextPlugin);
-
-      // ── Smooth scroll ──────────────────────────────────────────
-      lenis = new Lenis({ lerp: 0.08, smoothWheel: true });
-      lenis.on("scroll", ScrollTrigger.update);
-      gsap.ticker.add((t) => lenis!.raf(t * 1000));
-      gsap.ticker.lagSmoothing(0);
-
-      ctx = gsap.context(() => {
-        // ── Hero title — satır satır giriş ─────────────────────
-        gsap.from(".hero-line", {
-          yPercent: 110,
-          opacity: 0,
-          duration: 1,
-          stagger: 0.12,
-          ease: "expo.out",
-          delay: 0.3,
-        });
-
-        gsap.from(".hero-stat", {
-          y: 30,
-          opacity: 0,
-          duration: 0.8,
-          stagger: 0.1,
-          ease: "power3.out",
-          delay: 0.9,
-        });
-
-        gsap.from(".hero-bottom-el", {
-          y: 20,
-          opacity: 0,
-          duration: 0.7,
-          stagger: 0.08,
-          ease: "power3.out",
-          delay: 1.1,
-        });
-
-        // Hero parallax — ürün görseli
-        gsap.to(".hero-product-img", {
-          yPercent: -18,
-          ease: "none",
-          scrollTrigger: {
-            trigger: "#hero",
-            start: "top top",
-            end: "bottom top",
-            scrub: 1.2,
-          },
-        });
-
-        // ── Scroll reveal — genel ──────────────────────────────
-        gsap.utils.toArray<HTMLElement>(".reveal").forEach((el) => {
-          gsap.from(el, {
-            y: 60,
-            opacity: 0,
-            duration: 1,
-            ease: "power3.out",
-            scrollTrigger: {
-              trigger: el,
-              start: "top 88%",
-              toggleActions: "play none none none",
-            },
-          });
-        });
-
-        // ── Display başlıklar — clip reveal ────────────────────
-        gsap.utils.toArray<HTMLElement>(".reveal-title").forEach((el) => {
-          gsap.from(el, {
-            yPercent: 105,
-            duration: 1.1,
-            ease: "expo.out",
-            scrollTrigger: {
-              trigger: el,
-              start: "top 90%",
-              toggleActions: "play none none none",
-            },
-          });
-        });
-
-        // ── Story section — sol/sağ giriş ──────────────────────
-        gsap.utils.toArray<HTMLElement>(".story-copy").forEach((el) => {
-          gsap.from(el, {
-            x: -50,
-            opacity: 0,
-            duration: 1,
-            ease: "power3.out",
-            scrollTrigger: { trigger: el, start: "top 85%" },
-          });
-        });
-
-        gsap.utils.toArray<HTMLElement>(".story-img-wrap").forEach((el) => {
-          gsap.from(el, {
-            x: 50,
-            opacity: 0,
-            duration: 1,
-            ease: "power3.out",
-            scrollTrigger: { trigger: el, start: "top 85%" },
-          });
-        });
-
-        // ── Count-up — bileşenler kendi IntersectionObserver'ını yönetiyor
-
-        // ── Making steps — sırayla ─────────────────────────────
-        gsap.utils.toArray<HTMLElement>(".making-step").forEach((el, i) => {
-          gsap.from(el, {
-            y: 80,
-            opacity: 0,
-            duration: 0.9,
-            ease: "power3.out",
-            scrollTrigger: {
-              trigger: el,
-              start: "top 88%",
-            },
-            delay: i * 0.05,
-          });
-        });
-
-        // ── Export ticker hız — scroll ile ─────────────────────
-        // (ticker zaten JS ile, burada hız boost)
-
-        // ── History year — büyük rakam parallax ────────────────
-        gsap.utils.toArray<HTMLElement>(".history-year").forEach((el) => {
-          gsap.from(el, {
-            x: -80,
-            opacity: 0,
-            duration: 1.2,
-            ease: "expo.out",
-            scrollTrigger: { trigger: el, start: "top 85%" },
-          });
-        });
-
-        // ── Catalogue — başlık pinned reveal ───────────────────
-        gsap.from("#catalogue h2", {
-          yPercent: 100,
-          duration: 1.1,
-          ease: "expo.out",
-          scrollTrigger: {
-            trigger: "#catalogue",
-            start: "top 80%",
-          },
-        });
-
-        // ── Editorial ürünler — kademeli ───────────────────────
-        gsap.utils.toArray<HTMLElement>(".product-card").forEach((el, i) => {
-          gsap.from(el, {
-            y: 50,
-            opacity: 0,
-            duration: 0.8,
-            ease: "power3.out",
-            delay: (i % 3) * 0.1,
-            scrollTrigger: { trigger: el, start: "top 88%" },
-          });
-        });
-
-        // ── Why cards — kademeli ───────────────────────────────
-        gsap.utils.toArray<HTMLElement>(".why-card").forEach((el, i) => {
-          gsap.from(el, {
-            y: 40,
-            opacity: 0,
-            duration: 0.7,
-            ease: "power3.out",
-            delay: (i % 3) * 0.08,
-            scrollTrigger: { trigger: el, start: "top 88%" },
-          });
-        });
-
-        // ── Contact form fade ──────────────────────────────────
-        gsap.from("#contact form", {
-          y: 40,
-          opacity: 0,
-          duration: 1,
-          ease: "power3.out",
-          scrollTrigger: { trigger: "#contact form", start: "top 88%" },
-        });
+    // ── Scroll reveal ──────────────────────────────────────────
+    const targets = document.querySelectorAll<HTMLElement>(".reveal-up, .reveal-fade, .clip-reveal");
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add("in");
+          io.unobserve(e.target);
+        }
       });
-    })();
+    }, { threshold: 0.12, rootMargin: "0px 0px -40px 0px" });
+    targets.forEach(el => io.observe(el));
+
+    // ── Smooth scroll (no lib) ─────────────────────────────────
+    let lenisRaf: number;
+    let currentY = window.scrollY;
+    let targetY  = window.scrollY;
+    const ease   = 0.092;
+    let ticking  = false;
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      targetY = Math.max(0, Math.min(document.body.scrollHeight - window.innerHeight, targetY + e.deltaY * 1.1));
+      if (!ticking) {
+        ticking = true;
+        const tick = () => {
+          currentY += (targetY - currentY) * ease;
+          if (Math.abs(targetY - currentY) < 0.5) { currentY = targetY; ticking = false; }
+          window.scrollTo(0, currentY);
+          if (ticking) lenisRaf = requestAnimationFrame(tick);
+        };
+        lenisRaf = requestAnimationFrame(tick);
+      }
+    };
+
+    // Only desktop smooth scroll (touch devices handle own momentum)
+    const isMobile = window.matchMedia("(pointer: coarse)").matches;
+    if (!isMobile) window.addEventListener("wheel", onWheel, { passive: false });
+
+    // ── Hero product parallax ──────────────────────────────────
+    const heroProduct = document.querySelector<HTMLElement>(".hero-product");
+    const heroBg      = document.querySelector<HTMLElement>(".hero-bg");
+
+    const onScroll = () => {
+      const sy = window.scrollY;
+      if (heroProduct) heroProduct.style.transform = `rotate(-6deg) translateY(${sy * 0.18}px)`;
+      if (heroBg)      heroBg.style.transform      = `scale(1.08) translateY(${sy * 0.08}px)`;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    // ── Mouse parallax on hero ────────────────────────────────
+    const heroSection = document.querySelector<HTMLElement>("#hero");
+    const onMouseMove = (e: MouseEvent) => {
+      if (!heroSection) return;
+      const rect  = heroSection.getBoundingClientRect();
+      if (rect.bottom < 0) return;
+      const x = (e.clientX / window.innerWidth - 0.5) * 14;
+      const y = (e.clientY / window.innerHeight - 0.5) * 8;
+      if (heroBg) heroBg.style.transform = `scale(1.08) translate(${x * 0.4}px, ${y * 0.4}px)`;
+      if (heroProduct) {
+        heroProduct.style.transform = `rotate(-6deg) translate(${x * 0.6}px, ${y * 0.5}px)`;
+      }
+    };
+    window.addEventListener("mousemove", onMouseMove);
+
+    // ── Cursor ────────────────────────────────────────────────
+    const cursor = document.querySelector<HTMLElement>(".custom-cursor");
+    if (cursor) {
+      let cx = 0, cy = 0;
+      const onCursorMove = (e: MouseEvent) => {
+        cx = e.clientX; cy = e.clientY;
+        cursor.style.left = cx + "px";
+        cursor.style.top  = cy + "px";
+        cursor.style.opacity = "1";
+      };
+      document.addEventListener("mousemove", onCursorMove);
+      document.querySelectorAll("a, button").forEach(el => {
+        el.addEventListener("mouseenter", () => cursor.classList.add("big"));
+        el.addEventListener("mouseleave", () => cursor.classList.remove("big"));
+      });
+    }
+
+    // ── Count-up via IntersectionObserver ────────────────────
+    document.querySelectorAll<HTMLElement>("[data-count]").forEach(el => {
+      const target = parseInt(el.dataset.count!);
+      const suffix = el.dataset.suffix || "";
+      el.textContent = "0" + suffix;
+      const obs = new IntersectionObserver(([entry]) => {
+        if (!entry.isIntersecting) return;
+        obs.disconnect();
+        const dur = 1600;
+        const start = performance.now();
+        const tick = (now: number) => {
+          const p = Math.min((now - start) / dur, 1);
+          const v = Math.round((1 - Math.pow(1 - p, 3)) * target);
+          el.textContent = v + suffix;
+          if (p < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }, { threshold: 0.5 });
+      obs.observe(el);
+    });
 
     return () => {
-      ctx?.revert();
-      lenis?.destroy();
+      io.disconnect();
+      cancelAnimationFrame(lenisRaf);
+      if (!isMobile) window.removeEventListener("wheel", onWheel);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("mousemove", onMouseMove);
     };
   }, []);
 
-  return null;
+  return <div className="custom-cursor" style={{ opacity: 0 }} />;
 }
