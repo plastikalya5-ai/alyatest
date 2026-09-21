@@ -33,7 +33,7 @@ export default function Story() {
   return (
     <section id="product-story" style={{ background: "var(--light)", color: "var(--dark)" }}>
       <div style={{ paddingInline: "var(--pad)", paddingTop: 100 }}>
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center reveal">
           <span className="eyebrow" style={{ color: "#727768" }}>ÜRÜN HİKÂYELERİ</span>
           <span className="eyebrow" style={{ color: "#727768" }}>01 — 04</span>
         </div>
@@ -45,9 +45,9 @@ export default function Story() {
           className="grid md:grid-cols-[1.05fr_1fr] grid-cols-1 items-center"
           style={{ minHeight: "90svh", padding: "70px var(--pad)", gap: "7vw" }}
         >
-          {/* Mobilde resim üstte */}
+          {/* Resim */}
           <div
-            className="relative md:order-none order-first"
+            className="relative story-img-wrap md:order-none order-first"
             style={{ height: "50svh", maxHeight: 500, display: "grid", placeItems: "center" }}
           >
             <Image
@@ -62,18 +62,17 @@ export default function Story() {
             </span>
           </div>
 
-          <div>
+          {/* Copy */}
+          <div className="story-copy">
             <span className="eyebrow" style={{ color: "#727768" }}>{s.eyebrow}</span>
-            <h2
-              className="display"
-              style={{ fontSize: "clamp(72px, 12vw, 175px)", margin: "24px 0 34px" }}
-            >
-              {s.title}
-            </h2>
+            <div className="overflow-hidden mt-6 mb-8">
+              <h2 className="display reveal-title" style={{ fontSize: "clamp(72px, 12vw, 175px)" }}>
+                {s.title}
+              </h2>
+            </div>
             <p style={{ maxWidth: 260, fontSize: 15, lineHeight: 1.7, color: "#62675e" }}>{s.desc}</p>
-
             <dl
-              className="flex flex-wrap gap-8 border-t"
+              className="flex flex-wrap gap-8 border-t reveal"
               style={{ borderColor: "#929b873e", paddingTop: 20, marginTop: 30 }}
             >
               {s.specs.map((sp) => (

@@ -5,38 +5,38 @@ export default function Products() {
   return (
     <section id="products" style={{ background: "var(--light)", color: "var(--dark)", padding: "90px 0 100px" }}>
       <div style={{ paddingInline: "var(--pad)" }}>
-
-        {/* Head */}
         <div className="grid md:grid-cols-2 grid-cols-1 items-end" style={{ gap: "5vw" }}>
           <div>
-            <p className="eyebrow" style={{ color: "#727768" }}>05 — ÜRÜN YELPAZESİ</p>
-            <h2 id="products-title" className="display" style={{ fontSize: "clamp(64px, 11vw, 165px)", marginTop: 25 }}>
-              TÜM MODELLER
-            </h2>
+            <p className="eyebrow reveal" style={{ color: "#727768" }}>05 — ÜRÜN YELPAZESİ</p>
+            <div className="overflow-hidden mt-6">
+              <h2 id="products-title" className="display reveal-title" style={{ fontSize: "clamp(64px, 11vw, 165px)" }}>
+                TÜM MODELLER
+              </h2>
+            </div>
           </div>
-          <p className="md:justify-self-end" style={{ maxWidth: 250, fontSize: 15, lineHeight: 1.7, color: "#62675e" }}>
-            Saksı, sepet, sandık ve banyo kategorilerinde 200&apos;den fazla model. Tüm ürünler B2B fiyatlandırması ile sunulmaktadır.
+          <p className="md:justify-self-end reveal" style={{ maxWidth: 250, fontSize: 15, lineHeight: 1.7, color: "#62675e" }}>
+            Saksı, sepet, sandık ve banyo kategorilerinde 200&apos;den fazla model. B2B fiyatlandırması ile sunulmaktadır.
           </p>
         </div>
 
-        {/* Mobil: 2 kolon grid; Desktop: editorial offsets */}
+        {/* Desktop editorial */}
         <div className="hidden md:grid mt-24"
           style={{ gridTemplateColumns: "repeat(12, 1fr)", gap: "0 2.5vw", alignItems: "start" }}>
           {editorialProducts.map((p, i) => {
             const cols = ["1 / 8", "9 / 13", "2 / 6", "7 / 13", "1 / 6", "7 / 12"];
             const tops = [0, 160, -50, 70, 0, 150];
             return (
-              <article key={p.code} style={{ gridColumn: cols[i % 6], marginTop: tops[i % 6], marginBottom: 90 }}>
+              <article key={p.code} className="product-card" style={{ gridColumn: cols[i % 6], marginTop: tops[i % 6], marginBottom: 90 }}>
                 <ProductCard p={p} i={i} />
               </article>
             );
           })}
         </div>
 
-        {/* Mobil grid */}
+        {/* Mobil 2 kolon */}
         <div className="grid md:hidden grid-cols-2 gap-6 mt-12">
           {editorialProducts.map((p, i) => (
-            <article key={p.code}>
+            <article key={p.code} className="product-card">
               <ProductCard p={p} i={i} />
             </article>
           ))}
@@ -44,8 +44,7 @@ export default function Products() {
 
         <a href="#contact" className="flex justify-between w-full mt-8"
           style={{ borderTop: "1px solid #1b241a50", borderBottom: "1px solid #1b241a50", padding: "25px 0", fontSize: 16 }}>
-          <span>TÜM KATALOĞU GÖRÜNTÜLE</span>
-          <span>→</span>
+          <span>TÜM KATALOĞU GÖRÜNTÜLE</span><span>→</span>
         </a>
       </div>
     </section>

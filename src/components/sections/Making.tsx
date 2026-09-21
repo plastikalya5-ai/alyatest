@@ -25,25 +25,21 @@ export default function Making() {
   return (
     <section id="forms" style={{ background: "#191c19", padding: "9svh var(--pad) 8svh", overflow: "hidden" }}>
       <div className="grid md:grid-cols-2 grid-cols-1" style={{ gap: "5vw" }}>
-        {/* Sticky title — sadece desktop'ta sticky */}
         <div className="md:sticky md:top-32 self-start">
-          <span className="eyebrow" style={{ color: "var(--muted)" }}>05 — ÜRETİM SÜRECİ</span>
-          <h2
-            id="making-title"
-            className="display"
-            style={{ fontSize: "clamp(72px, 11vw, 170px)", marginTop: 38 }}
-          >
-            FİKİRDEN<br />RAFA.
-          </h2>
-          <p style={{ color: "#aeb5a7", maxWidth: 270, fontSize: 15, lineHeight: 1.7, marginTop: 30 }}>
+          <span className="eyebrow reveal" style={{ color: "var(--muted)" }}>05 — ÜRETİM SÜRECİ</span>
+          <div className="overflow-hidden mt-10 mb-8">
+            <h2 id="making-title" className="display reveal-title" style={{ fontSize: "clamp(72px, 11vw, 170px)" }}>
+              FİKİRDEN<br />RAFA.
+            </h2>
+          </div>
+          <p className="reveal" style={{ color: "#aeb5a7", maxWidth: 270, fontSize: 15, lineHeight: 1.7 }}>
             Her ürün beş aşamadan geçerek banttan ayrılır. Kalıp tasarımından son sevkiyata.
           </p>
         </div>
 
-        {/* Steps */}
         <div>
           {steps.map((s) => (
-            <article key={s.num} style={{ minHeight: "60svh", position: "relative", padding: "35px 0" }}>
+            <article key={s.num} className="making-step" style={{ minHeight: "60svh", padding: "35px 0" }}>
               <Image
                 src={s.img}
                 alt={s.title}
