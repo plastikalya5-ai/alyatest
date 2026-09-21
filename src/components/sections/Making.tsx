@@ -23,23 +23,15 @@ const steps = [
 
 export default function Making() {
   return (
-    <section
-      id="forms"
-      style={{ background: "#191c19", padding: "9svh var(--pad) 8svh", overflow: "hidden" }}
-    >
-      <div
-        className="grid"
-        style={{ gridTemplateColumns: "1fr 1fr", gap: "5vw" }}
-      >
-        {/* Sticky title */}
-        <div style={{ position: "sticky", top: 130, alignSelf: "start" }}>
-          <span className="eyebrow" style={{ color: "var(--muted)" }}>
-            05 — ÜRETİM SÜRECİ
-          </span>
+    <section id="forms" style={{ background: "#191c19", padding: "9svh var(--pad) 8svh", overflow: "hidden" }}>
+      <div className="grid md:grid-cols-2 grid-cols-1" style={{ gap: "5vw" }}>
+        {/* Sticky title — sadece desktop'ta sticky */}
+        <div className="md:sticky md:top-32 self-start">
+          <span className="eyebrow" style={{ color: "var(--muted)" }}>05 — ÜRETİM SÜRECİ</span>
           <h2
             id="making-title"
             className="display"
-            style={{ fontSize: "clamp(80px, 11vw, 170px)", marginTop: 38 }}
+            style={{ fontSize: "clamp(72px, 11vw, 170px)", marginTop: 38 }}
           >
             FİKİRDEN<br />RAFA.
           </h2>
@@ -51,40 +43,22 @@ export default function Making() {
         {/* Steps */}
         <div>
           {steps.map((s) => (
-            <article
-              key={s.num}
-              style={{ minHeight: "75svh", position: "relative", padding: "35px 0" }}
-            >
+            <article key={s.num} style={{ minHeight: "60svh", position: "relative", padding: "35px 0" }}>
               <Image
                 src={s.img}
                 alt={s.title}
                 width={400}
                 height={300}
-                style={{
-                  width: "78%",
-                  height: "44svh",
-                  objectFit: "contain",
-                  margin: "10px auto 45px",
-                  maxHeight: 380,
-                }}
+                style={{ width: "78%", height: "40svh", objectFit: "contain", margin: "10px auto 45px", maxHeight: 380 }}
               />
               <div
                 className="grid"
-                style={{
-                  gridTemplateColumns: "40px 1fr",
-                  gap: 20,
-                  borderTop: "1px solid #fff3",
-                  paddingTop: 22,
-                }}
+                style={{ gridTemplateColumns: "40px 1fr", gap: 20, borderTop: "1px solid #fff3", paddingTop: 22 }}
               >
-                <span style={{ fontFamily: "Courier New, monospace", fontSize: 13, color: "#aeb5a7" }}>
-                  {s.num}
-                </span>
+                <span style={{ fontFamily: "Courier New, monospace", fontSize: 13, color: "#aeb5a7" }}>{s.num}</span>
                 <div>
                   <h3 style={{ fontSize: 20, fontWeight: 400, marginBottom: 12 }}>{s.title}</h3>
-                  <p style={{ maxWidth: 340, lineHeight: 1.7, fontSize: 14, color: "#aeb5a7" }}>
-                    {s.desc}
-                  </p>
+                  <p style={{ maxWidth: 340, lineHeight: 1.7, fontSize: 14, color: "#aeb5a7" }}>{s.desc}</p>
                 </div>
               </div>
             </article>

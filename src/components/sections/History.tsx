@@ -23,16 +23,12 @@ const blocks = [
 
 export default function History() {
   return (
-    <section
-      id="history"
-      style={{ background: "#d9dbcb", color: "var(--dark)", overflow: "hidden" }}
-    >
-      <div
-        style={{ position: "relative", minHeight: "100svh", padding: "90px var(--pad) 65px" }}
-      >
+    <section id="history" style={{ background: "#d9dbcb", color: "var(--dark)", overflow: "hidden" }}>
+      <div style={{ position: "relative", minHeight: "100svh", padding: "90px var(--pad) 65px" }}>
         {/* Background word */}
         <div
-          className="absolute pointer-events-none select-none"
+          aria-hidden
+          className="absolute pointer-events-none select-none hidden md:block"
           style={{
             fontFamily: "Impact, Arial Narrow, sans-serif",
             fontSize: "48vw",
@@ -47,25 +43,22 @@ export default function History() {
           ALY
         </div>
 
-        <p className="eyebrow relative z-10" style={{ color: "#727768" }}>
-          07 — TARİHÇE
-        </p>
+        <p className="eyebrow relative z-10" style={{ color: "#727768" }}>07 — TARİHÇE</p>
 
         <div className="relative z-10">
           {blocks.map((b, i) => (
             <div
               key={b.year}
-              className="grid items-center"
+              className="grid md:grid-cols-[1.1fr_1fr] grid-cols-1 items-center"
               style={{
-                gridTemplateColumns: "1.1fr 1fr",
                 gap: "8vw",
-                padding: "80px 0",
+                padding: "60px 0",
                 borderBottom: i < blocks.length - 1 ? "1px solid #0000001a" : "none",
               }}
             >
               <div
                 className="display"
-                style={{ fontSize: "clamp(150px, 20vw, 320px)", lineHeight: 1, letterSpacing: "-0.04em", color: "#c6cbb8" }}
+                style={{ fontSize: "clamp(100px, 18vw, 320px)", lineHeight: 1, letterSpacing: "-0.04em", color: "#c6cbb8" }}
               >
                 {b.year}
               </div>
