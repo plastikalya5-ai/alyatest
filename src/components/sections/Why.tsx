@@ -11,10 +11,10 @@ const FEATURES = [
 ];
 
 const STATS = [
-  { n: 55,  s: "+", label: "Yıl Deneyim",    desc: "1968'den bu yana"  },
-  { n: 200, s: "+", label: "Ürün Modeli",     desc: "Geniş portföy"     },
-  { n: 20,  s: "+", label: "İhracat Ülkesi",  desc: "Global erişim"     },
-  { n: 100, s: "%", label: "Yerli Üretim",    desc: "Made in Türkiye"   },
+  { n: 55,  s: "+", label: "Yıl Deneyim",   desc: "1968'den bu yana"  },
+  { n: 200, s: "+", label: "Ürün Modeli",    desc: "Geniş portföy"     },
+  { n: 20,  s: "+", label: "İhracat Ülkesi", desc: "Global erişim"     },
+  { n: 100, s: "%", label: "Yerli Üretim",   desc: "Made in Türkiye"   },
 ];
 
 function CountUp({ n, s }: { n: number; s: string }) {
@@ -46,30 +46,30 @@ export default function Why() {
     <section id="why" style={{ background: "var(--bg2)", paddingBlock: "clamp(72px,9vw,130px)" }}>
       <div className="pad">
         {/* Başlık */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-16">
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: 16, marginBottom: 56 }}>
           <div>
-            <p className="eyebrow mb-3" data-reveal style={{ color: "var(--orange)" }}>— Neden Alya Plastik</p>
+            <p className="eyebrow" data-reveal style={{ color: "var(--orange)", marginBottom: 12 }}>— Neden Alya Plastik</p>
             <h2 className="heading" data-reveal data-delay="1" style={{ fontSize: "clamp(44px,7vw,96px)" }}>
               55 YILLIK<br />BİRİKİM.
             </h2>
           </div>
-          <p data-reveal style={{ maxWidth: 240, fontSize: 14, lineHeight: 1.8, color: "var(--muted)", fontWeight: 300 }}>
-            1968&apos;de İstanbul&apos;da başlayan yolculuğumuz bugün global bir tedarikçiye dönüştü.
+          <p data-reveal data-delay="2" style={{ maxWidth: 260, fontSize: "var(--text-sm)", lineHeight: 1.8, color: "var(--muted)", fontWeight: 300 }}>
+            1968&apos;de İstanbul&apos;da başlayan yolculuğumuz, bugün 20+ ülkeye ihracat yapan bir üretim gücüne dönüştü.
           </p>
         </div>
 
-        {/* 2 kolon */}
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-start">
-          {/* Sol — özellikler + CTA */}
+        {/* İçerik grid */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "clamp(32px,5vw,80px)", alignItems: "start" }}>
+
+          {/* Sol — feature list */}
           <div>
-            <div className="mb-10">
+            <div style={{ marginBottom: 40 }}>
               {FEATURES.map((f, i) => (
                 <div key={i} data-reveal data-delay={String(i + 1)}
-                  className="flex items-center gap-4 py-4 border-b"
-                  style={{ borderColor: "var(--border)" }}>
+                  style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 0", borderBottom: "1px solid var(--border)" }}>
                   <div style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--orange)", flexShrink: 0 }} />
-                  <span style={{ fontSize: "clamp(13px,1.4vw,15px)" }}>{f}</span>
-                  <span className="eyebrow ml-auto" style={{ fontSize: 9, color: "var(--muted)" }}>
+                  <span style={{ fontSize: "var(--text-sm)", color: "var(--light)", flex: 1 }}>{f}</span>
+                  <span className="eyebrow" style={{ fontSize: 10, color: "var(--muted)" }}>
                     {String(i + 1).padStart(2, "0")}
                   </span>
                 </div>
@@ -79,44 +79,63 @@ export default function Why() {
           </div>
 
           {/* Sağ — görsel + stats */}
-          <div className="flex flex-col gap-3">
-            {/* Görsel */}
-            <div className="zoom-wrap relative overflow-hidden" data-reveal
-              style={{ aspectRatio: "4/3", background: "var(--bg3)", minHeight: 200 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {/* Ürün görseli */}
+            <div data-reveal style={{
+              position: "relative",
+              aspectRatio: "4/3",
+              background: "var(--bg3)",
+              overflow: "hidden",
+            }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={IMG.ufo} alt="UFO Saksı"
-                className="absolute inset-0 w-full h-full object-contain"
-                style={{ padding: "clamp(20px,5vw,48px)" }} />
-              <div className="absolute bottom-0 left-0 right-0 p-4 flex items-center justify-between"
-                style={{ background: "linear-gradient(to top, rgba(11,14,11,0.95), transparent)", paddingTop: 40 }}>
+              <img src={IMG.ufo} alt="UFO Saksı" style={{
+                position: "absolute", inset: 0,
+                width: "100%", height: "100%",
+                objectFit: "contain",
+                padding: "clamp(20px,4vw,48px)",
+              }} />
+              {/* Alt bilgi */}
+              <div style={{
+                position: "absolute", bottom: 0, left: 0, right: 0,
+                padding: "16px",
+                background: "linear-gradient(to top, rgba(11,14,11,0.92), transparent)",
+                paddingTop: 48,
+                display: "flex", alignItems: "flex-end", justifyContent: "space-between",
+              }}>
                 <div>
-                  <p className="eyebrow mb-0.5" style={{ color: "var(--orange)", fontSize: 9 }}>ALY-601</p>
-                  <p className="font-semibold" style={{ fontSize: 14 }}>UFO Saksı</p>
+                  <p className="eyebrow" style={{ color: "var(--orange)", fontSize: 9, marginBottom: 3 }}>ALY-601</p>
+                  <p style={{ fontWeight: 600, fontSize: "var(--text-sm)" }}>UFO Saksı</p>
                 </div>
-                <span className="eyebrow" style={{ fontSize: 8, padding: "4px 8px", background: "var(--orange)", color: "#fff" }}>
-                  Yeni Sezon
+                <span className="eyebrow" style={{ fontSize: 9, padding: "4px 8px", background: "var(--orange)", color: "#fff" }}>
+                  Yeni
                 </span>
               </div>
             </div>
 
-            {/* Stats 2x2 */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* Stats 2×2 */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               {STATS.map((s, i) => (
                 <div key={s.label} data-reveal data-delay={String(i + 1)}
-                  className="flex flex-col justify-between p-5"
-                  style={{ background: "var(--bg3)", minHeight: 110 }}>
+                  style={{ background: "var(--bg3)", padding: "clamp(16px,2.5vw,24px)", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: 110 }}>
                   <div className="heading" style={{ fontSize: "clamp(28px,4vw,48px)", color: "var(--orange)", lineHeight: 1 }}>
                     <CountUp n={s.n} s={s.s} />
                   </div>
                   <div>
-                    <p className="font-semibold text-sm">{s.label}</p>
-                    <p className="eyebrow mt-1" style={{ fontSize: 9, color: "var(--muted)" }}>{s.desc}</p>
+                    <p style={{ fontWeight: 600, fontSize: "var(--text-sm)", marginBottom: 2 }}>{s.label}</p>
+                    <p className="eyebrow" style={{ fontSize: 10, color: "var(--muted)" }}>{s.desc}</p>
                   </div>
                 </div>
               ))}
             </div>
           </div>
         </div>
+
+        {/* Mobil: 1 kolon */}
+        <style>{`
+          @media (max-width: 767px) {
+            #why-grid { grid-template-columns: 1fr !important; }
+          }
+        `}</style>
       </div>
     </section>
   );

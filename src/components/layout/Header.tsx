@@ -20,7 +20,6 @@ export default function Header() {
     return () => window.removeEventListener("scroll", fn);
   }, []);
 
-  // Body scroll lock when menu open
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
@@ -29,26 +28,31 @@ export default function Header() {
   return (
     <>
       <header
-        className="fixed inset-x-0 top-0 z-[80] flex items-center justify-between"
+        className="fixed inset-x-0 top-0 z-[80]"
         style={{
           height: 68,
           paddingInline: "var(--pad)",
-          background: scrolled || open ? "rgba(11,14,11,0.95)" : "transparent",
-          backdropFilter: scrolled || open ? "blur(20px)" : "none",
-          borderBottom: scrolled ? "1px solid rgba(255,255,255,0.07)" : "1px solid transparent",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          background: scrolled || open ? "rgba(11,14,11,0.94)" : "transparent",
+          backdropFilter: scrolled || open ? "blur(18px)" : "none",
+          borderBottom: scrolled ? "1px solid var(--border)" : "1px solid transparent",
           transition: "background 0.4s, border-color 0.4s",
         }}
       >
         {/* Logo */}
-        <Link href="/" className="flex items-baseline gap-0.5 shrink-0">
-          <span className="heading text-white" style={{ fontSize: "clamp(16px,2.5vw,21px)" }}>ALYA</span>
-          <span className="heading" style={{ fontSize: "clamp(16px,2.5vw,21px)", color: "var(--orange)" }}>PLASTİK</span>
+        <Link href="/" style={{ display: "flex", alignItems: "baseline", gap: 0, flexShrink: 0 }}>
+          <span className="heading" style={{ fontSize: "clamp(17px,2.5vw,22px)", color: "#fff" }}>ALYA</span>
+          <span className="heading" style={{ fontSize: "clamp(17px,2.5vw,22px)", color: "var(--orange)" }}>PLASTİK</span>
         </Link>
 
-        {/* Desktop nav — center */}
-        <nav className="hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2">
+        {/* Desktop nav — ortalanmış */}
+        <nav className="hidden md:flex items-center gap-10"
+          style={{ position: "absolute", left: "50%", transform: "translateX(-50%)" }}>
           {NAV.map(l => (
-            <a key={l.href} href={l.href} className="eyebrow transition-colors hover:text-white"
+            <a key={l.href} href={l.href}
+              className="eyebrow transition-colors duration-200 hover:text-white"
               style={{ color: "var(--muted)" }}>
               {l.label}
             </a>
@@ -57,59 +61,83 @@ export default function Header() {
 
         {/* Desktop CTA */}
         <a href="https://wa.me/905357616524" target="_blank" rel="noopener noreferrer"
-          className="btn btn-fill hidden md:inline-flex" style={{ padding: "10px 22px", fontSize: 10 }}>
+          className="btn btn-fill hidden md:inline-flex"
+          style={{ padding: "10px 22px", fontSize: 10, flexShrink: 0 }}>
           Teklif Al →
         </a>
 
-        {/* Mobile hamburger */}
-        <button onClick={() => setOpen(p => !p)} aria-label="Menü"
-          className="md:hidden flex flex-col justify-center gap-1.5 w-10 h-10 items-end ml-auto">
-          <span className="block h-px bg-white transition-all duration-300"
-            style={{ width: 24, transform: open ? "rotate(45deg) translate(0px, 6px)" : "none" }} />
-          <span className="block h-px bg-white transition-all duration-300"
-            style={{ width: open ? 0 : 16, opacity: open ? 0 : 1 }} />
-          <span className="block h-px bg-white transition-all duration-300"
-            style={{ width: 24, transform: open ? "rotate(-45deg) translate(0px, -6px)" : "none" }} />
+        {/* Mobile — sadece hamburger */}
+        <button
+          onClick={() => setOpen(p => !p)}
+          aria-label={open ? "Menüyü kapat" : "Menüyü aç"}
+          className="md:hidden"
+          style={{ width: 40, height: 40, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "flex-end", gap: 6, flexShrink: 0 }}
+        >
+          {[0, 1, 2].map(i => (
+            <span key={i} style={{
+              display: "block",
+              height: 1.5,
+              background: "var(--light)",
+              borderRadius: 2,
+              width: i === 1 ? (open ? 0 : 18) : 26,
+              opacity: i === 1 && open ? 0 : 1,
+              transform:
+                i === 0 && open ? "rotate(45deg) translate(5.5px, 5.5px)" :
+                i === 2 && open ? "rotate(-45deg) translate(5.5px, -5.5px)" :
+                "none",
+              transition: "all 0.3s ease",
+            }} />
+          ))}
         </button>
       </header>
 
-      {/* Mobile fullscreen menu */}
+      {/* Mobile tam ekran menü */}
       <div
-        className="fixed inset-0 z-[79] md:hidden flex flex-col justify-between transition-all duration-500"
+        className="md:hidden fixed inset-0 z-[79]"
         style={{
-          background: "rgba(11,14,11,0.98)",
+          background: "rgba(11,14,11,0.97)",
+          backdropFilter: "blur(20px)",
           paddingTop: 68,
           paddingInline: "var(--pad)",
-          paddingBottom: 40,
+          paddingBottom: 32,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
           opacity: open ? 1 : 0,
           pointerEvents: open ? "auto" : "none",
-          backdropFilter: "blur(20px)",
+          transition: "opacity 0.35s ease",
         }}
       >
-        <nav className="flex flex-col pt-8">
+        {/* Nav linkleri */}
+        <nav style={{ paddingTop: 24 }}>
           {NAV.map((l, i) => (
-            <a key={l.href} href={l.href} onClick={() => setOpen(false)}
-              className="heading border-b py-5 transition-colors hover:text-white"
+            <a
+              key={l.href}
+              href={l.href}
+              onClick={() => setOpen(false)}
+              className="heading block border-b hover:text-white"
               style={{
-                fontSize: "clamp(36px,10vw,52px)",
+                fontSize: "clamp(38px,10vw,56px)",
                 color: "var(--muted)",
                 borderColor: "var(--border)",
-                transitionDelay: open ? `${i * 60}ms` : "0ms",
-                transform: open ? "none" : "translateY(16px)",
+                padding: "16px 0",
+                transform: open ? "translateY(0)" : "translateY(12px)",
                 opacity: open ? 1 : 0,
-                transition: "color 0.2s, opacity 0.4s, transform 0.4s",
-              }}>
+                transition: `color 0.2s, opacity 0.35s ${i * 0.06}s ease, transform 0.35s ${i * 0.06}s ease`,
+              }}
+            >
               {l.label}
             </a>
           ))}
         </nav>
 
-        <div className="flex flex-col gap-3">
+        {/* Alt butonlar */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <a href="https://wa.me/905357616524" target="_blank" rel="noopener noreferrer"
-            className="btn btn-fill w-full justify-center">
+            className="btn btn-fill" style={{ justifyContent: "center" }}>
             WhatsApp ile Teklif Al →
           </a>
-          <a href="tel:+902126718565" className="btn btn-line w-full justify-center">
+          <a href="tel:+902126718565" className="btn btn-line" style={{ justifyContent: "center" }}>
             +90 212 671 85 65
           </a>
         </div>
