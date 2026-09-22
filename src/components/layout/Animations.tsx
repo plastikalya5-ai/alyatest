@@ -3,255 +3,229 @@ import { useEffect } from "react";
 
 export default function Animations() {
   useEffect(() => {
-    let lenis: import("@studio-freight/lenis").default | null = null;
+    let rafId: number;
+    let killed = false;
 
-    (async () => {
-      const gsap = (await import("gsap")).gsap;
+    const init = async () => {
+      // ── Import ────────────────────────────────────────────
+      const gsapMod  = await import("gsap");
       const { ScrollTrigger } = await import("gsap/ScrollTrigger");
       const { SplitText }     = await import("gsap/SplitText");
       const { default: Lenis } = await import("@studio-freight/lenis");
 
+      const gsap = gsapMod.gsap;
       gsap.registerPlugin(ScrollTrigger, SplitText);
 
-      // ── 1. LENIS SMOOTH SCROLL ───────────────────────────────
-      lenis = new Lenis({ lerp: 0.07, smoothWheel: true });
+      if (killed) return;
+
+      // ── 1. LENIS ────────────────────────────────────────────
+      const lenis = new Lenis({ lerp: 0.075, smoothWheel: true });
       lenis.on("scroll", ScrollTrigger.update);
-      gsap.ticker.add((t) => lenis!.raf(t * 1000));
+
+      const ticker = (t: number) => { if (!killed) lenis.raf(t * 1000); };
+      gsap.ticker.add(ticker);
       gsap.ticker.lagSmoothing(0);
 
-      // ── 2. SCROLL PROGRESS BAR ───────────────────────────────
-      const progressBar = document.querySelector<HTMLElement>(".scroll-progress");
-      if (progressBar) {
-        gsap.to(progressBar, {
-          height: "100%",
-          ease: "none",
-          scrollTrigger: { trigger: "body", start: "top top", end: "bottom bottom", scrub: 0 },
+      // ── 2. SCROLL PROGRESS ─────────────────────────────────
+      const bar = document.querySelector<HTMLElement>(".scroll-progress");
+      if (bar) {
+        ScrollTrigger.create({
+          trigger: document.body,
+          start: "top top",
+          end: "bottom bottom",
+          scrub: 0,
+          onUpdate: (self) => { bar.style.height = self.progress * 100 + "%"; },
         });
       }
 
-      // ── 3. SECTION PROGRESS DOTS ────────────────────────────
-      const sections = document.querySelectorAll<HTMLElement>("section[id]");
-      const dots = document.querySelectorAll<HTMLElement>(".progress-dot");
-      sections.forEach((sec, i) => {
+      // ── 3. PROGRESS DOTS ────────────────────────────────────
+      const sects = document.querySelectorAll<HTMLElement>("section[id]");
+      const dots  = document.querySelectorAll<HTMLElement>(".progress-dot");
+      sects.forEach((sec, i) => {
         ScrollTrigger.create({
-          trigger: sec,
-          start: "top 60%",
-          end: "bottom 40%",
-          onEnter: () => { dots.forEach((d, j) => d.classList.toggle("active", j === i)); },
-          onEnterBack: () => { dots.forEach((d, j) => d.classList.toggle("active", j === i)); },
+          trigger: sec, start: "top 55%", end: "bottom 45%",
+          onEnter:     () => dots.forEach((d,j) => d.classList.toggle("active", j===i)),
+          onEnterBack: () => dots.forEach((d,j) => d.classList.toggle("active", j===i)),
         });
       });
 
-      // ── 4. HERO ANIMATIONS ──────────────────────────────────
-      const heroLines = document.querySelectorAll<HTMLElement>(".anim-hero-line");
+      // ── 4. HERO LINES ───────────────────────────────────────
+      const heroLines = gsap.utils.toArray<HTMLElement>(".anim-hero-line");
       if (heroLines.length) {
         gsap.fromTo(heroLines,
-          { yPercent: 120, skewY: 5 },
-          { yPercent: 0, skewY: 0, duration: 1.2, ease: "expo.out", stagger: 0.12, delay: 0.15 }
+          { yPercent: 115, skewY: 4 },
+          { yPercent: 0, skewY: 0, duration: 1.15, ease: "expo.out", stagger: 0.11, delay: 0.15, clearProps: "transform" }
         );
       }
-      gsap.fromTo(".anim-hero-sub",
-        { opacity: 0, y: 28 },
-        { opacity: 1, y: 0, duration: 1, ease: "power3.out", stagger: 0.09, delay: 0.8 }
-      );
+      const heroSubs = gsap.utils.toArray<HTMLElement>(".anim-hero-sub");
+      if (heroSubs.length) {
+        gsap.fromTo(heroSubs,
+          { opacity: 0, y: 26 },
+          { opacity: 1, y: 0, duration: 1, ease: "power3.out", stagger: 0.08, delay: 0.85, clearProps: "transform,opacity" }
+        );
+      }
 
-      // ── 5. SLOT MACHINE NUMBERS ─────────────────────────────
-      // rAF ile DOM ready bekle
-      await new Promise(r => setTimeout(r, 100));
-      document.querySelectorAll<HTMLElement>(".slot-ticker").forEach((ticker) => {
+      // ── 5. SLOT MACHINE ────────────────────────────────────
+      await new Promise(r => setTimeout(r, 120));
+      gsap.utils.toArray<HTMLElement>(".slot-ticker").forEach((ticker) => {
         const target = parseInt(ticker.dataset.target || "0");
         const suffix = ticker.dataset.suffix || "";
         const inner  = ticker.querySelector<HTMLElement>(".slot-ticker-inner");
-        if (!inner) return;
-        const digits = [];
-        for (let i = 0; i <= target; i++) digits.push(i);
-        inner.innerHTML = digits.map(d => `<span style="display:block;line-height:1">${d}${suffix}</span>`).join("");
+        if (!inner || target === 0) return;
+        // items
+        const items: string[] = [];
+        for (let i = 0; i <= target; i++) items.push(`${i}${suffix}`);
+        inner.innerHTML = items.map(d => `<span style="display:block;line-height:1">${d}</span>`).join("");
+        // measure one item height
+        const firstSpan = inner.querySelector("span");
+        const itemH = firstSpan ? firstSpan.getBoundingClientRect().height || 60 : 60;
         inner.style.transform = "translateY(0)";
-        // Başlangıçta sadece ilk elementi göster
-        const itemH = parseInt(getComputedStyle(ticker).height) || 60;
         ScrollTrigger.create({
-          trigger: ticker,
-          start: "top 85%",
-          once: true,
+          trigger: ticker, start: "top 85%", once: true,
           onEnter: () => {
-            const totalH = itemH * (digits.length - 1);
-            gsap.to(inner, { y: -totalH, duration: 1.8, ease: "expo.out", delay: 0.1 });
+            gsap.to(inner, { y: -(itemH * (items.length - 1)), duration: 1.8, ease: "expo.out" });
           },
         });
       });
 
       // ── 6. TEXT SCRAMBLE ────────────────────────────────────
-      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%&";
-      document.querySelectorAll<HTMLElement>(".scramble").forEach((el) => {
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%";
+      gsap.utils.toArray<HTMLElement>(".scramble").forEach((el) => {
         const original = el.textContent || "";
         ScrollTrigger.create({
-          trigger: el,
-          start: "top 88%",
-          once: true,
+          trigger: el, start: "top 88%", once: true,
           onEnter: () => {
             let frame = 0;
-            const total = 20;
+            const total = 18;
             const id = setInterval(() => {
               el.textContent = original.split("").map((ch, i) =>
-                i < Math.floor((frame / total) * original.length) || ch === " "
-                  ? ch
-                  : chars[Math.floor(Math.random() * chars.length)]
+                ch === " " || i < Math.floor((frame / total) * original.length)
+                  ? ch : chars[Math.floor(Math.random() * chars.length)]
               ).join("");
-              frame++;
-              if (frame > total) { el.textContent = original; clearInterval(id); }
-            }, 40);
+              if (++frame > total) { el.textContent = original; clearInterval(id); }
+            }, 38);
           },
         });
       });
 
-      // ── 7. SPLIT TEXT HEADINGS ──────────────────────────────
-      document.querySelectorAll<HTMLElement>(".anim-split-heading").forEach((el) => {
+      // ── 7. SPLIT TEXT ───────────────────────────────────────
+      gsap.utils.toArray<HTMLElement>(".anim-split-heading").forEach((el) => {
         const split = new SplitText(el, { type: "chars,words" });
         gsap.fromTo(split.chars,
           { yPercent: 110, opacity: 0 },
-          { yPercent: 0, opacity: 1, duration: 0.8, ease: "expo.out", stagger: 0.022,
+          { yPercent: 0, opacity: 1, duration: 0.8, ease: "expo.out", stagger: 0.02,
             scrollTrigger: { trigger: el, start: "top 88%", once: true } }
         );
       });
 
-      // ── 8. CLIP REVEAL (images) ──────────────────────────────
-      document.querySelectorAll<HTMLElement>(".anim-clip").forEach((el) => {
-        gsap.fromTo(el,
-          { clipPath: "inset(0 0 100% 0)" },
+      // ── 8. CLIP REVEAL ──────────────────────────────────────
+      gsap.utils.toArray<HTMLElement>(".anim-clip").forEach((el) => {
+        gsap.fromTo(el, { clipPath: "inset(0 0 100% 0)" },
           { clipPath: "inset(0 0 0% 0)", duration: 1.2, ease: "expo.inOut",
-            scrollTrigger: { trigger: el, start: "top 85%", once: true } }
-        );
+            scrollTrigger: { trigger: el, start: "top 85%", once: true } });
       });
 
-      // ── 9. FADE UP ───────────────────────────────────────────
-      document.querySelectorAll<HTMLElement>(".anim-up").forEach((el) => {
-        const delay = parseFloat(el.dataset.delay || "0");
-        gsap.fromTo(el, { opacity: 0, y: 44 },
-          { opacity: 1, y: 0, duration: 0.9, ease: "power3.out", delay,
-            scrollTrigger: { trigger: el, start: "top 90%", once: true } }
-        );
+      // ── 9. FADE UP ──────────────────────────────────────────
+      gsap.utils.toArray<HTMLElement>(".anim-up").forEach((el) => {
+        gsap.fromTo(el, { opacity: 0, y: 42 },
+          { opacity: 1, y: 0, duration: 0.9, ease: "power3.out",
+            delay: parseFloat(el.dataset.delay || "0"),
+            scrollTrigger: { trigger: el, start: "top 90%", once: true } });
       });
 
-      // ── 10. STAGGER CARDS ────────────────────────────────────
-      document.querySelectorAll<HTMLElement>(".anim-stagger-parent").forEach((parent) => {
-        const kids = parent.querySelectorAll<HTMLElement>(".anim-stagger-child");
-        gsap.fromTo(kids,
-          { opacity: 0, y: 40, scale: 0.96 },
-          { opacity: 1, y: 0, scale: 1, duration: 0.75, ease: "power3.out", stagger: 0.07,
-            scrollTrigger: { trigger: parent, start: "top 85%", once: true } }
-        );
+      // ── 10. STAGGER ─────────────────────────────────────────
+      gsap.utils.toArray<HTMLElement>(".anim-stagger-parent").forEach((p) => {
+        const kids = p.querySelectorAll<HTMLElement>(".anim-stagger-child");
+        gsap.fromTo(kids, { opacity: 0, y: 38, scale: 0.97 },
+          { opacity: 1, y: 0, scale: 1, duration: 0.72, ease: "power3.out", stagger: 0.07,
+            scrollTrigger: { trigger: p, start: "top 85%", once: true } });
       });
 
-      // ── 11. LIST ITEMS ───────────────────────────────────────
-      document.querySelectorAll<HTMLElement>(".anim-list").forEach((list) => {
+      // ── 11. LIST ────────────────────────────────────────────
+      gsap.utils.toArray<HTMLElement>(".anim-list").forEach((list) => {
         const items = list.querySelectorAll<HTMLElement>(".anim-list-item");
-        gsap.fromTo(items, { opacity: 0, x: -28 },
-          { opacity: 1, x: 0, duration: 0.65, ease: "power2.out", stagger: 0.065,
-            scrollTrigger: { trigger: list, start: "top 85%", once: true } }
-        );
+        gsap.fromTo(items, { opacity: 0, x: -26 },
+          { opacity: 1, x: 0, duration: 0.62, ease: "power2.out", stagger: 0.06,
+            scrollTrigger: { trigger: list, start: "top 85%", once: true } });
       });
 
-      // ── 12. IMAGE CLIP + SCALE REVEAL ────────────────────────
-      document.querySelectorAll<HTMLElement>(".anim-img-reveal").forEach((wrap) => {
+      // ── 12. IMG REVEAL ──────────────────────────────────────
+      gsap.utils.toArray<HTMLElement>(".anim-img-reveal").forEach((wrap) => {
         const img = wrap.querySelector("img");
         gsap.fromTo(wrap, { clipPath: "inset(0 0 100% 0)" },
           { clipPath: "inset(0 0 0% 0)", duration: 1.2, ease: "expo.inOut",
-            scrollTrigger: { trigger: wrap, start: "top 85%", once: true } }
-        );
+            scrollTrigger: { trigger: wrap, start: "top 85%", once: true } });
         if (img) gsap.fromTo(img, { scale: 1.18 },
           { scale: 1, duration: 1.2, ease: "expo.inOut",
-            scrollTrigger: { trigger: wrap, start: "top 85%", once: true } }
-        );
+            scrollTrigger: { trigger: wrap, start: "top 85%", once: true } });
       });
 
-      // ── 13. HERO PARALLAX (scroll + mouse) ───────────────────
+      // ── 13. HERO PARALLAX ───────────────────────────────────
       const bg  = document.querySelector<HTMLElement>(".js-hero-bg");
       const prd = document.querySelector<HTMLElement>(".js-hero-product");
+      const heroEl = document.querySelector<HTMLElement>("#hero");
       if (bg || prd) {
         ScrollTrigger.create({
           trigger: "#hero", start: "top top", end: "bottom top", scrub: 1.2,
           onUpdate: (self) => {
-            const p = self.progress;
-            if (bg)  gsap.set(bg,  { scale: 1.06 + p * 0.05, y: p * 80 });
-            if (prd) gsap.set(prd, { y: p * 140 });
+            if (bg)  gsap.set(bg,  { scale: 1.06 + self.progress * 0.05, y: self.progress * 80 });
+            if (prd) gsap.set(prd, { y: self.progress * 120 });
           },
         });
-        document.querySelector("#hero")?.addEventListener("mousemove", (e: Event) => {
+      }
+      if (heroEl && (bg || prd)) {
+        heroEl.addEventListener("mousemove", (e) => {
           const ev = e as MouseEvent;
-          const x = (ev.clientX / window.innerWidth  - 0.5) * 20;
-          const y = (ev.clientY / window.innerHeight - 0.5) * 12;
-          gsap.to(bg,  { x: x * 0.22, y: y * 0.18, duration: 1, ease: "power2.out", overwrite: true });
-          gsap.to(prd, { x: x * 0.5,  y: y * 0.4,  duration: 0.8, ease: "power2.out", overwrite: true });
+          const x = (ev.clientX / window.innerWidth  - 0.5) * 18;
+          const y = (ev.clientY / window.innerHeight - 0.5) * 10;
+          if (bg)  gsap.to(bg,  { x: x * 0.2,  y: y * 0.15, duration: 1,   ease: "power2.out", overwrite: "auto" });
+          if (prd) gsap.to(prd, { x: x * 0.45, y: y * 0.35, duration: 0.8, ease: "power2.out", overwrite: "auto" });
         });
       }
 
-      // ── 14. HORIZONTAL PINNED SECTION ────────────────────────
-      const hSection = document.querySelector<HTMLElement>("#h-pin");
-      const hTrack   = document.querySelector<HTMLElement>(".h-pin-track");
-      if (hSection && hTrack) {
-        // overflow:hidden olmadan çalışır
-        const getAmt = () => -(hTrack.scrollWidth - window.innerWidth + 60);
+      // ── 14. HORIZONTAL PIN ──────────────────────────────────
+      const hSec   = document.querySelector<HTMLElement>("#h-pin");
+      const hTrack = document.querySelector<HTMLElement>(".h-pin-track");
+      if (hSec && hTrack) {
+        const getX = () => -(hTrack.scrollWidth - window.innerWidth + 60);
         ScrollTrigger.create({
-          trigger: hSection,
+          trigger: hSec,
           start: "top top",
-          end: () => `+=${Math.max(hTrack.scrollWidth - window.innerWidth, 0)}`,
-          pin: true,
-          scrub: 1.2,
-          anticipatePin: 1,
-          invalidateOnRefresh: true,
-          onUpdate: (self) => {
-            gsap.set(hTrack, { x: self.progress * getAmt() });
-          },
+          end: () => `+=${Math.max(hTrack.scrollWidth - window.innerWidth, 100)}`,
+          pin: true, scrub: 1.2, anticipatePin: 1, invalidateOnRefresh: true,
+          onUpdate: (self) => { gsap.set(hTrack, { x: self.progress * getX() }); },
         });
       }
 
-      // ── 15. 3D TILT CARDS (sadece pointer:fine) ──────────────
-      if (window.matchMedia("(pointer: fine)").matches) {
-        document.querySelectorAll<HTMLElement>(".tilt-card").forEach((card) => {
+      // ── 15–17. MOUSE EFFECTS (desktop only) ─────────────────
+      const isFine = window.matchMedia("(pointer: fine)").matches;
+      if (isFine) {
+        // Tilt
+        gsap.utils.toArray<HTMLElement>(".tilt-card").forEach((card) => {
           card.addEventListener("mousemove", (e) => {
             const r  = card.getBoundingClientRect();
             const dx = (e.clientX - r.left - r.width  / 2) / (r.width  / 2);
             const dy = (e.clientY - r.top  - r.height / 2) / (r.height / 2);
-            gsap.to(card, { rotateY: dx * 12, rotateX: -dy * 12, duration: 0.4, ease: "power2.out", transformPerspective: 600 });
+            gsap.to(card, { rotateY: dx * 14, rotateX: -dy * 14, duration: 0.35, ease: "power2.out", transformPerspective: 700 });
           });
           card.addEventListener("mouseleave", () => {
-            gsap.to(card, { rotateY: 0, rotateX: 0, duration: 0.6, ease: "elastic.out(1,0.5)" });
+            gsap.to(card, { rotateY: 0, rotateX: 0, duration: 0.65, ease: "elastic.out(1,0.45)" });
           });
         });
-      }
 
-      // ── 16. MAGNETIC BUTTONS (sadece pointer:fine) ───────────
-      if (window.matchMedia("(pointer: fine)").matches) {
-        document.querySelectorAll<HTMLElement>(".anim-magnetic").forEach((btn) => {
+        // Magnetic
+        gsap.utils.toArray<HTMLElement>(".anim-magnetic").forEach((btn) => {
           btn.addEventListener("mousemove", (e) => {
             const r = btn.getBoundingClientRect();
-            gsap.to(btn, { x: (e.clientX - r.left - r.width/2) * 0.38, y: (e.clientY - r.top - r.height/2) * 0.38, duration: 0.4, ease: "power2.out" });
+            gsap.to(btn, { x: (e.clientX - r.left - r.width/2) * 0.36, y: (e.clientY - r.top - r.height/2) * 0.36, duration: 0.38, ease: "power2.out" });
           });
           btn.addEventListener("mouseleave", () => {
-            gsap.to(btn, { x: 0, y: 0, duration: 0.7, ease: "elastic.out(1,0.4)" });
+            gsap.to(btn, { x: 0, y: 0, duration: 0.7, ease: "elastic.out(1,0.42)" });
           });
         });
-      }
 
-      // ── 17. LINE EXPAND ──────────────────────────────────────
-      document.querySelectorAll<HTMLElement>(".anim-line-expand").forEach((line) => {
-        gsap.fromTo(line, { scaleX: 0, transformOrigin: "left center" },
-          { scaleX: 1, duration: 1.1, ease: "expo.out",
-            scrollTrigger: { trigger: line, start: "top 90%", once: true } }
-        );
-      });
-
-      // ── 18. EYEBROW LETTER-SPACING ───────────────────────────
-      document.querySelectorAll<HTMLElement>(".anim-eyebrow").forEach((el) => {
-        gsap.fromTo(el, { opacity: 0, letterSpacing: "0.5em" },
-          { opacity: 1, letterSpacing: "0.2em", duration: 0.9, ease: "power3.out",
-            scrollTrigger: { trigger: el, start: "top 90%", once: true } }
-        );
-      });
-
-      // ── 19. 360 PRODUCT SPIN (sadece pointer:fine) ───────────
-      if (window.matchMedia("(pointer: fine)").matches) {
-        document.querySelectorAll<HTMLElement>(".product-spin").forEach((el) => {
+        // 360 spin
+        gsap.utils.toArray<HTMLElement>(".product-spin").forEach((el) => {
           let deg = 0;
           el.addEventListener("mouseenter", () => {
             deg += 360;
@@ -260,44 +234,69 @@ export default function Animations() {
         });
       }
 
-      // ── 20. SECTION BG MORPH ─────────────────────────────────
-      document.querySelectorAll<HTMLElement>("[data-bg]").forEach((sec) => {
+      // ── 18. LINE EXPAND ─────────────────────────────────────
+      gsap.utils.toArray<HTMLElement>(".anim-line-expand").forEach((line) => {
+        gsap.fromTo(line, { scaleX: 0, transformOrigin: "left center" },
+          { scaleX: 1, duration: 1.1, ease: "expo.out",
+            scrollTrigger: { trigger: line, start: "top 90%", once: true } });
+      });
+
+      // ── 19. EYEBROW ─────────────────────────────────────────
+      gsap.utils.toArray<HTMLElement>(".anim-eyebrow").forEach((el) => {
+        gsap.fromTo(el, { opacity: 0, letterSpacing: "0.45em" },
+          { opacity: 1, letterSpacing: "0.2em", duration: 0.85, ease: "power3.out",
+            scrollTrigger: { trigger: el, start: "top 90%", once: true } });
+      });
+
+      // ── 20. BG MORPH ────────────────────────────────────────
+      gsap.utils.toArray<HTMLElement>("[data-bg]").forEach((sec) => {
         ScrollTrigger.create({
-          trigger: sec, start: "top 55%", end: "bottom 45%",
-          onEnter:     () => gsap.to("body", { backgroundColor: sec.dataset.bg!, duration: 0.7, ease: "power2.inOut" }),
-          onEnterBack: () => gsap.to("body", { backgroundColor: sec.dataset.bg!, duration: 0.7, ease: "power2.inOut" }),
+          trigger: sec as HTMLElement, start: "top 55%", end: "bottom 45%",
+          onEnter:     () => gsap.to("body", { backgroundColor: (sec as HTMLElement).dataset.bg!, duration: 0.65, ease: "power2.inOut" }),
+          onEnterBack: () => gsap.to("body", { backgroundColor: (sec as HTMLElement).dataset.bg!, duration: 0.65, ease: "power2.inOut" }),
         });
       });
 
-    })();
+      // ── CURSOR ──────────────────────────────────────────────
+      const dot  = document.querySelector<HTMLElement>(".cursor-dot");
+      const ring = document.querySelector<HTMLElement>(".cursor-ring");
+      if (isFine && dot && ring) {
+        let rx = -999, ry = -999, mx = -999, my = -999;
+        const mv = (e: MouseEvent) => {
+          mx = e.clientX; my = e.clientY;
+          dot.style.left = mx + "px"; dot.style.top = my + "px";
+          dot.style.opacity = "1"; ring.style.opacity = "1";
+        };
+        const animRing = () => {
+          if (killed) return;
+          rx += (mx - rx) * 0.11; ry += (my - ry) * 0.11;
+          ring.style.left = rx + "px"; ring.style.top = ry + "px";
+          rafId = requestAnimationFrame(animRing);
+        };
+        rafId = requestAnimationFrame(animRing);
+        document.addEventListener("mousemove", mv);
+        document.querySelectorAll("a,button").forEach(el => {
+          el.addEventListener("mouseenter", () => ring.classList.add("hovered"));
+          el.addEventListener("mouseleave", () => ring.classList.remove("hovered"));
+        });
+      }
 
-    // ── CUSTOM CURSOR ────────────────────────────────────────
-    const dot  = document.querySelector<HTMLElement>(".cursor-dot");
-    const ring = document.querySelector<HTMLElement>(".cursor-ring");
-    let rafId: number;
-    if (window.matchMedia("(pointer: fine)").matches && dot && ring) {
-      let rx = -999, ry = -999, mx = -999, my = -999;
-      const mv = (e: MouseEvent) => {
-        mx = e.clientX; my = e.clientY;
-        dot.style.left = mx + "px"; dot.style.top = my + "px";
-        dot.style.opacity = "1"; ring.style.opacity = "1";
+      // Cleanup
+      return () => {
+        killed = true;
+        lenis.destroy();
+        gsap.ticker.remove(ticker);
+        ScrollTrigger.killAll();
+        cancelAnimationFrame(rafId);
       };
-      const anim = () => {
-        rx += (mx - rx) * 0.11; ry += (my - ry) * 0.11;
-        ring.style.left = rx + "px"; ring.style.top = ry + "px";
-        rafId = requestAnimationFrame(anim);
-      };
-      rafId = requestAnimationFrame(anim);
-      document.addEventListener("mousemove", mv);
-      document.querySelectorAll("a,button").forEach(el => {
-        el.addEventListener("mouseenter", () => ring.classList.add("hovered"));
-        el.addEventListener("mouseleave", () => ring.classList.remove("hovered"));
-      });
-    }
+    };
+
+    let cleanup: (() => void) | undefined;
+    init().then(fn => { cleanup = fn; });
 
     return () => {
-      lenis?.destroy();
-      cancelAnimationFrame(rafId);
+      killed = true;
+      cleanup?.();
     };
   }, []);
 
