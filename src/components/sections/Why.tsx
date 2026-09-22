@@ -82,10 +82,11 @@ export default function Why() {
           <div className="flex flex-col gap-3">
             {/* Görsel */}
             <div className="zoom-wrap relative overflow-hidden" data-reveal
-              style={{ aspectRatio: "4/3", background: "var(--bg3)" }}>
+              style={{ aspectRatio: "4/3", background: "var(--bg3)", minHeight: 200 }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={IMG.ufo} alt="UFO Saksı" className="w-full h-full object-contain"
-                style={{ padding: "clamp(24px,5vw,48px)" }} />
+              <img src={IMG.ufo} alt="UFO Saksı"
+                className="absolute inset-0 w-full h-full object-contain"
+                style={{ padding: "clamp(20px,5vw,48px)" }} />
               <div className="absolute bottom-0 left-0 right-0 p-4 flex items-center justify-between"
                 style={{ background: "linear-gradient(to top, rgba(11,14,11,0.95), transparent)", paddingTop: 40 }}>
                 <div>

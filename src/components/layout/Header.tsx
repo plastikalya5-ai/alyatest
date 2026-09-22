@@ -61,9 +61,9 @@ export default function Header() {
           Teklif Al →
         </a>
 
-        {/* Mobile: only hamburger */}
+        {/* Mobile hamburger */}
         <button onClick={() => setOpen(p => !p)} aria-label="Menü"
-          className="md:hidden flex flex-col justify-center gap-1.5 w-10 h-10 items-end">
+          className="md:hidden flex flex-col justify-center gap-1.5 w-10 h-10 items-end ml-auto">
           <span className="block h-px bg-white transition-all duration-300"
             style={{ width: 24, transform: open ? "rotate(45deg) translate(0px, 6px)" : "none" }} />
           <span className="block h-px bg-white transition-all duration-300"

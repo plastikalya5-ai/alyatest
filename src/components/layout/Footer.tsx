@@ -1,7 +1,7 @@
 export default function Footer() {
   return (
-    <footer style={{ background: "var(--bg)", borderTop: "1px solid var(--border)" }}>
-      <div className="pad" style={{ paddingBlock: "clamp(56px,7vw,90px) 36px" }}>
+    <footer style={{ background: "var(--bg)", borderTop: "1px solid var(--border)", position: "relative", zIndex: 10 }}>
+      <div className="pad" style={{ paddingBlock: "clamp(56px,7vw,90px) 36px", paddingBottom: "clamp(80px,10vw,120px)" }}>
         <div className="flex flex-col lg:flex-row justify-between gap-14 mb-14">
           {/* Marka */}
           <div style={{ maxWidth: 280 }}>

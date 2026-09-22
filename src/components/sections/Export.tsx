@@ -22,7 +22,7 @@ export default function Export() {
   }, []);
 
   return (
-    <section style={{ background: "var(--bg)", paddingBlock: "clamp(72px,9vw,130px)", overflow: "hidden" }}>
+    <section style={{ background: "var(--bg)", paddingBlock: "clamp(72px,9vw,130px)" }}>
       <div className="pad mb-12">
         <div className="grid lg:grid-cols-2 gap-10 lg:gap-20 items-end">
           <div>
