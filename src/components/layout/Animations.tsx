@@ -205,39 +205,33 @@ export default function Animations() {
         });
       }
 
-      // ── 15. 3D TILT CARDS ────────────────────────────────────
-      document.querySelectorAll<HTMLElement>(".tilt-card").forEach((card) => {
-        card.addEventListener("mousemove", (e) => {
-          const r   = card.getBoundingClientRect();
-          const cx  = r.left + r.width  / 2;
-          const cy  = r.top  + r.height / 2;
-          const dx  = (e.clientX - cx) / (r.width  / 2);
-          const dy  = (e.clientY - cy) / (r.height / 2);
-          gsap.to(card, {
-            rotateY: dx * 12, rotateX: -dy * 12,
-            duration: 0.4, ease: "power2.out",
-            transformPerspective: 600,
+      // ── 15. 3D TILT CARDS (sadece pointer:fine) ──────────────
+      if (window.matchMedia("(pointer: fine)").matches) {
+        document.querySelectorAll<HTMLElement>(".tilt-card").forEach((card) => {
+          card.addEventListener("mousemove", (e) => {
+            const r  = card.getBoundingClientRect();
+            const dx = (e.clientX - r.left - r.width  / 2) / (r.width  / 2);
+            const dy = (e.clientY - r.top  - r.height / 2) / (r.height / 2);
+            gsap.to(card, { rotateY: dx * 12, rotateX: -dy * 12, duration: 0.4, ease: "power2.out", transformPerspective: 600 });
+          });
+          card.addEventListener("mouseleave", () => {
+            gsap.to(card, { rotateY: 0, rotateX: 0, duration: 0.6, ease: "elastic.out(1,0.5)" });
           });
         });
-        card.addEventListener("mouseleave", () => {
-          gsap.to(card, { rotateY: 0, rotateX: 0, duration: 0.6, ease: "elastic.out(1,0.5)" });
-        });
-      });
+      }
 
-      // ── 16. MAGNETIC BUTTONS ─────────────────────────────────
-      document.querySelectorAll<HTMLElement>(".anim-magnetic").forEach((btn) => {
-        btn.addEventListener("mousemove", (e) => {
-          const r = btn.getBoundingClientRect();
-          gsap.to(btn, {
-            x: (e.clientX - r.left - r.width  / 2) * 0.38,
-            y: (e.clientY - r.top  - r.height / 2) * 0.38,
-            duration: 0.4, ease: "power2.out",
+      // ── 16. MAGNETIC BUTTONS (sadece pointer:fine) ───────────
+      if (window.matchMedia("(pointer: fine)").matches) {
+        document.querySelectorAll<HTMLElement>(".anim-magnetic").forEach((btn) => {
+          btn.addEventListener("mousemove", (e) => {
+            const r = btn.getBoundingClientRect();
+            gsap.to(btn, { x: (e.clientX - r.left - r.width/2) * 0.38, y: (e.clientY - r.top - r.height/2) * 0.38, duration: 0.4, ease: "power2.out" });
+          });
+          btn.addEventListener("mouseleave", () => {
+            gsap.to(btn, { x: 0, y: 0, duration: 0.7, ease: "elastic.out(1,0.4)" });
           });
         });
-        btn.addEventListener("mouseleave", () => {
-          gsap.to(btn, { x: 0, y: 0, duration: 0.7, ease: "elastic.out(1,0.4)" });
-        });
-      });
+      }
 
       // ── 17. LINE EXPAND ──────────────────────────────────────
       document.querySelectorAll<HTMLElement>(".anim-line-expand").forEach((line) => {
@@ -255,14 +249,16 @@ export default function Animations() {
         );
       });
 
-      // ── 19. 360 PRODUCT SPIN on hover ────────────────────────
-      document.querySelectorAll<HTMLElement>(".product-spin").forEach((el) => {
-        let deg = 0;
-        el.addEventListener("mouseenter", () => {
-          deg += 360;
-          gsap.to(el, { rotation: deg, duration: 1.2, ease: "power3.inOut" });
+      // ── 19. 360 PRODUCT SPIN (sadece pointer:fine) ───────────
+      if (window.matchMedia("(pointer: fine)").matches) {
+        document.querySelectorAll<HTMLElement>(".product-spin").forEach((el) => {
+          let deg = 0;
+          el.addEventListener("mouseenter", () => {
+            deg += 360;
+            gsap.to(el, { rotation: deg, duration: 1.2, ease: "power3.inOut" });
+          });
         });
-      });
+      }
 
       // ── 20. SECTION BG MORPH ─────────────────────────────────
       document.querySelectorAll<HTMLElement>("[data-bg]").forEach((sec) => {

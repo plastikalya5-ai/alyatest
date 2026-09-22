@@ -10,7 +10,11 @@ export default function Hero({ stats, settings }: { stats: Stats | null; setting
 
   return (
     <section id="hero" className="relative grain overflow-hidden bg-[#0b0e0b] min-h-svh"
-      data-bg="#0b0e0b" style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
+      data-bg="#0b0e0b"
+      style={{ display: "grid", gridTemplateColumns: "1fr" }}
+      >
+      {/* Desktop: 2 kolon */}
+      <style>{`@media(min-width:768px){#hero{grid-template-columns:1fr 1fr}}`}</style>
 
       {/* ── Sol: İçerik ────────────────────────────────── */}
       <div className="relative z-10 flex flex-col justify-end"
