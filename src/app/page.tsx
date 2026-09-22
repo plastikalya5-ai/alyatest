@@ -2,6 +2,7 @@ import { getFeaturedProducts, getAllProducts, getStats, getSettings, getExportCo
 import Header           from "@/components/layout/Header";
 import Footer           from "@/components/layout/Footer";
 import Animations       from "@/components/layout/Animations";
+import SchemaOrg        from "@/components/layout/SchemaOrg";
 import WhatsAppFab      from "@/components/ui/WhatsAppFab";
 import ProgressDots     from "@/components/ui/ProgressDots";
 import Hero             from "@/components/sections/Hero";
@@ -38,6 +39,7 @@ export default async function Home() {
 
   return (
     <>
+      <SchemaOrg settings={settings} stats={stats} />
       <Animations />
       <ProgressDots />
       <Header settings={settings} />

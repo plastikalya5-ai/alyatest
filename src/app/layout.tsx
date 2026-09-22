@@ -1,21 +1,121 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+const SITE_URL = "https://alyatest-alyis.vercel.app";
+const SITE_NAME = "Alya Plastik";
+
 export const metadata: Metadata = {
-  title: "Alya Plastik | Plastik Saksı & Sepet Üreticisi — 1968'den Beri",
+  metadataBase: new URL(SITE_URL),
+
+  // ── Title ─────────────────────────────────────────────
+  title: {
+    default: "Alya Plastik | Plastik Saksı, Sepet & Depolama Üreticisi — 1968",
+    template: "%s | Alya Plastik",
+  },
+
+  // ── Description ───────────────────────────────────────
   description:
-    "İstanbul OSB'de 55 yıllık üretim deneyimi. Saksı, sepet, sandık ve banyo ürünleri. 20+ ülke ihracat. B2B toplu sipariş.",
-  keywords: "plastik saksı, plastik sepet, plastik üretici, toptan saksı, ihracat, alya plastik",
+    "1968'den bu yana İstanbul OSB'de plastik ürün üretimi. Saksı, sepet, sandık, banyo ve bahçe ürünleri. 200+ model, 20+ ülke ihracat. B2B toplu sipariş ve özel üretim.",
+
+  // ── Keywords ──────────────────────────────────────────
+  keywords: [
+    "plastik saksı üreticisi",
+    "plastik sepet üreticisi",
+    "toptan plastik ürün",
+    "plastik depolama sandığı",
+    "B2B plastik ihracat",
+    "alya plastik",
+    "İstanbul plastik üretici",
+    "saksı toptan satış",
+    "plastik bahçe ürünleri",
+    "plastik banyo ürünleri",
+  ],
+
+  // ── Authors / Publisher ───────────────────────────────
+  authors: [{ name: SITE_NAME }],
+  creator: SITE_NAME,
+  publisher: SITE_NAME,
+
+  // ── Robots ────────────────────────────────────────────
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+
+  // ── Canonical ─────────────────────────────────────────
+  alternates: {
+    canonical: SITE_URL,
+    languages: {
+      "tr-TR": SITE_URL,
+    },
+  },
+
+  // ── Open Graph ────────────────────────────────────────
+  openGraph: {
+    type: "website",
+    locale: "tr_TR",
+    url: SITE_URL,
+    siteName: SITE_NAME,
+    title: "Alya Plastik | Plastik Saksı, Sepet & Depolama Üreticisi — 1968",
+    description:
+      "1968'den bu yana İstanbul OSB'de plastik ürün üretimi. Saksı, sepet, sandık, banyo ve bahçe ürünleri. 200+ model, 20+ ülke ihracat.",
+    images: [
+      {
+        url: "/og-image.jpg",
+        width: 1200,
+        height: 630,
+        alt: "Alya Plastik — Plastik Ürün Üreticisi",
+        type: "image/jpeg",
+      },
+    ],
+  },
+
+  // ── Twitter / X ───────────────────────────────────────
+  twitter: {
+    card: "summary_large_image",
+    title: "Alya Plastik | Plastik Saksı & Sepet Üreticisi",
+    description:
+      "1968'den bu yana İstanbul OSB'de plastik ürün üretimi. 200+ model, 20+ ülke ihracat.",
+    images: ["/og-image.jpg"],
+  },
+
+  // ── Verification ──────────────────────────────────────
+  // Google Search Console doğrulama kodu buraya eklenecek
+  // verification: { google: "xxx" },
+
+  // ── Icons ─────────────────────────────────────────────
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
+
+  // ── App ───────────────────────────────────────────────
+  applicationName: SITE_NAME,
+  category: "manufacturing",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="tr">
-      <head />
+      <head>
+        {/* Preconnect — Google Fonts */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* Preconnect — Supabase */}
+        <link rel="preconnect" href="https://cwhxrusysuumndijapeb.supabase.co" />
+        {/* Cloudinary */}
+        <link rel="preconnect" href="https://res.cloudinary.com" />
+      </head>
       <body>{children}</body>
     </html>
   );
