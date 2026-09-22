@@ -11,7 +11,7 @@ const NAV = [
 
 export default function Header() {
   const [scrolled, setScrolled] = useState(false);
-  const [open,     setOpen]     = useState(false);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 60);
@@ -27,33 +27,21 @@ export default function Header() {
 
   return (
     <>
-      <header
-        className="fixed inset-x-0 top-0 z-[80]"
-        style={{
-          height: 68,
-          paddingInline: "var(--pad)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          background: scrolled || open ? "rgba(11,14,11,0.94)" : "transparent",
-          backdropFilter: scrolled || open ? "blur(18px)" : "none",
-          borderBottom: scrolled ? "1px solid var(--border)" : "1px solid transparent",
-          transition: "background 0.4s, border-color 0.4s",
-        }}
-      >
-        {/* Logo */}
-        <Link href="/" style={{ display: "flex", alignItems: "baseline", gap: 0, flexShrink: 0 }}>
-          <span className="heading" style={{ fontSize: "clamp(17px,2.5vw,22px)", color: "#fff" }}>ALYA</span>
-          <span className="heading" style={{ fontSize: "clamp(17px,2.5vw,22px)", color: "var(--orange)" }}>PLASTİK</span>
+      <header className={`fixed inset-x-0 top-0 z-80 flex items-center justify-between h-[68px] px-[--spacing-pad] transition-all duration-400 ${
+        scrolled || open ? "bg-[#0b0e0b]/94 backdrop-blur-xl border-b border-white/8" : "border-b border-transparent"
+      }`}
+      style={{ paddingInline: "clamp(20px,5vw,80px)" }}>
+
+        <Link href="/" className="flex items-baseline shrink-0">
+          <span className="heading text-white text-[clamp(17px,2.5vw,22px)]">ALYA</span>
+          <span className="heading text-[#e55f28] text-[clamp(17px,2.5vw,22px)]">PLASTİK</span>
         </Link>
 
-        {/* Desktop nav — ortalanmış */}
-        <nav className="hidden md:flex items-center gap-10"
-          style={{ position: "absolute", left: "50%", transform: "translateX(-50%)" }}>
+        {/* Desktop nav */}
+        <nav className="hidden md:flex items-center gap-10 absolute left-1/2 -translate-x-1/2">
           {NAV.map(l => (
             <a key={l.href} href={l.href}
-              className="eyebrow transition-colors duration-200 hover:text-white"
-              style={{ color: "var(--muted)" }}>
+              className="eyebrow text-[#6b7366] hover:text-white transition-colors duration-200">
               {l.label}
             </a>
           ))}
@@ -61,83 +49,53 @@ export default function Header() {
 
         {/* Desktop CTA */}
         <a href="https://wa.me/905357616524" target="_blank" rel="noopener noreferrer"
-          className="btn btn-fill hidden md:inline-flex"
-          style={{ padding: "10px 22px", fontSize: 10, flexShrink: 0 }}>
+          className="hidden md:inline-flex items-center gap-2 bg-[#e55f28] hover:bg-[#c94f1e] text-white text-[10px] font-semibold tracking-[0.14em] uppercase px-5 py-2.5 transition-colors shrink-0">
           Teklif Al →
         </a>
 
-        {/* Mobile — sadece hamburger */}
-        <button
-          onClick={() => setOpen(p => !p)}
-          aria-label={open ? "Menüyü kapat" : "Menüyü aç"}
-          className="md:hidden"
-          style={{ width: 40, height: 40, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "flex-end", gap: 6, flexShrink: 0 }}
-        >
-          {[0, 1, 2].map(i => (
-            <span key={i} style={{
-              display: "block",
-              height: 1.5,
-              background: "var(--light)",
-              borderRadius: 2,
-              width: i === 1 ? (open ? 0 : 18) : 26,
-              opacity: i === 1 && open ? 0 : 1,
-              transform:
-                i === 0 && open ? "rotate(45deg) translate(5.5px, 5.5px)" :
-                i === 2 && open ? "rotate(-45deg) translate(5.5px, -5.5px)" :
-                "none",
-              transition: "all 0.3s ease",
-            }} />
+        {/* Hamburger */}
+        <button onClick={() => setOpen(p => !p)} aria-label="Menü"
+          className="md:hidden flex flex-col items-end justify-center gap-1.5 w-10 h-10 shrink-0">
+          {[0,1,2].map(i => (
+            <span key={i} className="block h-[1.5px] bg-[#eae6dd] rounded-sm transition-all duration-300"
+              style={{
+                width: i === 1 ? (open ? 0 : 18) : 26,
+                opacity: i === 1 && open ? 0 : 1,
+                transform: i === 0 && open ? "rotate(45deg) translate(5px,5px)"
+                         : i === 2 && open ? "rotate(-45deg) translate(5px,-5px)" : "none",
+              }} />
           ))}
         </button>
       </header>
 
-      {/* Mobile tam ekran menü */}
-      <div
-        className="md:hidden fixed inset-0 z-[79]"
-        style={{
-          background: "rgba(11,14,11,0.97)",
-          backdropFilter: "blur(20px)",
-          paddingTop: 68,
-          paddingInline: "var(--pad)",
-          paddingBottom: 32,
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          opacity: open ? 1 : 0,
-          pointerEvents: open ? "auto" : "none",
-          transition: "opacity 0.35s ease",
-        }}
-      >
-        {/* Nav linkleri */}
-        <nav style={{ paddingTop: 24 }}>
+      {/* Mobile menu */}
+      <div className={`fixed inset-0 z-79 md:hidden flex flex-col justify-between transition-opacity duration-350 ${
+        open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+      }`}
+        style={{ paddingTop: 68, paddingInline: "clamp(20px,5vw,80px)", paddingBottom: 32, background: "rgba(11,14,11,0.97)", backdropFilter: "blur(20px)" }}>
+
+        <nav className="pt-6">
           {NAV.map((l, i) => (
-            <a
-              key={l.href}
-              href={l.href}
-              onClick={() => setOpen(false)}
-              className="heading block border-b hover:text-white"
+            <a key={l.href} href={l.href} onClick={() => setOpen(false)}
+              className="heading block border-b border-white/8 py-4 text-[#6b7366] hover:text-white transition-colors"
               style={{
-                fontSize: "clamp(38px,10vw,56px)",
-                color: "var(--muted)",
-                borderColor: "var(--border)",
-                padding: "16px 0",
-                transform: open ? "translateY(0)" : "translateY(12px)",
+                fontSize: "clamp(36px,9vw,52px)",
                 opacity: open ? 1 : 0,
-                transition: `color 0.2s, opacity 0.35s ${i * 0.06}s ease, transform 0.35s ${i * 0.06}s ease`,
-              }}
-            >
+                transform: open ? "none" : "translateY(10px)",
+                transition: `color .2s, opacity .35s ${i*.06}s, transform .35s ${i*.06}s`,
+              }}>
               {l.label}
             </a>
           ))}
         </nav>
 
-        {/* Alt butonlar */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div className="flex flex-col gap-3">
           <a href="https://wa.me/905357616524" target="_blank" rel="noopener noreferrer"
-            className="btn btn-fill" style={{ justifyContent: "center" }}>
+            className="flex items-center justify-center gap-2 bg-[#e55f28] text-white text-[10px] font-semibold tracking-[0.14em] uppercase py-4">
             WhatsApp ile Teklif Al →
           </a>
-          <a href="tel:+902126718565" className="btn btn-line" style={{ justifyContent: "center" }}>
+          <a href="tel:+902126718565"
+            className="flex items-center justify-center border border-white/20 text-[#eae6dd] text-[10px] font-semibold tracking-[0.14em] uppercase py-4 hover:border-white/50 transition-colors">
             +90 212 671 85 65
           </a>
         </div>
