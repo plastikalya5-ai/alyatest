@@ -17,13 +17,24 @@ import Contact          from "@/components/sections/Contact";
 export const revalidate = 60;
 
 export default async function Home() {
-  const [featured, all, stats, settings, countries] = await Promise.all([
-    getFeaturedProducts(),
-    getAllProducts(),
-    getStats(),
-    getSettings(),
-    getExportCountries(),
-  ]);
+  // Env yoksa graceful fallback
+  let featured: Awaited<ReturnType<typeof getFeaturedProducts>> = [];
+  let all:      Awaited<ReturnType<typeof getAllProducts>>      = [];
+  let stats:    Awaited<ReturnType<typeof getStats>>           = null;
+  let settings: Awaited<ReturnType<typeof getSettings>>        = null;
+  let countries: string[] = [];
+
+  try {
+    [featured, all, stats, settings, countries] = await Promise.all([
+      getFeaturedProducts(),
+      getAllProducts(),
+      getStats(),
+      getSettings(),
+      getExportCountries(),
+    ]);
+  } catch (e) {
+    console.error("Supabase fetch error:", e);
+  }
 
   return (
     <>
