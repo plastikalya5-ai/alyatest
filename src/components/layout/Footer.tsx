@@ -23,7 +23,7 @@ export default function Footer({ settings }: { settings: Settings | null }) {
             <p className="text-[#6b7366] font-light text-sm mb-6">
               {s?.address?.split(",")[1]?.trim() ?? "İstanbul Başakşehir OSB"}&apos;den dünyaya.
             </p>
-            <a href={wa} target="_blank" rel="noopener noreferrer"
+            <a href={wa} target="_blank" rel="noopener noreferrer nofollow"
               className="inline-flex items-center gap-2 bg-[#e55f28] hover:bg-[#c94f1e] text-white text-[10px] font-semibold tracking-[0.14em] uppercase px-5 py-2.5 transition-colors">
               WhatsApp →
             </a>

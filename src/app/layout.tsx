@@ -15,21 +15,7 @@ export const metadata: Metadata = {
 
   // ── Description ───────────────────────────────────────
   description:
-    "1968'den bu yana İstanbul OSB'de plastik ürün üretimi. Saksı, sepet, sandık, banyo ve bahçe ürünleri. 200+ model, 20+ ülke ihracat. B2B toplu sipariş ve özel üretim.",
-
-  // ── Keywords ──────────────────────────────────────────
-  keywords: [
-    "plastik saksı üreticisi",
-    "plastik sepet üreticisi",
-    "toptan plastik ürün",
-    "plastik depolama sandığı",
-    "B2B plastik ihracat",
-    "alya plastik",
-    "İstanbul plastik üretici",
-    "saksı toptan satış",
-    "plastik bahçe ürünleri",
-    "plastik banyo ürünleri",
-  ],
+    "1968'den bu yana İstanbul OSB'de plastik üretim. Saksı, sepet, sandık, banyo ürünleri. 200+ model, 20+ ülke ihracat. B2B toplu sipariş.",
 
   // ── Authors / Publisher ───────────────────────────────
   authors: [{ name: SITE_NAME }],

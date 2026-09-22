@@ -5,7 +5,7 @@ export default function FullscreenFeature() {
     <section className="relative grain overflow-hidden flex items-center bg-[#0b0e0b] min-h-[85svh]"
       data-bg="#0b0e0b">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={IMG.hero2} alt="" aria-hidden
+      <img src={IMG.hero2} alt="Alya Plastik üretim tesisi"
         className="absolute inset-0 w-full h-full object-cover opacity-30"
         style={{ objectPosition: "center 35%" }} />
       <div className="absolute inset-0"

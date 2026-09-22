@@ -23,7 +23,7 @@ export default function Hero({ stats, settings }: { stats: Stats | null; setting
         {/* BG sadece sola */}
         <div className="js-hero-bg absolute inset-0 origin-center" style={{ transform: "scale(1.06)", willChange: "transform" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={IMG.fikir} alt="" aria-hidden
+          <img src={IMG.fikir} alt="Alya Plastik plastik ürün koleksiyonu"
             className="absolute inset-0 w-full h-full object-cover opacity-20"
             style={{ objectPosition: "30% center" }} />
           <div className="absolute inset-0"
@@ -109,7 +109,7 @@ export default function Hero({ stats, settings }: { stats: Stats | null; setting
           {[IMG.ufo, IMG.dantel, IMG.d3, IMG.venusAsk].map((src, i) => (
             <div key={i} className="relative overflow-hidden tilt-card" style={{ background: i % 2 === 0 ? "#181d18" : "#1a1f1a" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={src} alt="" aria-hidden
+              <img src={src} alt="Alya Plastik saksı koleksiyonu"
                 className="tilt-card-inner product-spin absolute inset-0 w-full h-full object-contain"
                 style={{ padding: "clamp(16px,3vw,36px)" }} />
             </div>
@@ -125,7 +125,7 @@ export default function Hero({ stats, settings }: { stats: Stats | null; setting
       {/* Mobilde ürün görseli */}
       <div className="absolute right-0 top-[8%] w-[40%] h-[60%] z-[5] pointer-events-none md:hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={IMG.kordon} alt="" aria-hidden
+        <img src={IMG.kordon} alt="Alya Plastik Kordon Saksı ALY-110"
           className="js-hero-product w-full h-full object-contain opacity-40"
           style={{ filter: "drop-shadow(0 40px 80px rgba(0,0,0,0.9))" }} />
       </div>

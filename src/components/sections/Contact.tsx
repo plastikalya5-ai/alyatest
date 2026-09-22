@@ -56,7 +56,7 @@ export default function Contact({ settings }: { settings: Settings | null }) {
             {CONTACTS.map((c, i) => (
               <a key={c.l} href={c.h}
                 target={c.h.startsWith("http") ? "_blank" : undefined}
-                rel={c.h.startsWith("http") ? "noopener noreferrer" : undefined}
+                rel={c.h.startsWith("http") ? "noopener noreferrer nofollow" : undefined}
                 className="flex items-center justify-between py-4 border-b border-white/8 hover:opacity-60 transition-opacity"
                 style={{ transitionDelay:`${i*40}ms` }}>
                 <span className="eyebrow text-[#6b7366] text-[10px]">{c.l}</span>
@@ -112,7 +112,7 @@ export default function Contact({ settings }: { settings: Settings | null }) {
                     className="inline-flex items-center gap-2 bg-[#e55f28] hover:bg-[#c94f1e] text-white text-[11px] font-semibold tracking-[0.14em] uppercase px-7 py-3.5 transition-colors disabled:opacity-60">
                     {loading ? "Gönderiliyor..." : "Gönder →"}
                   </button>
-                  <a href={wa} target="_blank" rel="noopener noreferrer"
+                  <a href={wa} target="_blank" rel="noopener noreferrer nofollow"
                     className="inline-flex items-center gap-2 border border-white/20 hover:border-white/50 text-[#eae6dd] text-[11px] font-semibold tracking-[0.14em] uppercase px-7 py-3.5 transition-colors">
                     WhatsApp →
                   </a>

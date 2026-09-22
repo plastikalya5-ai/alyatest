@@ -45,7 +45,7 @@ export default function Header({ settings }: { settings: Settings | null }) {
           ))}
         </nav>
 
-        <a href={wa} target="_blank" rel="noopener noreferrer"
+        <a href={wa} target="_blank" rel="noopener noreferrer nofollow"
           className="hidden md:inline-flex items-center gap-2 bg-[#e55f28] hover:bg-[#c94f1e] text-white text-[10px] font-semibold tracking-[0.14em] uppercase px-5 py-2.5 transition-colors shrink-0">
           Teklif Al →
         </a>
@@ -73,7 +73,7 @@ export default function Header({ settings }: { settings: Settings | null }) {
           ))}
         </nav>
         <div className="flex flex-col gap-3">
-          <a href={wa} target="_blank" rel="noopener noreferrer"
+          <a href={wa} target="_blank" rel="noopener noreferrer nofollow"
             className="flex items-center justify-center gap-2 bg-[#e55f28] text-white text-[10px] font-semibold tracking-[0.14em] uppercase py-4">
             WhatsApp ile Teklif Al →
           </a>

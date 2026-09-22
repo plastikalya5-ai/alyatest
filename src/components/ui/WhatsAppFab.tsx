@@ -6,7 +6,7 @@ export default function WhatsAppFab({ settings }: { settings: Settings | null })
     : "https://wa.me/905357616524?text=Merhaba%2C%20ürün%20hakkında%20bilgi%20almak%20istiyorum.";
 
   return (
-    <a href={wa} target="_blank" rel="noopener noreferrer"
+    <a href={wa} target="_blank" rel="noopener noreferrer nofollow"
       className="fixed z-85 flex items-center gap-2 shadow-2xl hover:-translate-y-0.5 transition-transform duration-200"
       style={{ bottom:24, left:"clamp(20px,5vw,80px)", background:"#22c55e", color:"#fff", padding:"12px 20px 12px 14px" }}>
       <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
