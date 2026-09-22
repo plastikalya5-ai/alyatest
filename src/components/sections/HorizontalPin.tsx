@@ -11,7 +11,7 @@ export default function HorizontalPin({ products }: { products: Product[] }) {
         style={{ height: "100svh" }}>
 
         {/* Sol sabit başlık */}
-        <div className="absolute left-0 top-0 bottom-0 z-10 flex flex-col justify-center"
+        <div className="absolute left-0 top-0 bottom-0 z-10 flex flex-col justify-center bg-[#eae6dd]"
           style={{ width: "clamp(200px,22vw,320px)", paddingLeft: "clamp(20px,5vw,80px)", paddingRight: 40 }}>
           <p className="anim-eyebrow eyebrow text-[#6b7366] mb-4">— Sürükle</p>
           <h2 className="heading text-[#0b0e0b]" style={{ fontSize: "clamp(40px,5vw,72px)" }}>
