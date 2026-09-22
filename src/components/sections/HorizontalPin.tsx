@@ -4,7 +4,7 @@ export default function HorizontalPin({ products }: { products: Product[] }) {
   const items = products.slice(0, 6);
 
   return (
-    <section id="h-pin" className="relative bg-[#eae6dd] overflow-hidden"
+    <section id="h-pin" className="relative bg-[#eae6dd]"
       data-bg="#eae6dd"
       style={{ height: "100svh" }}>
 

@@ -56,23 +56,26 @@ export default function Animations() {
       );
 
       // ── 5. SLOT MACHINE NUMBERS ─────────────────────────────
+      // rAF ile DOM ready bekle
+      await new Promise(r => setTimeout(r, 100));
       document.querySelectorAll<HTMLElement>(".slot-ticker").forEach((ticker) => {
         const target = parseInt(ticker.dataset.target || "0");
         const suffix = ticker.dataset.suffix || "";
         const inner  = ticker.querySelector<HTMLElement>(".slot-ticker-inner");
         if (!inner) return;
-        // Build digits 0 → target
         const digits = [];
         for (let i = 0; i <= target; i++) digits.push(i);
         inner.innerHTML = digits.map(d => `<span style="display:block;line-height:1">${d}${suffix}</span>`).join("");
         inner.style.transform = "translateY(0)";
+        // Başlangıçta sadece ilk elementi göster
+        const itemH = parseInt(getComputedStyle(ticker).height) || 60;
         ScrollTrigger.create({
           trigger: ticker,
           start: "top 85%",
           once: true,
           onEnter: () => {
-            const h = (inner.scrollHeight / digits.length) * (digits.length - 1);
-            gsap.to(inner, { y: -h, duration: 1.6, ease: "expo.out", delay: 0.1 });
+            const totalH = itemH * (digits.length - 1);
+            gsap.to(inner, { y: -totalH, duration: 1.8, ease: "expo.out", delay: 0.1 });
           },
         });
       });
@@ -186,14 +189,16 @@ export default function Animations() {
       const hSection = document.querySelector<HTMLElement>("#h-pin");
       const hTrack   = document.querySelector<HTMLElement>(".h-pin-track");
       if (hSection && hTrack) {
-        const getAmt = () => -(hTrack.scrollWidth - window.innerWidth);
+        // overflow:hidden olmadan çalışır
+        const getAmt = () => -(hTrack.scrollWidth - window.innerWidth + 60);
         ScrollTrigger.create({
           trigger: hSection,
           start: "top top",
-          end: () => `+=${hTrack.scrollWidth - window.innerWidth}`,
+          end: () => `+=${Math.max(hTrack.scrollWidth - window.innerWidth, 0)}`,
           pin: true,
-          scrub: 1,
+          scrub: 1.2,
           anticipatePin: 1,
+          invalidateOnRefresh: true,
           onUpdate: (self) => {
             gsap.set(hTrack, { x: self.progress * getAmt() });
           },

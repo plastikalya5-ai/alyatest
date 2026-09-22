@@ -109,7 +109,6 @@ img { max-width: 100%; display: block; }
   width: 3px; height: 0%;
   background: #e55f28;
   transform-origin: top;
-  transition: none;
 }
 
 /* ── 3D tilt card ────────────────────────── */
