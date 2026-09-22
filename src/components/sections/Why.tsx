@@ -17,7 +17,7 @@ const STATS = [
 ];
 
 function CountUp({ n, s }: { n:number; s:string }) {
-  const ref  = useRef<HTMLSpanElement>(null);
+  const ref = useRef<HTMLSpanElement>(null);
   const done = useRef(false);
   useEffect(() => {
     const el = ref.current; if (!el) return;
@@ -43,22 +43,21 @@ export default function Why() {
     <section id="why" className="bg-[#111511]" style={{ paddingBlock: "clamp(72px,9vw,130px)" }}>
       <div style={{ paddingInline: "clamp(20px,5vw,80px)" }}>
 
-        {/* Başlık */}
         <div className="flex flex-wrap items-end justify-between gap-4 mb-14">
           <div>
             <p className="eyebrow text-[#e55f28] mb-3" data-reveal>— Neden Alya Plastik</p>
-            <h2 className="heading text-[#eae6dd]" data-reveal data-delay="1" style={{ fontSize: "clamp(44px,7vw,96px)" }}>
+            <h2 className="heading text-[#eae6dd]" data-reveal data-delay="1"
+              style={{ fontSize: "clamp(44px,7vw,96px)" }}>
               55 YILLIK<br />BİRİKİM.
             </h2>
           </div>
-          <p className="font-light leading-relaxed text-[#6b7366]" data-reveal data-delay="2" style={{ maxWidth: 260, fontSize: 14 }}>
+          <p className="font-light leading-relaxed text-[#6b7366] text-sm max-w-[260px]"
+            data-reveal data-delay="2">
             1968&apos;de İstanbul&apos;da başlayan yolculuğumuz bugün 20+ ülkeye ihracat yapan bir üretim gücüne dönüştü.
           </p>
         </div>
 
-        {/* 2 kolon */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-20 items-start">
-
           {/* Sol */}
           <div>
             <div className="mb-10">
@@ -66,8 +65,8 @@ export default function Why() {
                 <div key={i} data-reveal data-delay={String(i+1)}
                   className="flex items-center gap-4 py-4 border-b border-white/8">
                   <div className="w-1.5 h-1.5 rounded-full bg-[#e55f28] shrink-0" />
-                  <span className="text-[#eae6dd] flex-1" style={{ fontSize: 14 }}>{f}</span>
-                  <span className="eyebrow text-[#6b7366]" style={{ fontSize: 10 }}>{String(i+1).padStart(2,"0")}</span>
+                  <span className="text-[#eae6dd] flex-1 text-sm">{f}</span>
+                  <span className="eyebrow text-[#6b7366] text-[10px]">{String(i+1).padStart(2,"0")}</span>
                 </div>
               ))}
             </div>
@@ -79,7 +78,7 @@ export default function Why() {
 
           {/* Sağ */}
           <div className="flex flex-col gap-3">
-            <div className="relative overflow-hidden bg-[#181d18]" data-reveal style={{ aspectRatio:"4/3" }}>
+            <div className="relative overflow-hidden bg-[#181d18] aspect-[4/3]" data-reveal>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={IMG.ufo} alt="UFO Saksı"
                 className="absolute inset-0 w-full h-full object-contain"
@@ -87,10 +86,10 @@ export default function Why() {
               <div className="absolute bottom-0 left-0 right-0 flex items-end justify-between p-4 pt-12"
                 style={{ background: "linear-gradient(to top, rgba(11,14,11,0.92), transparent)" }}>
                 <div>
-                  <p className="eyebrow text-[#e55f28] mb-1" style={{ fontSize: 9 }}>ALY-601</p>
-                  <p className="font-semibold text-[#eae6dd]" style={{ fontSize: 14 }}>UFO Saksı</p>
+                  <p className="eyebrow text-[#e55f28] text-[9px] mb-1">ALY-601</p>
+                  <p className="font-semibold text-[#eae6dd] text-sm">UFO Saksı</p>
                 </div>
-                <span className="eyebrow text-white bg-[#e55f28] px-2 py-1" style={{ fontSize: 9 }}>Yeni</span>
+                <span className="eyebrow text-white bg-[#e55f28] px-2 py-1 text-[9px]">Yeni</span>
               </div>
             </div>
 
@@ -102,8 +101,8 @@ export default function Why() {
                     <CountUp n={s.n} s={s.s} />
                   </div>
                   <div>
-                    <p className="font-semibold text-[#eae6dd]" style={{ fontSize: 13 }}>{s.label}</p>
-                    <p className="eyebrow text-[#6b7366] mt-1" style={{ fontSize: 10 }}>{s.desc}</p>
+                    <p className="font-semibold text-[#eae6dd] text-sm">{s.label}</p>
+                    <p className="eyebrow text-[#6b7366] text-[10px] mt-1">{s.desc}</p>
                   </div>
                 </div>
               ))}

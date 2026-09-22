@@ -86,8 +86,8 @@ export default function Animations() {
 
   return (
     <>
-      <div className="cursor-dot" style={{ opacity: 0 }} />
-      <div className="cursor-ring" style={{ opacity: 0 }} />
+      <div className="cursor-dot opacity-0" />
+      <div className="cursor-ring opacity-0" />
     </>
   );
 }

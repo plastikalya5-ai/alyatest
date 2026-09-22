@@ -39,8 +39,8 @@ export default function FullscreenFeature() {
         style={{ paddingRight: "clamp(20px,5vw,80px)", paddingLeft: 40 }}>
         {[["ISO","Sertifikalı"],["72h","Teklif Dönüşü"],["B2B","Toplu Sipariş"]].map(([n,l],i) => (
           <div key={i} className="py-6 pl-6 border-l border-[#e55f28]/30" data-reveal data-delay={String(i+2)}>
-            <div className="heading text-[#e55f28] mb-1" style={{ fontSize: 34 }}>{n}</div>
-            <div className="eyebrow text-[#6b7366]" style={{ fontSize: 10 }}>{l}</div>
+            <div className="heading text-[#e55f28] mb-1 text-[34px]">{n}</div>
+            <div className="eyebrow text-[#6b7366] text-[10px]">{l}</div>
           </div>
         ))}
       </div>

@@ -36,9 +36,9 @@ export default function Export() {
       </div>
 
       <div className="overflow-hidden border-y border-white/8 py-[18px]">
-        <div ref={ref} className="flex whitespace-nowrap" style={{ width: "max-content" }}>
+        <div ref={ref} className="flex whitespace-nowrap w-max">
           {[...COUNTRIES, ...COUNTRIES].map((c, i) => (
-            <span key={i} className="inline-flex items-center gap-4 px-4 eyebrow text-[#6b7366]" style={{ fontSize: 11 }}>
+            <span key={i} className="inline-flex items-center gap-4 px-4 eyebrow text-[#6b7366] text-[11px]">
               {c} <span className="text-[#e55f28] opacity-40 text-[6px]">◆</span>
             </span>
           ))}

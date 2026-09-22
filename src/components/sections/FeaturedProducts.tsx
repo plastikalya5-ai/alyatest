@@ -28,8 +28,8 @@ export default function FeaturedProducts() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           {GRID.map((p, i) => (
             <a key={p.code} href="#contact"
-              className={`group relative overflow-hidden ${p.big ? "md:col-span-2 md:row-span-2" : ""}`}
-              style={{ aspectRatio: "1/1", background: i % 2 === 0 ? "#181d18" : "#1e241e", display: "block" }}
+              className={`group relative overflow-hidden aspect-square ${p.big ? "md:col-span-2 md:row-span-2" : ""}`}
+              style={{ background: i % 2 === 0 ? "#181d18" : "#1e241e" }}
               data-reveal data-delay={String(i + 1)}>
 
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -41,7 +41,7 @@ export default function FeaturedProducts() {
                 style={{ background: "linear-gradient(to top, rgba(11,14,11,0.92) 0%, transparent 50%)" }} />
 
               <div className="absolute bottom-0 left-0 right-0 p-4 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
-                <p className="eyebrow text-[#e55f28] mb-1" style={{ fontSize: 9 }}>{p.code}</p>
+                <p className="eyebrow text-[#e55f28] mb-1 text-[9px]">{p.code}</p>
                 <p className="font-semibold text-white" style={{ fontSize: "clamp(12px,1.4vw,16px)" }}>{p.name}</p>
               </div>
 

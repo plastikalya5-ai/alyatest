@@ -70,13 +70,13 @@ export default function Collection() {
             <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(11,14,11,0.95) 0%, rgba(11,14,11,0.25) 45%, transparent 100%)" }} />
 
             <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-6">
-              <p className="eyebrow text-[#e55f28] mb-1.5" style={{ fontSize: 9 }}>{item.code}</p>
+              <p className="eyebrow text-[#e55f28] mb-1.5 text-[9px]">{item.code}</p>
               <h3 className="heading text-[#eae6dd]" style={{ fontSize: "clamp(22px,5vw,36px)", marginBottom: 3 }}>{item.name}</h3>
-              <p className="text-[#6b7366]" style={{ fontSize: 12 }}>{item.sub}</p>
+              <p className="text-[#6b7366] text-xs">{item.sub}</p>
             </div>
 
             <div className="absolute top-4 right-4">
-              <span className="eyebrow text-white/20" style={{ fontSize: 9 }}>{String(i+1).padStart(2,"0")}</span>
+              <span className="eyebrow text-white/20 text-[9px]">{String(i+1).padStart(2,"0")}</span>
             </div>
           </a>
         ))}
@@ -87,7 +87,7 @@ export default function Collection() {
           style={{ width: "clamp(160px,48vw,260px)", aspectRatio: "0.72", scrollSnapAlign: "start" }}>
           <p className="eyebrow text-white/60 mb-3">Tüm Katalog</p>
           <h3 className="heading text-white mb-5" style={{ fontSize: "clamp(26px,5vw,40px)" }}>KATALOG<br />İSTE</h3>
-          <span className="eyebrow text-white border-b border-white/50 pb-1 inline-block" style={{ fontSize: 10 }}>
+          <span className="eyebrow text-white border-b border-white/50 pb-1 inline-block text-[10px]">
             Formu Doldur →
           </span>
         </a>
