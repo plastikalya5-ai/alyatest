@@ -15,12 +15,12 @@ export default function Export() {
   }, []);
 
   return (
-    <section className="bg-[#0b0e0b] overflow-hidden" style={{ paddingBlock: "clamp(72px,9vw,130px)" }}>
+    <section className="bg-[#0b0e0b] overflow-hidden" data-bg="#0b0e0b" style={{ paddingBlock: "clamp(72px,9vw,130px)" }}>
       <div className="mb-12" style={{ paddingInline: "clamp(20px,5vw,80px)" }}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-20 items-end">
           <div>
-            <p className="eyebrow text-[#e55f28] mb-3" data-reveal>— Global Erişim</p>
-            <h2 className="heading text-[#eae6dd]" data-reveal data-delay="1" style={{ fontSize: "clamp(44px,7vw,96px)" }}>
+            <p className="anim-eyebrow eyebrow text-[#e55f28] mb-3">— Global Erişim</p>
+            <h2 className="anim-split-heading heading text-[#eae6dd]" style={{ fontSize: "clamp(44px,7vw,96px)" }}>
               20+ ÜLKE.
             </h2>
           </div>

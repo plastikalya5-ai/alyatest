@@ -2,13 +2,17 @@ import { IMG } from "@/data/images";
 
 export default function Hero() {
   return (
-    <section id="hero" className="relative grain overflow-hidden flex flex-col justify-end min-h-svh bg-[#0b0e0b]">
+    <section id="hero" className="relative grain overflow-hidden flex flex-col justify-end min-h-svh bg-[#0b0e0b]"
+      data-bg="#0b0e0b">
 
       {/* BG */}
       <div className="js-hero-bg absolute inset-0 origin-center" style={{ transform: "scale(1.06)", willChange: "transform" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={IMG.fikir} alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover opacity-35" style={{ objectPosition: "55% center" }} />
-        <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(11,14,11,0.5) 0%, rgba(11,14,11,0.15) 40%, rgba(11,14,11,0.95) 100%)" }} />
+        <img src={IMG.fikir} alt="" aria-hidden
+          className="absolute inset-0 w-full h-full object-cover opacity-35"
+          style={{ objectPosition: "55% center" }} />
+        <div className="absolute inset-0"
+          style={{ background: "linear-gradient(to bottom, rgba(11,14,11,0.5) 0%, rgba(11,14,11,0.1) 40%, rgba(11,14,11,0.97) 100%)" }} />
       </div>
 
       {/* Ürün görseli */}
@@ -16,35 +20,39 @@ export default function Hero() {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={IMG.kordon} alt="Kordon Saksı"
           className="js-hero-product w-full h-full object-contain"
-          style={{ filter: "drop-shadow(0 40px 80px rgba(0,0,0,0.7))", willChange: "transform" }} />
+          style={{ filter: "drop-shadow(0 40px 80px rgba(0,0,0,0.8))", willChange: "transform" }} />
       </div>
 
       {/* Sol turuncu çizgi */}
-      <div className="absolute left-0 top-[15%] bottom-[15%] w-px z-[3]"
+      <div className="anim-line-expand absolute left-0 top-[15%] bottom-[15%] w-px z-[3]"
         style={{ background: "linear-gradient(to bottom, transparent, #e55f28 30%, #e55f28 70%, transparent)" }} />
 
       {/* İçerik */}
-      <div className="relative z-[5]" style={{ paddingInline: "clamp(20px,5vw,80px)", paddingBottom: "clamp(48px,8vh,100px)", paddingTop: 90 }}>
+      <div className="relative z-[5]"
+        style={{ paddingInline: "clamp(20px,5vw,80px)", paddingBottom: "clamp(48px,8vh,100px)", paddingTop: 90 }}>
 
         {/* Overline */}
-        <div className="flex items-center gap-3 mb-6" data-reveal data-delay="1">
-          <div className="w-8 h-px bg-[#e55f28]" />
-          <span className="eyebrow text-[#e55f28]">Plastik Ürün Üreticisi · 1968</span>
+        <div className="anim-hero-sub flex items-center gap-3 mb-6">
+          <div className="anim-line-expand w-8 h-px bg-[#e55f28]" />
+          <span className="anim-eyebrow eyebrow text-[#e55f28]">Plastik Ürün Üreticisi · 1968</span>
         </div>
 
-        {/* Başlık */}
-        <div className="overflow-hidden mb-2" data-reveal data-delay="2">
-          <h1 className="heading text-[#eae6dd]" style={{ fontSize: "clamp(64px,13vw,196px)" }}>FORM</h1>
+        {/* Başlık — clip ile maskeli */}
+        <div className="overflow-hidden mb-2">
+          <h1 className="anim-hero-line heading text-[#eae6dd]"
+            style={{ fontSize: "clamp(64px,13vw,196px)" }}>FORM</h1>
         </div>
-        <div className="overflow-hidden mb-10" data-reveal data-delay="3">
-          <h1 className="heading italic" style={{ fontSize: "clamp(64px,13vw,196px)", color: "transparent", WebkitTextStroke: "1.5px rgba(229,95,40,0.55)" }}>
+        <div className="overflow-hidden mb-10">
+          <h1 className="anim-hero-line heading italic"
+            style={{ fontSize: "clamp(64px,13vw,196px)", color: "transparent", WebkitTextStroke: "1.5px rgba(229,95,40,0.55)" }}>
             &amp; FONKSİYON
           </h1>
         </div>
 
-        {/* Alt satır */}
-        <div className="flex flex-col sm:flex-row sm:items-end gap-8 sm:gap-16 mb-10" data-reveal data-delay="4">
-          <p className="text-[#6b7366] font-light leading-relaxed" style={{ maxWidth: 340, fontSize: "clamp(14px,1.4vw,16px)" }}>
+        {/* Alt */}
+        <div className="anim-hero-sub flex flex-col sm:flex-row sm:items-end gap-8 sm:gap-16 mb-10">
+          <p className="text-[#6b7366] font-light leading-relaxed max-w-[340px]"
+            style={{ fontSize: "clamp(14px,1.4vw,16px)" }}>
             55 yıllık üretim deneyimi. Saksı, sepet, sandık ve ev ürünlerinde 200+ model. 20+ ülke ihracatı.
           </p>
           <div className="flex gap-8 sm:gap-12">
@@ -60,19 +68,19 @@ export default function Hero() {
         </div>
 
         {/* CTA */}
-        <div className="flex flex-wrap gap-3" data-reveal data-delay="5">
+        <div className="anim-hero-sub flex flex-wrap gap-3">
           <a href="#products"
-            className="inline-flex items-center gap-2 bg-[#e55f28] hover:bg-[#c94f1e] text-white text-[11px] font-semibold tracking-[0.14em] uppercase px-7 py-3.5 transition-colors">
+            className="anim-magnetic inline-flex items-center gap-2 bg-[#e55f28] hover:bg-[#c94f1e] text-white text-[11px] font-semibold tracking-[0.14em] uppercase px-7 py-3.5 transition-colors">
             Ürünleri Keşfet →
           </a>
           <a href="#contact"
-            className="inline-flex items-center gap-2 border border-white/20 hover:border-white/50 text-[#eae6dd] text-[11px] font-semibold tracking-[0.14em] uppercase px-7 py-3.5 transition-colors">
+            className="anim-magnetic inline-flex items-center gap-2 border border-white/20 hover:border-white/50 text-[#eae6dd] text-[11px] font-semibold tracking-[0.14em] uppercase px-7 py-3.5 transition-colors">
             Teklif Al
           </a>
         </div>
       </div>
 
-      <div className="absolute bottom-0 left-0 w-32 h-px bg-[#e55f28] z-[5]" />
+      <div className="anim-line-expand absolute bottom-0 left-0 w-32 h-px bg-[#e55f28] z-[5]" />
     </section>
   );
 }

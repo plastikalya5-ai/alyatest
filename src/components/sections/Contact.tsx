@@ -23,12 +23,12 @@ export default function Contact() {
   const [sub,  setSub]  = useState("");
 
   return (
-    <section id="contact" className="bg-[#111511]" style={{ paddingBlock: "clamp(72px,9vw,130px)" }}>
+    <section id="contact" className="bg-[#111511]" data-bg="#111511" style={{ paddingBlock: "clamp(72px,9vw,130px)" }}>
       <div style={{ paddingInline: "clamp(20px,5vw,80px)" }}>
 
         <div className="mb-12">
-          <p className="eyebrow text-[#e55f28] mb-3" data-reveal>— İletişim</p>
-          <h2 className="heading text-[#eae6dd]" data-reveal data-delay="1"
+          <p className="anim-eyebrow eyebrow text-[#e55f28] mb-3">— İletişim</p>
+          <h2 className="anim-split-heading heading text-[#eae6dd]"
             style={{ fontSize: "clamp(44px,7vw,96px)" }}>
             BİRLİKTE<br />ÜRETELIM.
           </h2>
