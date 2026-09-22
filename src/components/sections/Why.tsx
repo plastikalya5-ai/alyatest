@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
+import type { Stats } from "@/lib/supabase";
 import { IMG } from "@/data/images";
 
 const FEATURES = [
@@ -9,35 +10,32 @@ const FEATURES = [
   "Özel kalıp ve sipariş imkânı",
   "Tüm lojistik ve gümrük dokümantasyon desteği",
 ];
-const STATS = [
-  { n:55,  s:"+", label:"Yıl Deneyim",   desc:"1968'den bu yana" },
-  { n:200, s:"+", label:"Ürün Modeli",    desc:"Geniş portföy"    },
-  { n:20,  s:"+", label:"İhracat Ülkesi", desc:"Global erişim"    },
-  { n:100, s:"%", label:"Yerli Üretim",   desc:"Made in Türkiye"  },
-];
 
-export default function Why() {
+export default function Why({ stats }: { stats: Stats | null }) {
+  const st = [
+    { n: stats?.years ?? 55,             s: "+", label:"Yıl Deneyim",   desc:"1968'den bu yana" },
+    { n: stats?.models ?? 200,           s: "+", label:"Ürün Modeli",    desc:"Geniş portföy"    },
+    { n: stats?.countries ?? 20,         s: "+", label:"İhracat Ülkesi", desc:"Global erişim"    },
+    { n: stats?.local_production ?? 100, s: "%", label:"Yerli Üretim",   desc:"Made in Türkiye"  },
+  ];
+
   return (
-    <section id="why" className="bg-[#111511]" data-bg="#111511"
-      style={{ paddingBlock: "clamp(72px,9vw,130px)" }}>
-      <div style={{ paddingInline: "clamp(20px,5vw,80px)" }}>
+    <section id="why" className="bg-[#111511]" data-bg="#111511" style={{ paddingBlock:"clamp(72px,9vw,130px)" }}>
+      <div style={{ paddingInline:"clamp(20px,5vw,80px)" }}>
 
         <div className="flex flex-wrap items-end justify-between gap-4 mb-14">
           <div>
             <p className="anim-eyebrow eyebrow text-[#e55f28] mb-3">— Neden Alya Plastik</p>
-            <h2 className="anim-split-heading heading text-[#eae6dd]"
-              style={{ fontSize: "clamp(44px,7vw,96px)" }}>
-              55 YILLIK<br />BİRİKİM.
+            <h2 className="anim-split-heading heading text-[#eae6dd]" style={{ fontSize:"clamp(44px,7vw,96px)" }}>
+              {stats?.years ?? 55} YILLIK<br />BİRİKİM.
             </h2>
           </div>
           <p className="anim-up font-light leading-relaxed text-[#6b7366] text-sm max-w-[260px]">
-            1968&apos;de İstanbul&apos;da başlayan yolculuğumuz bugün 20+ ülkeye ihracat yapan bir üretim gücüne dönüştü.
+            {stats?.years ?? 55} yıldır İstanbul&apos;dan dünyaya. {stats?.countries ?? 20}+ ülkeye ihracat.
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-20 items-start">
-
-          {/* Sol — feature list */}
           <div>
             <div className="anim-list mb-10">
               {FEATURES.map((f, i) => (
@@ -48,21 +46,17 @@ export default function Why() {
                 </div>
               ))}
             </div>
-            <a href="#contact"
-              className="anim-magnetic anim-up inline-flex items-center gap-2 bg-[#e55f28] hover:bg-[#c94f1e] text-white text-[11px] font-semibold tracking-[0.14em] uppercase px-7 py-3.5 transition-colors">
+            <a href="#contact" className="anim-magnetic anim-up inline-flex items-center gap-2 bg-[#e55f28] hover:bg-[#c94f1e] text-white text-[11px] font-semibold tracking-[0.14em] uppercase px-7 py-3.5 transition-colors">
               Teklif Al →
             </a>
           </div>
 
-          {/* Sağ */}
           <div className="flex flex-col gap-3">
             <div className="anim-img-reveal relative overflow-hidden bg-[#181d18] aspect-[4/3]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={IMG.ufo} alt="UFO Saksı"
-                className="absolute inset-0 w-full h-full object-contain"
-                style={{ padding: "clamp(20px,4vw,48px)" }} />
+              <img src={IMG.ufo} alt="UFO Saksı" className="absolute inset-0 w-full h-full object-contain" style={{ padding:"clamp(20px,4vw,48px)" }} />
               <div className="absolute bottom-0 left-0 right-0 flex items-end justify-between p-4 pt-12"
-                style={{ background: "linear-gradient(to top, rgba(11,14,11,0.92), transparent)" }}>
+                style={{ background:"linear-gradient(to top, rgba(11,14,11,0.92), transparent)" }}>
                 <div>
                   <p className="eyebrow text-[#e55f28] text-[9px] mb-1">ALY-601</p>
                   <p className="font-semibold text-[#eae6dd] text-sm">UFO Saksı</p>
@@ -72,10 +66,9 @@ export default function Why() {
             </div>
 
             <div className="anim-stagger-parent grid grid-cols-2 gap-3">
-              {STATS.map((s) => (
+              {st.map((s) => (
                 <div key={s.label} className="anim-stagger-child bg-[#181d18] flex flex-col justify-between p-5 min-h-[110px]">
-                  <div className="heading text-[#e55f28]"
-                    style={{ fontSize: "clamp(28px,4vw,48px)", lineHeight: 1 }}>
+                  <div className="heading text-[#e55f28]" style={{ fontSize:"clamp(28px,4vw,48px)", lineHeight:1 }}>
                     <span data-count={s.n} data-suffix={s.s}>{s.n}{s.s}</span>
                   </div>
                   <div>

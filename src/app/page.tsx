@@ -1,33 +1,46 @@
-import Header         from "@/components/layout/Header";
-import Footer         from "@/components/layout/Footer";
-import Animations     from "@/components/layout/Animations";
-import WhatsAppFab    from "@/components/ui/WhatsAppFab";
-import Hero           from "@/components/sections/Hero";
-import Marquee        from "@/components/sections/Marquee";
+import { getFeaturedProducts, getAllProducts, getStats, getSettings, getExportCountries } from "@/lib/supabase";
+import Header          from "@/components/layout/Header";
+import Footer          from "@/components/layout/Footer";
+import Animations      from "@/components/layout/Animations";
+import WhatsAppFab     from "@/components/ui/WhatsAppFab";
+import Hero            from "@/components/sections/Hero";
+import Marquee         from "@/components/sections/Marquee";
 import FeaturedProducts from "@/components/sections/FeaturedProducts";
-import Collection     from "@/components/sections/Collection";
+import Collection      from "@/components/sections/Collection";
 import FullscreenFeature from "@/components/sections/FullscreenFeature";
-import Why            from "@/components/sections/Why";
-import Export         from "@/components/sections/Export";
-import Contact        from "@/components/sections/Contact";
+import Why             from "@/components/sections/Why";
+import Export          from "@/components/sections/Export";
+import Contact         from "@/components/sections/Contact";
 
-export default function Home() {
+// Her 60 sn'de revalidate — "canlı yayın" hissi
+export const revalidate = 60;
+
+export default async function Home() {
+  // Paralel fetch
+  const [featured, all, stats, settings, countries] = await Promise.all([
+    getFeaturedProducts(),
+    getAllProducts(),
+    getStats(),
+    getSettings(),
+    getExportCountries(),
+  ]);
+
   return (
     <>
       <Animations />
-      <Header />
+      <Header settings={settings} />
       <main>
-        <Hero />
+        <Hero stats={stats} settings={settings} />
         <Marquee />
-        <FeaturedProducts />
-        <Collection />
+        <FeaturedProducts products={featured} />
+        <Collection products={all} />
         <FullscreenFeature />
-        <Why />
-        <Export />
-        <Contact />
+        <Why stats={stats} />
+        <Export countries={countries} />
+        <Contact settings={settings} />
       </main>
-      <Footer />
-      <WhatsAppFab />
+      <Footer settings={settings} />
+      <WhatsAppFab settings={settings} />
     </>
   );
 }
