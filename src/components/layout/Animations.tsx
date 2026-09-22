@@ -19,7 +19,7 @@ export default function Animations() {
       if (killed) return;
 
       // ── 1. LENIS ────────────────────────────────────────────
-      const lenis = new Lenis({ lerp: 0.075, smoothWheel: true });
+      const lenis = new Lenis({ lerp: 0.12, smoothWheel: true, wheelMultiplier: 1.2 });
       lenis.on("scroll", ScrollTrigger.update);
 
       const ticker = (t: number) => { if (!killed) lenis.raf(t * 1000); };
