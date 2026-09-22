@@ -102,3 +102,85 @@ img { max-width: 100%; display: block; }
   transition: width 0.25s, height 0.25s, border-color 0.25s;
 }
 .cursor-ring.hovered { width: 54px; height: 54px; border-color: #e55f28; }
+
+/* ── Scroll progress bar ─────────────────── */
+.scroll-progress {
+  position: fixed; top: 0; right: 0; z-index: 200;
+  width: 3px; height: 0%;
+  background: #e55f28;
+  transform-origin: top;
+  transition: none;
+}
+
+/* ── 3D tilt card ────────────────────────── */
+.tilt-card {
+  transform-style: preserve-3d;
+  transition: transform 0.1s ease-out;
+}
+.tilt-card-inner {
+  transform: translateZ(20px);
+}
+
+/* ── Text scramble ───────────────────────── */
+.scramble { will-change: contents; }
+
+/* ── Slot ticker ─────────────────────────── */
+.slot-ticker {
+  display: inline-flex;
+  flex-direction: column;
+  overflow: hidden;
+  line-height: 1;
+}
+.slot-ticker-inner {
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.6s cubic-bezier(0.16,1,0.3,1);
+}
+
+/* ── Horizontal pinned ───────────────────── */
+.h-pin-track {
+  display: flex;
+  will-change: transform;
+}
+
+/* ── Split hero ──────────────────────────── */
+.split-line {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 2px;
+  background: #e55f28;
+  transform-origin: top;
+}
+
+/* ── 360 product spin ────────────────────── */
+.product-spin {
+  transition: transform 0.6s cubic-bezier(0.25,0.46,0.45,0.94);
+}
+
+/* ── Progress indicator dots ─────────────── */
+.progress-dots {
+  position: fixed;
+  right: clamp(16px,3vw,40px);
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.progress-dot {
+  width: 5px; height: 5px;
+  border-radius: 9999px;
+  background: rgba(255,255,255,0.2);
+  transition: all 0.4s ease;
+}
+.progress-dot.active {
+  height: 22px;
+  background: #e55f28;
+  border-radius: 3px;
+}
+
+/* ── Krem section ────────────────────────── */
+.section-cream { background: #eae6dd; color: #0b0e0b; }
+.section-cream .eyebrow { color: #6b7366; }
+.section-cream .heading { color: #0b0e0b; }

@@ -1,22 +1,22 @@
 import { getFeaturedProducts, getAllProducts, getStats, getSettings, getExportCountries } from "@/lib/supabase";
-import Header          from "@/components/layout/Header";
-import Footer          from "@/components/layout/Footer";
-import Animations      from "@/components/layout/Animations";
-import WhatsAppFab     from "@/components/ui/WhatsAppFab";
-import Hero            from "@/components/sections/Hero";
-import Marquee         from "@/components/sections/Marquee";
+import Header           from "@/components/layout/Header";
+import Footer           from "@/components/layout/Footer";
+import Animations       from "@/components/layout/Animations";
+import WhatsAppFab      from "@/components/ui/WhatsAppFab";
+import ProgressDots     from "@/components/ui/ProgressDots";
+import Hero             from "@/components/sections/Hero";
+import Marquee          from "@/components/sections/Marquee";
 import FeaturedProducts from "@/components/sections/FeaturedProducts";
-import Collection      from "@/components/sections/Collection";
+import HorizontalPin    from "@/components/sections/HorizontalPin";
+import Collection       from "@/components/sections/Collection";
 import FullscreenFeature from "@/components/sections/FullscreenFeature";
-import Why             from "@/components/sections/Why";
-import Export          from "@/components/sections/Export";
-import Contact         from "@/components/sections/Contact";
+import Why              from "@/components/sections/Why";
+import Export           from "@/components/sections/Export";
+import Contact          from "@/components/sections/Contact";
 
-// Her 60 sn'de revalidate — "canlı yayın" hissi
 export const revalidate = 60;
 
 export default async function Home() {
-  // Paralel fetch
   const [featured, all, stats, settings, countries] = await Promise.all([
     getFeaturedProducts(),
     getAllProducts(),
@@ -28,11 +28,13 @@ export default async function Home() {
   return (
     <>
       <Animations />
+      <ProgressDots />
       <Header settings={settings} />
       <main>
         <Hero stats={stats} settings={settings} />
         <Marquee />
         <FeaturedProducts products={featured} />
+        <HorizontalPin products={all} />
         <Collection products={all} />
         <FullscreenFeature />
         <Why stats={stats} />
