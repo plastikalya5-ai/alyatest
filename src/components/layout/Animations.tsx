@@ -7,24 +7,18 @@ export default function Animations() {
     let killed = false;
 
     const init = async () => {
-      // ── Import ────────────────────────────────────────────
       const gsapMod  = await import("gsap");
       const { ScrollTrigger } = await import("gsap/ScrollTrigger");
       const { SplitText }     = await import("gsap/SplitText");
-      const { default: Lenis } = await import("@studio-freight/lenis");
 
       const gsap = gsapMod.gsap;
       gsap.registerPlugin(ScrollTrigger, SplitText);
 
       if (killed) return;
 
-      // ── 1. LENIS ────────────────────────────────────────────
-      const lenis = new Lenis({ lerp: 0.12, smoothWheel: true, wheelMultiplier: 1.2 });
-      lenis.on("scroll", ScrollTrigger.update);
-
-      const ticker = (t: number) => { if (!killed) lenis.raf(t * 1000); };
-      gsap.ticker.add(ticker);
-      gsap.ticker.lagSmoothing(0);
+      // ScrollTrigger config — body'yi overflow hidden yapmasın
+      ScrollTrigger.config({ autoRefreshEvents: "visibilitychange,DOMContentLoaded,load" });
+      ScrollTrigger.refresh();
 
       // ── 2. SCROLL PROGRESS ─────────────────────────────────
       const bar = document.querySelector<HTMLElement>(".scroll-progress");
@@ -192,7 +186,12 @@ export default function Animations() {
           trigger: hSec,
           start: "top top",
           end: () => `+=${Math.max(hTrack.scrollWidth - window.innerWidth, 100)}`,
-          pin: true, scrub: 1.2, anticipatePin: 1, invalidateOnRefresh: true,
+          pin: true,
+          pinType: "transform",
+          pinSpacing: true,
+          scrub: 1.2,
+          anticipatePin: 1,
+          invalidateOnRefresh: true,
           onUpdate: (self) => { gsap.set(hTrack, { x: self.progress * getX() }); },
         });
       }
@@ -281,11 +280,8 @@ export default function Animations() {
         });
       }
 
-      // Cleanup
       return () => {
         killed = true;
-        lenis.destroy();
-        gsap.ticker.remove(ticker);
         ScrollTrigger.killAll();
         cancelAnimationFrame(rafId);
       };
