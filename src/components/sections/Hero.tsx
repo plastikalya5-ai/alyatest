@@ -93,15 +93,15 @@ export default function Hero({ stats, settings }: { stats: Stats | null; setting
       </div>
 
       {/* ── Sağ: Ürün görseli ──────────────────────────── */}
-      <div className="relative overflow-hidden hidden md:block" style={{ background: "#e3ddcf" }}>
+      <div className="relative overflow-hidden hidden md:block" style={{ background: "#c17849" }}>
         {/* Turuncu bölücü çizgi */}
         <div className="split-line absolute left-0 top-0 bottom-0"
           style={{ background: "linear-gradient(to bottom, transparent, #e55f28 20%, #e55f28 80%, transparent)" }} />
 
         {/* Ürün grid — 2x2 dönen ürünler */}
-        <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-px bg-[#0b0e0b]/8">
+        <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-px bg-[#0b0e0b]/12">
           {[IMG.ufo, IMG.dantel, IMG.d3, IMG.venusAsk].map((src, i) => (
-            <div key={i} className="relative overflow-hidden tilt-card" style={{ background: i % 2 === 0 ? "#eae6dd" : "#e8e2d3" }}>
+            <div key={i} className="relative overflow-hidden tilt-card" style={{ background: i % 2 === 0 ? "#c17849" : "#ab6740" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={src} alt="Alya Plastik saksı koleksiyonu"
                 className="tilt-card-inner product-spin absolute inset-0 w-full h-full object-contain"
@@ -112,7 +112,7 @@ export default function Hero({ stats, settings }: { stats: Stats | null; setting
 
         {/* Ürün kodu overlay */}
         <div className="absolute bottom-8 right-8 z-10">
-          <span className="eyebrow text-[#0b0e0b]/35 text-[9px]">KOLEKSİYON 2024/25</span>
+          <span className="eyebrow text-white/60 text-[9px]">KOLEKSİYON 2024/25</span>
         </div>
       </div>
 
