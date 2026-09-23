@@ -149,6 +149,12 @@ export default function BasvurularPage() {
                   className="adm-btn-ghost" style={{ display:'flex',justifyContent:'center',marginTop:8,fontSize:12 }}>
                   <Mail size={13}/>E-posta ile Yanıtla
                 </a>
+                {sel.phone && (
+                  <a href={`https://wa.me/${sel.phone.replace(/\D/g,'')}`} target="_blank" rel="noopener noreferrer nofollow"
+                    className="adm-btn-ghost" style={{ display:'flex',justifyContent:'center',marginTop:6,fontSize:12,color:'var(--adm-green)',borderColor:'rgba(34,211,160,.3)' }}>
+                    <Phone size={13}/>WhatsApp ile Yaz
+                  </a>
+                )}
               </div>
             </div>
           )}
