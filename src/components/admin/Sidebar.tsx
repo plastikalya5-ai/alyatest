@@ -31,11 +31,13 @@ export default function AdminSidebar() {
   const [name, setName] = useState('Admin')
 
   useEffect(() => {
-    createClient().auth.getUser().then(({ data: { user } }) => {
-      if (!user) return
-      const n = user.email?.split('@')[0] || 'Admin'
-      setName(n); setInit(n.slice(0,2).toUpperCase())
-    })
+    try {
+      createClient().auth.getUser().then(({ data: { user } }) => {
+        if (!user) return
+        const n = user.email?.split('@')[0] || 'Admin'
+        setName(n); setInit(n.slice(0,2).toUpperCase())
+      })
+    } catch {}
   }, [])
 
   const active = (href: string) => href === '/admin/dashboard' ? pathname === href : pathname.startsWith(href)
