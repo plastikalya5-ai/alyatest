@@ -126,7 +126,7 @@ export default function AdminUrunlerPage() {
                 <tbody>
                   {filtered.map(p=>(
                     <tr key={p.id} style={{ borderBottom:'1px solid var(--adm-bdr)', background:selected.has(p.id)?'var(--adm-ac3)':'' }}
-                      onMouseEnter={e=>{ if(!selected.has(p.id)) (e.currentTarget as HTMLTableRowElement).style.background='rgba(255,255,255,.02)' }}
+                      onMouseEnter={e=>{ if(!selected.has(p.id)) (e.currentTarget as HTMLTableRowElement).style.background='rgba(20,20,30,.025)' }}
                       onMouseLeave={e=>{ if(!selected.has(p.id)) (e.currentTarget as HTMLTableRowElement).style.background='' }}>
                       <td style={{ padding:'10px 12px' }}>
                         <input type="checkbox" checked={selected.has(p.id)} onChange={()=>toggleSel(p.id)}/>

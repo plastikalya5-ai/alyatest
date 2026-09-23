@@ -1,24 +1,24 @@
 /* Admin panel - sadece /admin route altında yüklenir */
 .adm * { box-sizing: border-box; }
-.adm { font-family: 'Inter', system-ui, sans-serif; font-size: 14px; line-height: 1.6; background: var(--adm-bg); color: var(--adm-tx); min-height: 100vh; }
+.adm { font-family: 'Inter', system-ui, sans-serif; font-size: 14px; line-height: 1.6; background: var(--adm-bg); color: var(--adm-tx); min-height: 100vh; color-scheme: light; }
 
 :root {
-  --adm-bg:    #0c0c10;
-  --adm-s1:    #131318;
-  --adm-s2:    #1c1c25;
-  --adm-s3:    #22222c;
-  --adm-s4:    #2a2a36;
-  --adm-bdr:   rgba(255,255,255,0.09);
-  --adm-bdr2:  rgba(255,255,255,0.16);
-  --adm-tx:    #f0f0f5;
-  --adm-tx2:   #9090a8;
-  --adm-tx3:   #50506a;
+  --adm-bg:    #f4f4f6;
+  --adm-s1:    #ffffff;
+  --adm-s2:    #f1f1f4;
+  --adm-s3:    #f5f5f8;
+  --adm-s4:    #e9e9ee;
+  --adm-bdr:   rgba(20,20,30,0.09);
+  --adm-bdr2:  rgba(20,20,30,0.18);
+  --adm-tx:    #14141c;
+  --adm-tx2:   #5a5a6e;
+  --adm-tx3:   #9494a8;
   --adm-ac:    #e55f28;
-  --adm-ac2:   rgba(229,95,40,0.14);
-  --adm-green: #22d3a0; --adm-green2: rgba(34,211,160,0.11);
-  --adm-red:   #f25757; --adm-red2:   rgba(242,87,87,0.11);
-  --adm-amber: #f0a843; --adm-amber2: rgba(240,168,67,0.11);
-  --adm-blue:  #4ea8f0; --adm-blue2:  rgba(78,168,240,0.11);
+  --adm-ac2:   rgba(229,95,40,0.13);
+  --adm-green: #14b088; --adm-green2: rgba(20,176,136,0.13);
+  --adm-red:   #e14b4b; --adm-red2:   rgba(225,75,75,0.12);
+  --adm-amber: #c9821c; --adm-amber2: rgba(201,130,28,0.14);
+  --adm-blue:  #2f7dd6; --adm-blue2:  rgba(47,125,214,0.13);
 }
 
 /* Admin - ana sitenin cursor:none kuralını iptal et */
@@ -59,7 +59,7 @@ select.adm-inp { cursor: pointer; }
 
 .adm-row { display: flex; align-items: center; gap: 14px; padding: 12px 20px; border-bottom: 1px solid var(--adm-bdr); transition: background .1s; }
 .adm-row:last-child { border-bottom: none; }
-.adm-row:hover { background: rgba(255,255,255,0.02); }
+.adm-row:hover { background: rgba(20,20,30,0.025); }
 
 .adm-sb { width: 220px; flex-shrink: 0; background: var(--adm-s1); border-right: 1px solid var(--adm-bdr); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 .adm-sb-logo { display: flex; align-items: center; gap: 10px; padding: 16px 16px 14px; border-bottom: 1px solid var(--adm-bdr); }

@@ -19,7 +19,7 @@ export default function AdminNotFound() {
         lineHeight: 1,
         letterSpacing: "-0.04em",
         color: "transparent",
-        WebkitTextStroke: "1px rgba(255,255,255,0.08)",
+        WebkitTextStroke: "1px rgba(20,20,30,0.10)",
         userSelect: "none",
       }}>
         404
