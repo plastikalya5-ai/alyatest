@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState } from 'react'
-import { LayoutDashboard, Package, Tag, MessageSquare, Settings, BarChart2, TrendingUp, Eye, Image, LogOut, ExternalLink, FileText, Bell, Activity, Layers, DollarSign, Receipt, Users2, PieChart } from 'lucide-react'
+import { LayoutDashboard, Package, Tag, MessageSquare, Settings, BarChart2, TrendingUp, Eye, Image, LogOut, ExternalLink, FileText, Bell, Activity, Layers, DollarSign, Receipt, Users2, PieChart, Landmark, FileSignature, Warehouse, Boxes, ArrowLeftRight, Cog, Wrench, FlaskConical, Factory, Zap, ClipboardList, PackageSearch, Truck, ShieldCheck, FlameKindling, UserCog } from 'lucide-react'
 
 const NAV = [
   { g:'Genel', items:[
@@ -27,10 +27,34 @@ const NAV = [
     { href:'/admin/dashboard/muhasebe/islemler', label:'Gelir/Gider',  Icon:TrendingUp },
     { href:'/admin/dashboard/muhasebe/faturalar',label:'Faturalar',    Icon:Receipt },
     { href:'/admin/dashboard/muhasebe/cari',     label:'Cari Hesaplar',Icon:Users2 },
+    { href:'/admin/dashboard/muhasebe/kasa-banka',label:'Kasa/Banka',  Icon:Landmark },
+    { href:'/admin/dashboard/muhasebe/cek-senet', label:'Çek/Senet',   Icon:FileSignature },
     { href:'/admin/dashboard/muhasebe/raporlar', label:'Raporlar',     Icon:PieChart },
+  ]},
+  { g:'Stok / Depo', items:[
+    { href:'/admin/dashboard/stok/depo',       label:'Depolar',           Icon:Warehouse },
+    { href:'/admin/dashboard/stok/hammadde',   label:'Hammadde',          Icon:Boxes },
+    { href:'/admin/dashboard/stok/hareketler', label:'Stok Hareketleri',  Icon:ArrowLeftRight },
+  ]},
+  { g:'Üretim', items:[
+    { href:'/admin/dashboard/uretim/makine',  label:'Makineler',        Icon:Cog },
+    { href:'/admin/dashboard/uretim/kalip',   label:'Kalıplar',         Icon:Wrench },
+    { href:'/admin/dashboard/uretim/recete',  label:'BOM / Reçeteler',  Icon:FlaskConical },
+    { href:'/admin/dashboard/uretim/emirler', label:'Üretim Emirleri',  Icon:Factory },
+    { href:'/admin/dashboard/uretim/canli',   label:'Canlı Üretim',     Icon:Zap },
+  ]},
+  { g:'Satış / Lojistik', items:[
+    { href:'/admin/dashboard/satis/siparisler',       label:'Satış Siparişleri',    Icon:ClipboardList },
+    { href:'/admin/dashboard/satinalma/siparisler',   label:'Satınalma Siparişleri',Icon:PackageSearch },
+    { href:'/admin/dashboard/sevkiyat',               label:'Sevkiyat / İhracat',   Icon:Truck },
+  ]},
+  { g:'Kalite & Bakım', items:[
+    { href:'/admin/dashboard/kalite/kontrol', label:'Kalite Kontrol', Icon:ShieldCheck },
+    { href:'/admin/dashboard/kalite/fire',    label:'Fire Yönetimi',  Icon:FlameKindling },
   ]},
   { g:'Site Yönetimi', items:[
     { href:'/admin/dashboard/icerik',       label:'İçerik',          Icon:FileText },
+    { href:'/admin/dashboard/kullanicilar', label:'Kullanıcılar',    Icon:UserCog },
     { href:'/admin/dashboard/ayarlar',      label:'Ayarlar',         Icon:Settings },
     { href:'/admin/dashboard/bildirimler',  label:'Bildirimler',     Icon:Bell },
   ]},
