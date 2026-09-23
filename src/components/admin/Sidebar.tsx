@@ -25,7 +25,7 @@ const NAV = [
   ]},
 ]
 
-export default function AdminSidebar() {
+export default function AdminSidebar({ onClose }: { onClose?: () => void } = {}) {
   const pathname = usePathname()
   const [init, setInit] = useState('AP')
   const [name, setName] = useState('Admin')
@@ -61,7 +61,7 @@ export default function AdminSidebar() {
           <div key={sec.g}>
             <p className="adm-sb-group">{sec.g}</p>
             {sec.items.map(({ href, label, Icon }) => (
-              <Link key={href} href={href} className={`adm-sb-item ${active(href)?'active':''}`}>
+              <Link key={href} href={href} className={`adm-sb-item ${active(href)?'active':''}`} onClick={onClose}>
                 <span style={{ width:20,display:'flex',justifyContent:'center',flexShrink:0 }}><Icon size={14} strokeWidth={1.8}/></span>
                 <span style={{ flex:1 }}>{label}</span>
               </Link>
