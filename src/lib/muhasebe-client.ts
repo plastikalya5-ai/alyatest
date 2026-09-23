@@ -29,6 +29,21 @@ const wrap = (q: MuhQuery): any =>
     }
   })
 
+function toCsv(rows: any[]): string {
+  if (!rows.length) return ''
+  const cols = Object.keys(rows[0]).filter(c => typeof rows[0][c] !== 'object')
+  const esc = (v:any) => `"${String(v??'').replace(/"/g,'""')}"`
+  return [cols.join(','), ...rows.map(r=>cols.map(c=>esc(r[c])).join(','))].join('\n')
+}
+function downloadCsv(filename: string, rows: any[]) {
+  const csv = '\uFEFF' + toCsv(rows)
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url; a.download = filename; a.click()
+  URL.revokeObjectURL(url)
+}
+
 export const muh = {
   from: (table:string) => ({
     select: (select='*',opts?:any) => wrap(new MuhQuery({table,select,...(opts?.count?{count:'true'}:{})})),
@@ -40,4 +55,5 @@ export const muh = {
   fmt: (n:number) => new Intl.NumberFormat('tr-TR',{style:'currency',currency:'TRY'}).format(n||0),
   fmtN: (n:number) => new Intl.NumberFormat('tr-TR',{minimumFractionDigits:2}).format(n||0),
   date: (d:string) => d ? new Date(d).toLocaleDateString('tr-TR') : '-',
+  exportCsv: downloadCsv,
 }

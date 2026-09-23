@@ -67,5 +67,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Geçersiz işlem' }, { status: 400 })
   }
   if (r?.error) return NextResponse.json({ error: r.error.message }, { status: 500 })
+
+  const recordId = id || r?.data?.[0]?.id
+  sb.from('admin_activity').insert({ action: op, table_name: table, record_id: recordId, user_id: user.id }).then(()=>{})
+
   return NextResponse.json({ ok: true, data: r?.data })
 }

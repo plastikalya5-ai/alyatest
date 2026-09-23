@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
 import { muh } from '@/lib/muhasebe-client'
+import { erp } from '@/lib/erp-client'
 import { Plus, Pencil, Trash2, X, Search, AlertTriangle, FileSignature } from 'lucide-react'
 
 const DURUM_CONF: Record<string,{l:string;c:string;bg:string}> = {
@@ -16,6 +17,7 @@ const DURUM_CONF: Record<string,{l:string;c:string;bg:string}> = {
 export default function CekSenetPage() {
   const [list, setList] = useState<any[]>([])
   const [cariList, setCariList] = useState<any[]>([])
+  const [kasaList, setKasaList] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState<any>(null)
@@ -23,15 +25,18 @@ export default function CekSenetPage() {
   const [search, setSearch] = useState('')
   const [toast, setToast] = useState('')
   const [form, setForm] = useState({ tip:'cek', yon:'alinan', cari_id:'', no:'', banka:'', tutar:'', vade_tarihi:new Date().toISOString().split('T')[0], aciklama:'' })
+  const [tahsilHedef, setTahsilHedef] = useState<any>(null)
+  const [tahsilKasa, setTahsilKasa] = useState('')
 
   const showToast = (m:string) => { setToast(m); setTimeout(()=>setToast(''),3000) }
 
   const load = useCallback(async () => {
-    const [{data:c},{data:cr}] = await Promise.all([
+    const [{data:c},{data:cr},{data:k}] = await Promise.all([
       muh.from('cek_senet').select('*').order('vade_tarihi',{ascending:true}),
       muh.from('cari_hesaplar').select('id,ad').order('ad',{ascending:true}),
+      erp.from('kasa_banka_hesaplari').select('id,ad').order('ad',{ascending:true}),
     ])
-    setList(c||[]); setCariList(cr||[]); setLoading(false)
+    setList(c||[]); setCariList(cr||[]); setKasaList(k||[]); setLoading(false)
   },[])
 
   useEffect(()=>{ load() },[load])
@@ -47,9 +52,30 @@ export default function CekSenetPage() {
     setModal(false); showToast(editing?'Güncellendi':'Kayıt eklendi'); load()
   }
 
-  async function durumGuncelle(id:string, durum:string) {
-    await muh.from('cek_senet').update({durum,updated_at:new Date().toISOString()}).eq('id',id)
+  async function durumGuncelle(row:any, durum:string) {
+    if (durum==='tahsil_edildi' || durum==='odendi') {
+      setTahsilHedef({...row, hedefDurum:durum}); setTahsilKasa(kasaList[0]?.id||'')
+      return
+    }
+    await muh.from('cek_senet').update({durum,updated_at:new Date().toISOString()}).eq('id',row.id)
     showToast('Durum güncellendi'); load()
+  }
+
+  async function tahsilOnayla(e:React.FormEvent) {
+    e.preventDefault()
+    if (!tahsilHedef || !tahsilKasa) return
+    const gelirMi = tahsilHedef.yon === 'alinan'
+    await muh.from('islemler').insert({
+      tip: gelirMi ? 'gelir' : 'gider',
+      tutar: tahsilHedef.tutar,
+      kategori: gelirMi ? 'Çek/Senet Tahsilatı' : 'Çek/Senet Ödemesi',
+      aciklama: `${tahsilHedef.tip==='cek'?'Çek':'Senet'} ${tahsilHedef.no||''} — ${tahsilHedef.banka||''}`,
+      tarih: new Date().toISOString().split('T')[0],
+      cari_id: tahsilHedef.cari_id || null,
+      kasa_hesap_id: tahsilKasa,
+    })
+    await muh.from('cek_senet').update({durum:tahsilHedef.hedefDurum,updated_at:new Date().toISOString()}).eq('id',tahsilHedef.id)
+    setTahsilHedef(null); showToast('Tahsilat/ödeme kasaya işlendi'); load()
   }
 
   async function del(id:string) {
@@ -137,7 +163,7 @@ export default function CekSenetPage() {
                 </div>
                 <div style={{display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
                   <span style={{fontSize:14,fontWeight:700,fontFamily:'JetBrains Mono,monospace',color:'var(--adm-tx)'}}>{muh.fmt(c.tutar)}</span>
-                  <select className="adm-inp" style={{fontSize:11,padding:'4px 8px',width:'auto'}} value={c.durum} onChange={e=>durumGuncelle(c.id,e.target.value)}>
+                  <select className="adm-inp" style={{fontSize:11,padding:'4px 8px',width:'auto'}} value={c.durum} onChange={e=>durumGuncelle(c,e.target.value)}>
                     {Object.entries(DURUM_CONF).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}
                   </select>
                   <button className="adm-btn-ghost" style={{padding:'5px 9px'}} onClick={()=>openEdit(c)}><Pencil size={12}/></button>
@@ -195,6 +221,34 @@ export default function CekSenetPage() {
           </div>
         </div>
       )}
+
+      {tahsilHedef && (
+        <div className="adm-modal-bg" onClick={e=>{if(e.target===e.currentTarget)setTahsilHedef(null)}}>
+          <div className="adm-modal">
+            <div className="adm-modal-h">
+              {tahsilHedef.hedefDurum==='tahsil_edildi'?'Tahsilat':'Ödeme'} — Kasa/Banka Seç
+              <button onClick={()=>setTahsilHedef(null)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--adm-tx3)'}}><X size={18}/></button>
+            </div>
+            <form onSubmit={tahsilOnayla}>
+              <div className="adm-modal-b">
+                <p style={{fontSize:12.5,color:'var(--adm-tx3)',marginBottom:14}}>
+                  {muh.fmt(tahsilHedef.tutar)} tutarındaki {tahsilHedef.tip==='cek'?'çek':'senet'} hangi kasa/banka hesabına {tahsilHedef.yon==='alinan'?'girecek':'çıkacak'}?
+                </p>
+                <label className="adm-label">Kasa/Banka Hesabı *</label>
+                <select className="adm-inp" required value={tahsilKasa} onChange={e=>setTahsilKasa(e.target.value)}>
+                  <option value="">Seçin</option>
+                  {kasaList.map((k:any)=><option key={k.id} value={k.id}>{k.ad}</option>)}
+                </select>
+              </div>
+              <div className="adm-modal-f">
+                <button type="button" className="adm-btn-ghost" onClick={()=>setTahsilHedef(null)}>İptal</button>
+                <button type="submit" className="adm-btn">Onayla</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {toast && <div className="adm-toast">✓ {toast}</div>}
     </div>
   )

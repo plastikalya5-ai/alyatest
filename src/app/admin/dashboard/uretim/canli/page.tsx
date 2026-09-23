@@ -9,26 +9,28 @@ export default function CanliUretimPage() {
   const [emirler, setEmirler] = useState<any[]>([])
   const [urunler, setUrunler] = useState<any[]>([])
   const [makineler, setMakineler] = useState<any[]>([])
+  const [variantlar, setVariantlar] = useState<any[]>([])
   const [hareketler, setHareketler] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState('')
-  const [formlar, setFormlar] = useState<Record<string,{uretilen_adet:string;fire_adet:string;cevrim_suresi:string;fire_nedeni:string}>>({})
+  const [formlar, setFormlar] = useState<Record<string,{uretilen_adet:string;fire_adet:string;cevrim_suresi:string;fire_nedeni:string;variant_id:string}>>({})
 
   const showToast = (m:string) => { setToast(m); setTimeout(()=>setToast(''),3000) }
 
   const load = useCallback(async () => {
-    const [{data:ue},{data:u},{data:m},{data:h}] = await Promise.all([
+    const [{data:ue},{data:u},{data:m},{data:v},{data:h}] = await Promise.all([
       erp.from('uretim_emirleri').select('*').eq('durum','uretimde').order('created_at',{ascending:false}),
       muh.from('products').select('id,name').order('name',{ascending:true}),
       erp.from('makineler').select('id,ad').order('ad',{ascending:true}),
+      muh.from('product_variants').select('id,name,product_id').order('sort_order',{ascending:true}),
       erp.from('uretim_hareketleri').select('*').order('tarih',{ascending:false}).limit(50),
     ])
-    setEmirler(ue||[]); setUrunler(u||[]); setMakineler(m||[]); setHareketler(h||[]); setLoading(false)
+    setEmirler(ue||[]); setUrunler(u||[]); setMakineler(m||[]); setVariantlar(v||[]); setHareketler(h||[]); setLoading(false)
   },[])
   useEffect(()=>{ load() },[load])
   useEffect(()=>{ const t = setInterval(load, 15000); return ()=>clearInterval(t) },[load])
 
-  function formOf(id:string) { return formlar[id] || {uretilen_adet:'',fire_adet:'0',cevrim_suresi:'',fire_nedeni:''} }
+  function formOf(id:string) { return formlar[id] || {uretilen_adet:'',fire_adet:'0',cevrim_suresi:'',fire_nedeni:'',variant_id:''} }
   function setForm(id:string, patch:any) { setFormlar(f=>({...f,[id]:{...formOf(id),...patch}})) }
 
   async function gonder(emirId:string) {
@@ -40,8 +42,9 @@ export default function CanliUretimPage() {
       fire_adet: +(f.fire_adet||0),
       cevrim_suresi: f.cevrim_suresi?+f.cevrim_suresi:null,
       fire_nedeni: f.fire_nedeni||null,
+      variant_id: f.variant_id||null,
     })
-    setForm(emirId, {uretilen_adet:'',fire_adet:'0',cevrim_suresi:'',fire_nedeni:''})
+    setForm(emirId, {uretilen_adet:'',fire_adet:'0',cevrim_suresi:'',fire_nedeni:'',variant_id:f.variant_id})
     showToast('Üretim kaydedildi'); load()
   }
 
@@ -73,6 +76,12 @@ export default function CanliUretimPage() {
                     <p style={{fontSize:11.5,color:'var(--adm-tx3)',marginBottom:14}}>{ue.uretilen_miktar}/{ue.planlanan_miktar} adet (%{yuzde}) {ue.fire_miktar>0?`· Fire: ${ue.fire_miktar}`:''}</p>
 
                     <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:8}}>
+                      <div style={{gridColumn:'1/-1'}}><label className="adm-label" style={{fontSize:10.5}}>Üretilen Varyant</label>
+                        <select className="adm-inp" value={f.variant_id} onChange={e=>setForm(ue.id,{variant_id:e.target.value})}>
+                          <option value="">Varsayılan (ilk varyant)</option>
+                          {variantlar.filter((v:any)=>v.product_id===ue.urun_id).map((v:any)=><option key={v.id} value={v.id}>{v.name}</option>)}
+                        </select>
+                      </div>
                       <div><label className="adm-label" style={{fontSize:10.5}}>Üretilen Adet</label><input type="number" className="adm-inp" value={f.uretilen_adet} onChange={e=>setForm(ue.id,{uretilen_adet:e.target.value})}/></div>
                       <div><label className="adm-label" style={{fontSize:10.5}}>Fire Adet</label><input type="number" className="adm-inp" value={f.fire_adet} onChange={e=>setForm(ue.id,{fire_adet:e.target.value})}/></div>
                       <div><label className="adm-label" style={{fontSize:10.5}}>Çevrim (sn)</label><input type="number" className="adm-inp" value={f.cevrim_suresi} onChange={e=>setForm(ue.id,{cevrim_suresi:e.target.value})}/></div>

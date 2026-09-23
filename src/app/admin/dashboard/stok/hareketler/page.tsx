@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
 import { erp } from '@/lib/erp-client'
 import { muh } from '@/lib/muhasebe-client'
-import { Plus, X, Search, ArrowDownCircle, ArrowUpCircle } from 'lucide-react'
+import { Plus, X, Search, ArrowDownCircle, ArrowUpCircle, Download } from 'lucide-react'
 
 const TIP_LABEL: Record<string,string> = {
   uretim_giris:'Üretim Girişi', uretim_cikis:'Üretim Çıkışı', satis:'Satış', satinalma:'Satınalma',
@@ -19,18 +19,19 @@ export default function StokHareketleriPage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('hepsi')
   const [toast, setToast] = useState('')
+  const [pageSize, setPageSize] = useState(300)
   const [form, setForm] = useState({ tip:'manuel_duzeltme', yon:'giris', hammadde_id:'', miktar:'', depo_id:'', aciklama:'' })
 
   const showToast = (m:string) => { setToast(m); setTimeout(()=>setToast(''),3000) }
 
   const load = useCallback(async () => {
     const [{data:s},{data:h},{data:d}] = await Promise.all([
-      erp.from('stok_hareketleri').select('*').order('tarih',{ascending:false}).limit(300),
+      erp.from('stok_hareketleri').select('*').order('tarih',{ascending:false}).limit(pageSize),
       erp.from('hammaddeler').select('id,ad,birim').order('ad',{ascending:true}),
       erp.from('depolar').select('id,ad').order('ad',{ascending:true}),
     ])
     setList(s||[]); setHammaddeler(h||[]); setDepolar(d||[]); setLoading(false)
-  },[])
+  },[pageSize])
   useEffect(()=>{ load() },[load])
 
   function openNew() { setForm({tip:'manuel_duzeltme',yon:'giris',hammadde_id:'',miktar:'',depo_id:'',aciklama:''}); setModal(true) }
@@ -64,6 +65,8 @@ export default function StokHareketleriPage() {
             {Object.entries(TIP_LABEL).map(([k,l])=><option key={k} value={k}>{l}</option>)}
           </select>
           <div style={{flex:1}}/>
+          <div style={{flex:1}}/>
+          <button className="adm-btn-ghost" style={{fontSize:12}} onClick={()=>erp.exportCsv('stok-hareketleri.csv',filtered)}><Download size={13}/>CSV</button>
           <button className="adm-btn" onClick={openNew}><Plus size={14}/>Manuel Hareket / Sayım</button>
         </div>
 
@@ -88,6 +91,11 @@ export default function StokHareketleriPage() {
               </div>
             )
           })}
+          {list.length===pageSize && (
+            <div style={{padding:14,textAlign:'center'}}>
+              <button className="adm-btn-ghost" style={{fontSize:12}} onClick={()=>setPageSize(p=>p+300)}>Daha Fazla Yükle</button>
+            </div>
+          )}
         </div>
       </div>
 

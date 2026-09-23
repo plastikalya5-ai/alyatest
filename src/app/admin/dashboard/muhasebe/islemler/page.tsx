@@ -14,6 +14,7 @@ export default function IslemlerPage() {
   const [filter, setFilter] = useState('hepsi')
   const [search, setSearch] = useState('')
   const [toast, setToast] = useState('')
+  const [pageSize, setPageSize] = useState(200)
   const [form, setForm] = useState({
     tip:'gelir', kategori:'', tutar:'', aciklama:'', tarih:new Date().toISOString().split('T')[0],
     odeme_yontemi:'nakit', cari_id:''
@@ -23,13 +24,13 @@ export default function IslemlerPage() {
 
   const load = useCallback(async () => {
     const [{ data:i },{ data:k },{ data:c }] = await Promise.all([
-      muh.from('islemler').select('*').order('tarih',{ascending:false}).order('created_at',{ascending:false}),
+      muh.from('islemler').select('*').order('tarih',{ascending:false}).order('created_at',{ascending:false}).limit(pageSize),
       muh.from('muhasebe_kategoriler').select('*').order('tip',{ascending:true}),
       muh.from('cari_hesaplar').select('id,ad,tip').order('ad',{ascending:true}),
     ])
     setIslemler(i||[]); setKategoriler(k||[]); setCariList(c||[])
     setLoading(false)
-  },[])
+  },[pageSize])
 
   useEffect(()=>{ load() },[load])
 
@@ -127,6 +128,11 @@ export default function IslemlerPage() {
               </div>
             </div>
           ))}
+          {islemler.length===pageSize && (
+            <div style={{padding:14,textAlign:'center'}}>
+              <button className="adm-btn-ghost" style={{fontSize:12}} onClick={()=>setPageSize(p=>p+200)}>Daha Fazla Yükle</button>
+            </div>
+          )}
         </div>
       </div>
 

@@ -70,7 +70,7 @@ export default function KasaBankaPage() {
           <button className="adm-btn" onClick={openNew}><Plus size={14}/>Hesap Ekle</button>
         </div>
 
-        <div style={{display:'grid',gridTemplateColumns:detay?'1fr 380px':'1fr',gap:16}}>
+        <div className={`adm-detail-grid ${detay?"has-detail":""}`}>
           <div className="adm-card">
             <div className="adm-card-h">Hesaplar ({list.length})</div>
             {loading ? <p style={{padding:40,textAlign:'center',color:'var(--adm-tx3)'}}>Yükleniyor...</p>

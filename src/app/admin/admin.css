@@ -83,6 +83,12 @@ select.adm-inp { cursor: pointer; }
 .adm-modal-f { display: flex; gap: 10px; justify-content: flex-end; padding: 16px 22px; border-top: 1px solid var(--adm-bdr); }
 
 .adm-toast { position: fixed; bottom: 20px; right: 20px; background: var(--adm-s2); border: 1px solid var(--adm-bdr2); color: var(--adm-tx); padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 500; z-index: 9999; box-shadow: 0 8px 24px rgba(0,0,0,.4); animation: admFadeIn .2s ease; }
+
+/* Detay panelli iki kolonlu grid — mobilde tek kolona düşer */
+.adm-detail-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+@media (min-width: 960px) {
+  .adm-detail-grid.has-detail { grid-template-columns: 1fr 380px; }
+}
 @keyframes admFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes admPulse { 0%,100%{opacity:1}50%{opacity:.5} }
 @keyframes admSpin { to { transform: rotate(360deg); } }

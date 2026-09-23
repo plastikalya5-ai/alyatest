@@ -57,11 +57,41 @@ export default function SatinalmaSiparisleriPage() {
     setModal(false); showToast('Sipariş oluşturuldu'); load()
   }
 
+  async function faturaOlustur(siparisId:string) {
+    const siparis = list.find(s=>s.id===siparisId)
+    if (!siparis || siparis.fatura_olusturuldu) return
+    const kal = kalemler.filter(k=>k.siparis_id===siparisId)
+    const toplam = kal.reduce((s,k)=>s+(k.miktar*k.birim_fiyat),0)
+    if (toplam<=0) return
+    const { data } = await muh.from('faturalar').insert({
+      no: `ALIS-${siparis.no}`, tip:'alis', cari_id: siparis.tedarikci_id, tarih: new Date().toISOString().split('T')[0],
+      toplam, durum:'onaylandi', notlar: `Satınalma siparişi ${siparis.no} teslim alındı — otomatik oluşturuldu`,
+    })
+    const faturaId = (data as any)?.[0]?.id
+    if (faturaId) {
+      await Promise.all(kal.map(k=>{
+        const h = hammaddeler.find((x:any)=>x.id===k.hammadde_id)
+        return muh.from('fatura_kalemleri').insert({ fatura_id: faturaId, urun_adi: h?.ad||'Hammadde', miktar: k.miktar, birim_fiyat: k.birim_fiyat })
+      }))
+    }
+    await erp.from('satinalma_siparisleri').update({fatura_olusturuldu:true}).eq('id',siparisId)
+    showToast('Alış faturası otomatik oluşturuldu'); load()
+  }
+
   async function teslimAl(kalemId:string, hammaddeId:string, miktar:number, mevcutTeslim:number) {
     const kalan = miktar - mevcutTeslim
     if (kalan<=0) return
     await erp.from('satinalma_siparisi_kalemleri').update({teslim_alinan_miktar:miktar}).eq('id',kalemId)
     await erp.from('stok_hareketleri').insert({tip:'satinalma',yon:'giris',hammadde_id:hammaddeId,miktar:kalan,kaynak_tablo:'satinalma_siparisi_kalemleri',kaynak_id:kalemId,aciklama:'Satınalma teslim alındı'})
+
+    const siparisId = detay?.id
+    const kalanlar = siparisId ? kalemler.filter(k=>k.siparis_id===siparisId && k.id!==kalemId) : []
+    const hepsiTeslim = kalanlar.every(k=>k.teslim_alinan_miktar>=k.miktar)
+    if (siparisId && hepsiTeslim) {
+      await erp.from('satinalma_siparisleri').update({durum:'teslim_alindi'}).eq('id',siparisId)
+      showToast('Teslim alındı, sipariş tamamlandı'); await load(); await faturaOlustur(siparisId)
+      return
+    }
     showToast('Teslim alındı, stok güncellendi'); load()
   }
 
@@ -69,6 +99,7 @@ export default function SatinalmaSiparisleriPage() {
     await erp.from('satinalma_siparisleri').update({durum}).eq('id',id)
     showToast('Durum güncellendi'); load()
     if (detay?.id===id) setDetay((d:any)=>({...d,durum}))
+    if (durum==='teslim_alindi') faturaOlustur(id)
   }
 
   const filtered = list.filter(s=>!search || s.no?.toLowerCase().includes(search.toLowerCase()))
@@ -87,7 +118,7 @@ export default function SatinalmaSiparisleriPage() {
           <button className="adm-btn" onClick={openNew}><Plus size={14}/>Yeni Sipariş</button>
         </div>
 
-        <div style={{display:'grid',gridTemplateColumns:detay?'1fr 380px':'1fr',gap:16}}>
+        <div className={`adm-detail-grid ${detay?"has-detail":""}`}>
           <div className="adm-card">
             <div className="adm-card-h">Siparişler ({filtered.length})</div>
             {loading ? <p style={{padding:40,textAlign:'center',color:'var(--adm-tx3)'}}>Yükleniyor...</p>

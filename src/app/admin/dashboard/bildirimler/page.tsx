@@ -1,8 +1,10 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { erp } from '@/lib/erp-client'
+import { muh } from '@/lib/muhasebe-client'
 import AdminTopBar from '@/components/admin/TopBar'
-import { Bell, Mail, Phone, Save, Info } from 'lucide-react'
+import { Bell, Mail, Phone, Save, Info, AlertTriangle, Boxes, Wrench, FileSignature } from 'lucide-react'
 
 const sb = createClient()
 
@@ -15,6 +17,8 @@ export default function AdminBildirimlerPage() {
   const [settings, setSettings] = useState<Record<string,any>>({})
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState('')
+  const [uyarilar, setUyarilar] = useState<any[]>([])
+  const [uyariYuklendi, setUyariYuklendi] = useState(false)
 
   useEffect(() => {
     sb.from('notification_settings').select('*').order('event', {ascending:true}).then(({data}:any) => {
@@ -22,6 +26,30 @@ export default function AdminBildirimlerPage() {
       ;(data||[]).forEach((d:any) => { map[d.event] = d })
       setSettings(map)
     })
+  }, [])
+
+  useEffect(() => {
+    (async () => {
+      const [{data:kh},{data:ku},{data:kb},{data:cs}] = await Promise.all([
+        erp.from('v_kritik_hammaddeler').select('*'),
+        erp.from('v_kritik_urunler').select('*'),
+        erp.from('v_kalip_bakim_durumu').select('*'),
+        muh.from('cek_senet').select('*').eq('durum','portfoyde'),
+      ])
+      const list: any[] = []
+      ;(kh||[]).forEach((h:any)=>list.push({tip:'stok', icon:'stok', metin:`${h.ad} kritik stokta (${h.mevcut_stok} ${h.birim})`, seviye:'kirmizi'}))
+      ;(ku||[]).forEach((u:any)=>list.push({tip:'stok', icon:'stok', metin:`${u.urun_adi} — ${u.name} stokta yok`, seviye:'kirmizi'}))
+      ;(kb||[]).filter((k:any)=>['vadesi_gecti','yaklasiyor'].includes(k.bakim_durumu)).forEach((k:any)=>
+        list.push({tip:'bakim', icon:'bakim', metin:`${k.ad} kalıbı bakım ${k.bakim_durumu==='vadesi_gecti'?'vadesi geçti':'vadesi yaklaşıyor'} (${k.sonraki_bakim||'-'})`, seviye:k.bakim_durumu==='vadesi_gecti'?'kirmizi':'sari'}))
+      const bugun = new Date(); bugun.setHours(0,0,0,0)
+      ;(cs||[]).forEach((c:any)=>{
+        const v = new Date(c.vade_tarihi)
+        if (v <= new Date(bugun.getTime()+7*86400000)) {
+          list.push({tip:'cek', icon:'cek', metin:`${c.tip==='cek'?'Çek':'Senet'} ${c.no||''} vadesi ${muh.date(c.vade_tarihi)} (${muh.fmt(c.tutar)})`, seviye:v<bugun?'kirmizi':'sari'})
+        }
+      })
+      setUyarilar(list); setUyariYuklendi(true)
+    })()
   }, [])
 
   async function save(e: React.FormEvent) {
@@ -41,10 +69,31 @@ export default function AdminBildirimlerPage() {
   const upd = (event:string, field:string, val:any) =>
     setSettings(s => ({...s, [event]: {...(s[event]||{}), [field]:val}}))
 
+  const ICONS: Record<string,any> = { stok: Boxes, bakim: Wrench, cek: FileSignature }
+
   return (
     <div style={{ flex:1, overflow:'auto' }}>
-      <AdminTopBar title="Bildirim Ayarları"/>
+      <AdminTopBar title="Bildirimler"/>
       <div style={{ padding:24, maxWidth:700 }}>
+
+        <div className="adm-card" style={{marginBottom:20}}>
+          <div className="adm-card-h">Aktif Uyarılar {uyariYuklendi && `(${uyarilar.length})`}</div>
+          {!uyariYuklendi ? <p style={{padding:30,textAlign:'center',color:'var(--adm-tx3)',fontSize:13}}>Yükleniyor...</p>
+          : uyarilar.length===0 ? <p style={{padding:30,textAlign:'center',color:'var(--adm-tx3)',fontSize:13}}>Şu an aktif uyarı yok, her şey yolunda ✓</p>
+          : uyarilar.map((u,i)=>{
+            const Icon = ICONS[u.icon]||AlertTriangle
+            const c = u.seviye==='kirmizi' ? 'var(--adm-red)' : 'var(--adm-amber)'
+            const bg = u.seviye==='kirmizi' ? 'var(--adm-red2)' : 'var(--adm-amber2)'
+            return (
+              <div key={i} className="adm-row">
+                <div style={{width:32,height:32,borderRadius:8,background:bg,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                  <Icon size={15} style={{color:c}}/>
+                </div>
+                <p style={{fontSize:12.5,color:'var(--adm-tx)',flex:1}}>{u.metin}</p>
+              </div>
+            )
+          })}
+        </div>
 
         <div className="adm-card" style={{ marginBottom:20, padding:16, display:'flex', alignItems:'center', gap:12 }}>
           <div style={{ width:36, height:36, borderRadius:9, background:'var(--adm-blue2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>

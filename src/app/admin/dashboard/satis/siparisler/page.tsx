@@ -65,6 +65,20 @@ export default function SatisSiparisleriPage() {
     if (detay?.id===id) setDetay((d:any)=>({...d,durum}))
   }
 
+  async function uretimEmriOlustur(kalem:any) {
+    const variant = variantlar.find((v:any)=>v.id===kalem.variant_id)
+    if (!variant) { showToast('Bu kalem bir varyanta bağlı değil, üretim emri oluşturulamıyor'); return }
+    await erp.from('uretim_emirleri').insert({
+      no: `UE-${detay.no}-${kalem.urun_adi.slice(0,6).toUpperCase()}`,
+      urun_id: variant.product_id,
+      siparis_id: detay.id,
+      planlanan_miktar: kalem.uretim_gereken_miktar,
+      durum: 'planlandi',
+      notlar: `${detay.no} siparişindeki eksik miktar için otomatik oluşturuldu`,
+    })
+    showToast('Üretim emri oluşturuldu')
+  }
+
   const filtered = list.filter(s=>!search || s.no?.toLowerCase().includes(search.toLowerCase()))
   const detayKalemleri = detay ? kalemler.filter(k=>k.siparis_id===detay.id) : []
 
@@ -81,7 +95,7 @@ export default function SatisSiparisleriPage() {
           <button className="adm-btn" onClick={openNew}><Plus size={14}/>Yeni Sipariş</button>
         </div>
 
-        <div style={{display:'grid',gridTemplateColumns:detay?'1fr 380px':'1fr',gap:16}}>
+        <div className={`adm-detail-grid ${detay?"has-detail":""}`}>
           <div className="adm-card">
             <div className="adm-card-h">Siparişler ({filtered.length})</div>
             {loading ? <p style={{padding:40,textAlign:'center',color:'var(--adm-tx3)'}}>Yükleniyor...</p>
@@ -118,9 +132,12 @@ export default function SatisSiparisleriPage() {
                       <span style={{fontSize:12.5,fontWeight:600,color:'var(--adm-tx)'}}>{k.urun_adi}</span>
                       <span style={{fontSize:12,color:'var(--adm-tx3)'}}>{k.miktar} adet</span>
                     </div>
-                    <div style={{display:'flex',gap:10,fontSize:11}}>
+                    <div style={{display:'flex',gap:10,fontSize:11,alignItems:'center'}}>
                       <span style={{color:'var(--adm-green)'}}>Stoktan: {k.karsilanan_miktar}</span>
-                      {k.uretim_gereken_miktar>0 && <span style={{color:'var(--adm-amber)'}}>Üretim Gerekli: {k.uretim_gereken_miktar}</span>}
+                      {k.uretim_gereken_miktar>0 && <>
+                        <span style={{color:'var(--adm-amber)'}}>Üretim Gerekli: {k.uretim_gereken_miktar}</span>
+                        <button className="adm-btn-ghost" style={{fontSize:10,padding:'2px 8px'}} onClick={()=>uretimEmriOlustur(k)}>Üretim Emri Oluştur</button>
+                      </>}
                     </div>
                   </div>
                 ))}

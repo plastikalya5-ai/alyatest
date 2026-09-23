@@ -21,8 +21,11 @@ export default function UretimEmirleriPage() {
   const [kaliplar, setKaliplar] = useState<any[]>([])
   const [receteler, setReceteler] = useState<any[]>([])
   const [siparisler, setSiparisler] = useState<any[]>([])
+  const [hammaddeler, setHammaddeler] = useState<any[]>([])
+  const [receteKalemleri, setReceteKalemleri] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(false)
+  const [mrpModal, setMrpModal] = useState(false)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('hepsi')
   const [toast, setToast] = useState('')
@@ -31,15 +34,17 @@ export default function UretimEmirleriPage() {
   const showToast = (m:string) => { setToast(m); setTimeout(()=>setToast(''),3000) }
 
   const load = useCallback(async () => {
-    const [{data:ue},{data:u},{data:m},{data:k},{data:r},{data:s}] = await Promise.all([
+    const [{data:ue},{data:u},{data:m},{data:k},{data:r},{data:s},{data:h},{data:rk}] = await Promise.all([
       erp.from('uretim_emirleri').select('*').order('created_at',{ascending:false}),
       muh.from('products').select('id,name').order('name',{ascending:true}),
       erp.from('makineler').select('id,ad').order('ad',{ascending:true}),
       erp.from('kaliplar').select('id,ad').order('ad',{ascending:true}),
       erp.from('urun_receteleri').select('id,urun_id,versiyon').eq('aktif',true),
       erp.from('satis_siparisleri').select('id,no').order('created_at',{ascending:false}),
+      erp.from('hammaddeler').select('id,ad,birim,mevcut_stok,tedarikci_id').order('ad',{ascending:true}),
+      erp.from('recete_kalemleri').select('*'),
     ])
-    setList(ue||[]); setUrunler(u||[]); setMakineler(m||[]); setKaliplar(k||[]); setReceteler(r||[]); setSiparisler(s||[]); setLoading(false)
+    setList(ue||[]); setUrunler(u||[]); setMakineler(m||[]); setKaliplar(k||[]); setReceteler(r||[]); setSiparisler(s||[]); setHammaddeler(h||[]); setReceteKalemleri(rk||[]); setLoading(false)
   },[])
   useEffect(()=>{ load() },[load])
 
@@ -62,6 +67,43 @@ export default function UretimEmirleriPage() {
     showToast('Durum güncellendi'); load()
   }
 
+  // ---- Basit MRP: aktif üretim emirlerinin reçetesine göre hammadde ihtiyacı ----
+  const ihtiyacListesi = (() => {
+    const acikEmirler = list.filter(u=>['planlandi','uretimde'].includes(u.durum) && u.recete_id)
+    const ihtiyac: Record<string, number> = {}
+    acikEmirler.forEach(u=>{
+      const kalan = Math.max(u.planlanan_miktar - u.uretilen_miktar, 0)
+      receteKalemleri.filter(k=>k.recete_id===u.recete_id).forEach(k=>{
+        ihtiyac[k.hammadde_id] = (ihtiyac[k.hammadde_id]||0) + k.miktar*kalan
+      })
+    })
+    return Object.entries(ihtiyac).map(([hammadde_id, gerekli])=>{
+      const h = hammaddeler.find((x:any)=>x.id===hammadde_id)
+      const eksik = Math.max(gerekli - (h?.mevcut_stok||0), 0)
+      return { hammadde_id, ad:h?.ad, birim:h?.birim, tedarikci_id:h?.tedarikci_id, gerekli, mevcutStok:h?.mevcut_stok||0, eksik }
+    }).filter(x=>x.eksik>0)
+  })()
+
+  async function satinalmaSiparisiOlustur() {
+    const gruplar: Record<string, typeof ihtiyacListesi> = {}
+    ihtiyacListesi.forEach(i=>{ const key=i.tedarikci_id||'genel'; (gruplar[key]=gruplar[key]||[]).push(i) })
+    for (const [tedarikciId, kalemler] of Object.entries(gruplar)) {
+      const { data } = await erp.from('satinalma_siparisleri').insert({
+        no: `SA-MRP-${Date.now().toString().slice(-5)}`,
+        tedarikci_id: tedarikciId==='genel'?null:tedarikciId,
+        tarih: new Date().toISOString().split('T')[0],
+        notlar: 'Üretim ihtiyacına göre otomatik oluşturuldu (MRP)',
+      })
+      const siparisId = (data as any)?.[0]?.id
+      if (siparisId) {
+        await Promise.all(kalemler.map(k=>erp.from('satinalma_siparisi_kalemleri').insert({
+          siparis_id: siparisId, hammadde_id: k.hammadde_id, miktar: Math.ceil(k.eksik), birim_fiyat: 0,
+        })))
+      }
+    }
+    setMrpModal(false); showToast('Satınalma sipariş(ler)i oluşturuldu'); load()
+  }
+
   const filtered = list.filter(u=>{
     if (filter!=='hepsi' && u.durum!==filter) return false
     if (search && !u.no?.toLowerCase().includes(search.toLowerCase())) return false
@@ -82,6 +124,7 @@ export default function UretimEmirleriPage() {
           ))}
           <div style={{flex:1}}/>
           <Link href="/admin/dashboard/uretim/canli" className="adm-btn-ghost" style={{fontSize:12,textDecoration:'none',display:'flex',alignItems:'center',gap:6}}>Canlı Üretim →</Link>
+          <button className="adm-btn-ghost" onClick={()=>setMrpModal(true)}>Hammadde İhtiyacı{ihtiyacListesi.length>0?` (${ihtiyacListesi.length})`:''}</button>
           <button className="adm-btn" onClick={openNew}><Plus size={14}/>Yeni Üretim Emri</button>
         </div>
 
@@ -159,6 +202,37 @@ export default function UretimEmirleriPage() {
           </div>
         </div>
       )}
+      {mrpModal && (
+        <div className="adm-modal-bg" onClick={e=>{if(e.target===e.currentTarget)setMrpModal(false)}}>
+          <div className="adm-modal" style={{maxWidth:600}}>
+            <div className="adm-modal-h">Hammadde İhtiyacı (Açık Üretim Emirlerine Göre)<button onClick={()=>setMrpModal(false)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--adm-tx3)'}}><X size={18}/></button></div>
+            <div className="adm-modal-b">
+              {ihtiyacListesi.length===0 ? <p style={{padding:20,textAlign:'center',color:'var(--adm-tx3)',fontSize:13}}>Şu an eksik hammadde yok — tüm ihtiyaçlar stoktan karşılanabilir.</p>
+              : <>
+                <p style={{fontSize:12,color:'var(--adm-tx3)',marginBottom:12}}>
+                  &quot;Planlandı&quot; ve &quot;Üretimde&quot; durumundaki emirlerin reçetelerine göre hesaplandı.
+                </p>
+                {ihtiyacListesi.map(i=>(
+                  <div key={i.hammadde_id} style={{display:'flex',justifyContent:'space-between',padding:'8px 0',borderBottom:'1px solid var(--adm-bdr)'}}>
+                    <div>
+                      <p style={{fontSize:13,fontWeight:600,color:'var(--adm-tx)'}}>{i.ad}</p>
+                      <p style={{fontSize:11,color:'var(--adm-tx3)'}}>Gerekli: {i.gerekli.toFixed(1)} {i.birim} · Mevcut: {i.mevcutStok} {i.birim}</p>
+                    </div>
+                    <span style={{fontSize:14,fontWeight:700,color:'var(--adm-red)',fontFamily:'JetBrains Mono,monospace'}}>-{i.eksik.toFixed(1)} {i.birim}</span>
+                  </div>
+                ))}
+              </>}
+            </div>
+            {ihtiyacListesi.length>0 && (
+              <div className="adm-modal-f">
+                <button type="button" className="adm-btn-ghost" onClick={()=>setMrpModal(false)}>Kapat</button>
+                <button type="button" className="adm-btn" onClick={satinalmaSiparisiOlustur}>Satınalma Siparişi Oluştur</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {toast && <div className="adm-toast">✓ {toast}</div>}
     </div>
   )

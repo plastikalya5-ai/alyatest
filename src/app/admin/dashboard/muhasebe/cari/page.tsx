@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
 import { muh } from '@/lib/muhasebe-client'
-import { Plus, Pencil, Trash2, X, User, Building2, Search, Phone, Mail } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, User, Building2, Search, Phone, Mail, Download } from 'lucide-react'
 
 export default function CariPage() {
   const [list, setList] = useState<any[]>([])
@@ -78,6 +78,7 @@ export default function CariPage() {
             <button key={v} onClick={()=>setFilter(v)} className={filter===v?'adm-btn':'adm-btn-ghost'} style={{fontSize:12,padding:'5px 14px'}}>{l}</button>
           ))}
           <div style={{flex:1}}/>
+          <button className="adm-btn-ghost" style={{fontSize:12}} onClick={()=>muh.exportCsv('cari-hesaplar.csv',filtered)}><Download size={13}/>CSV</button>
           <button className="adm-btn" onClick={openNew}><Plus size={14}/>Cari Ekle</button>
         </div>
 

@@ -20,6 +20,7 @@ export default function FaturalarPage() {
   const [filter, setFilter] = useState('hepsi')
   const [search, setSearch] = useState('')
   const [toast, setToast] = useState('')
+  const [pageSize, setPageSize] = useState(200)
   const [kalemleri, setKalemleri] = useState([{urun_adi:'',miktar:1,birim:'adet',birim_fiyat:0,kdv_orani:20,toplam:0}])
   const [form, setForm] = useState({
     tip:'satis', no:`F-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`,
@@ -30,11 +31,11 @@ export default function FaturalarPage() {
 
   const load = useCallback(async () => {
     const [{data:f},{data:c}] = await Promise.all([
-      muh.from('faturalar').select('*').order('created_at',{ascending:false}),
+      muh.from('faturalar').select('*').order('created_at',{ascending:false}).limit(pageSize),
       muh.from('cari_hesaplar').select('id,ad,tip').order('ad',{ascending:true}),
     ])
     setFaturalar(f||[]); setCariList(c||[]); setLoading(false)
-  },[])
+  },[pageSize])
 
   useEffect(()=>{ load() },[load])
 
@@ -108,10 +109,11 @@ export default function FaturalarPage() {
             </button>
           ))}
           <div style={{flex:1}}/>
+          <button className="adm-btn-ghost" style={{fontSize:12}} onClick={()=>muh.exportCsv('faturalar.csv',filtered)}><Download size={13}/>CSV</button>
           <button className="adm-btn" onClick={()=>setModal(true)}><Plus size={14}/>Yeni Fatura</button>
         </div>
 
-        <div style={{display:'grid',gridTemplateColumns:detay?'1fr 360px':'1fr',gap:16}}>
+        <div className={`adm-detail-grid ${detay?"has-detail":""}`}>
           <div className="adm-card">
             <div className="adm-card-h">Faturalar ({filtered.length})</div>
             {loading ? <p style={{padding:40,textAlign:'center',color:'var(--adm-tx3)'}}>Yükleniyor...</p>
@@ -135,6 +137,11 @@ export default function FaturalarPage() {
                 </div>
               )
             })}
+          {faturalar.length===pageSize && (
+            <div style={{padding:14,textAlign:'center'}}>
+              <button className="adm-btn-ghost" style={{fontSize:12}} onClick={()=>setPageSize(p=>p+200)}>Daha Fazla Yükle</button>
+            </div>
+          )}
           </div>
 
           {detay && (
