@@ -9,8 +9,8 @@ export default function Hero({ stats, settings }: { stats: Stats | null; setting
   ];
 
   return (
-    <section id="hero" className="relative grain overflow-hidden bg-[#0b0e0b] min-h-svh"
-      data-bg="#0b0e0b"
+    <section id="hero" className="relative grain overflow-hidden bg-[#eae6dd] min-h-svh"
+      data-bg="#eae6dd"
       style={{ display: "grid", gridTemplateColumns: "1fr" }}
       >
       {/* Desktop: 2 kolon */}
@@ -24,10 +24,10 @@ export default function Hero({ stats, settings }: { stats: Stats | null; setting
         <div className="js-hero-bg absolute inset-0 origin-center" style={{ transform: "scale(1.06)", willChange: "transform" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={IMG.fikir} alt="Alya Plastik plastik ürün koleksiyonu"
-            className="absolute inset-0 w-full h-full object-cover opacity-20"
+            className="absolute inset-0 w-full h-full object-cover opacity-[0.09]"
             style={{ objectPosition: "30% center" }} />
           <div className="absolute inset-0"
-            style={{ background: "linear-gradient(to right, rgba(11,14,11,0.98) 0%, rgba(11,14,11,0.85) 100%)" }} />
+            style={{ background: "linear-gradient(to right, rgba(234,230,221,0.97) 0%, rgba(234,230,221,0.88) 100%)" }} />
         </div>
 
         {/* Turuncu dikey çizgi - sol kenar */}
@@ -38,59 +38,53 @@ export default function Hero({ stats, settings }: { stats: Stats | null; setting
         <div className="anim-hero-sub flex items-center gap-3 mb-7 relative z-10">
           <div className="w-8 h-px bg-[#e55f28]" />
           <span className="eyebrow text-[#e55f28] tracking-[0.25em]">
-            Plastik Ürün Üreticisi · {settings?.founded ?? 1968}
+            {settings?.founded ?? 1968}&apos;den beri İstanbul&apos;da üretim
           </span>
         </div>
 
         {/* Ana başlık — maskeli reveal */}
         <div className="relative z-10 mb-10">
           <div className="overflow-hidden">
-            <h1 className="anim-hero-line heading text-[#eae6dd]"
-              style={{ fontSize: "clamp(72px,10vw,160px)" }}>FORM</h1>
+            <h1 className="anim-hero-line heading text-[#0b0e0b]"
+              style={{ fontSize: "clamp(64px,9vw,140px)" }}>İSTANBUL&apos;DA</h1>
           </div>
           <div className="overflow-hidden">
             <h1 className="anim-hero-line heading"
-              style={{ fontSize: "clamp(72px,10vw,160px)", color: "transparent", WebkitTextStroke: "1.5px rgba(229,95,40,0.6)", fontStyle: "italic" }}>
-              &amp; FONKSİYON
+              style={{ fontSize: "clamp(64px,9vw,140px)", color: "transparent", WebkitTextStroke: "1.5px rgba(11,14,11,0.55)", fontStyle: "italic" }}>
+              ENJEKSİYONLA
             </h1>
           </div>
           <div className="overflow-hidden">
-            <h1 className="anim-hero-line heading text-[#eae6dd]"
-              style={{ fontSize: "clamp(72px,10vw,160px)" }}>1968&apos;DEN.</h1>
+            <h1 className="anim-hero-line heading text-[#0b0e0b]"
+              style={{ fontSize: "clamp(64px,9vw,140px)" }}>ÜRETİYORUZ.</h1>
           </div>
         </div>
 
         {/* Açıklama */}
         <p className="anim-hero-sub text-[#6b7366] font-light leading-relaxed mb-10 relative z-10"
-          style={{ maxWidth: 340, fontSize: "clamp(14px,1.3vw,16px)" }}>
-          {stats?.years ?? 55} yıllık üretim deneyimi. {stats?.models ?? 200}+ model.
-          {stats?.countries ?? 20}+ ülke ihracatı.
+          style={{ maxWidth: 360, fontSize: "clamp(14px,1.3vw,16px)" }}>
+          Saksı, sepet ve depolama ürünlerini kendi kalıp ve enjeksiyon hatlarımızda üretiyoruz —
+          {" "}{stats?.years ?? 55} yıldır aynı çatı altında.
         </p>
 
         {/* CTA */}
         <div className="anim-hero-sub flex flex-wrap gap-3 relative z-10">
-          <a href="#products"
-            className="anim-magnetic inline-flex items-center gap-2 bg-[#e55f28] hover:bg-[#c94f1e] text-white text-[11px] font-semibold tracking-[0.14em] uppercase px-7 py-4 transition-colors">
-            Ürünleri Keşfet →
-          </a>
           <a href="#contact"
-            className="anim-magnetic inline-flex items-center gap-2 border border-white/20 hover:border-white/50 text-[#eae6dd] text-[11px] font-semibold tracking-[0.14em] uppercase px-7 py-4 transition-colors">
-            Teklif Al
+            className="anim-magnetic inline-flex items-center gap-2 bg-[#e55f28] hover:bg-[#c94f1e] text-white text-[11px] font-semibold tracking-[0.14em] uppercase px-7 py-4 transition-colors">
+            Teklif Al →
+          </a>
+          <a href="#products"
+            className="anim-magnetic inline-flex items-center gap-2 border border-[#0b0e0b]/20 hover:border-[#0b0e0b]/50 text-[#0b0e0b] text-[11px] font-semibold tracking-[0.14em] uppercase px-7 py-4 transition-colors">
+            Kataloğa Bak
           </a>
         </div>
 
-        {/* Slot machine stats — altta */}
-        <div className="anim-hero-sub flex gap-10 mt-14 relative z-10">
+        {/* Üretim özeti — statik, sayaç yok */}
+        <div className="anim-hero-sub flex flex-wrap gap-x-10 gap-y-4 mt-14 relative z-10">
           {st.map(s => (
             <div key={s.l}>
-              <div className="heading text-[#e55f28] overflow-hidden"
-                style={{ fontSize: "clamp(36px,5vw,64px)", lineHeight: 1, height: "clamp(36px,5vw,64px)" }}>
-                <span className="slot-ticker" data-target={s.n} data-suffix={s.s}
-                  style={{ display: "inline-flex", flexDirection: "column", overflow: "hidden", height: "clamp(36px,5vw,64px)" }}>
-                  <span className="slot-ticker-inner">
-                    <span style={{ display: "block", lineHeight: 1 }}>0{s.s}</span>
-                  </span>
-                </span>
+              <div className="heading text-[#e55f28]" style={{ fontSize: "clamp(28px,3.6vw,44px)", lineHeight: 1 }}>
+                {s.n}{s.s}
               </div>
               <div className="eyebrow text-[#6b7366] mt-2" style={{ fontSize: 9 }}>{s.l}</div>
             </div>
@@ -99,15 +93,15 @@ export default function Hero({ stats, settings }: { stats: Stats | null; setting
       </div>
 
       {/* ── Sağ: Ürün görseli ──────────────────────────── */}
-      <div className="relative overflow-hidden hidden md:block" style={{ background: "#111511" }}>
+      <div className="relative overflow-hidden hidden md:block" style={{ background: "#e3ddcf" }}>
         {/* Turuncu bölücü çizgi */}
         <div className="split-line absolute left-0 top-0 bottom-0"
           style={{ background: "linear-gradient(to bottom, transparent, #e55f28 20%, #e55f28 80%, transparent)" }} />
 
         {/* Ürün grid — 2x2 dönen ürünler */}
-        <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-px bg-[#1e241e]">
+        <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-px bg-[#0b0e0b]/8">
           {[IMG.ufo, IMG.dantel, IMG.d3, IMG.venusAsk].map((src, i) => (
-            <div key={i} className="relative overflow-hidden tilt-card" style={{ background: i % 2 === 0 ? "#181d18" : "#1a1f1a" }}>
+            <div key={i} className="relative overflow-hidden tilt-card" style={{ background: i % 2 === 0 ? "#eae6dd" : "#e8e2d3" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={src} alt="Alya Plastik saksı koleksiyonu"
                 className="tilt-card-inner product-spin absolute inset-0 w-full h-full object-contain"
@@ -118,7 +112,7 @@ export default function Hero({ stats, settings }: { stats: Stats | null; setting
 
         {/* Ürün kodu overlay */}
         <div className="absolute bottom-8 right-8 z-10">
-          <span className="eyebrow text-white/30 text-[9px]">KOLEKSİYON 2024/25</span>
+          <span className="eyebrow text-[#0b0e0b]/35 text-[9px]">KOLEKSİYON 2024/25</span>
         </div>
       </div>
 
@@ -126,8 +120,8 @@ export default function Hero({ stats, settings }: { stats: Stats | null; setting
       <div className="absolute right-0 top-[8%] w-[40%] h-[60%] z-[5] pointer-events-none md:hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={IMG.kordon} alt="Alya Plastik Kordon Saksı ALY-110"
-          className="js-hero-product w-full h-full object-contain opacity-40"
-          style={{ filter: "drop-shadow(0 40px 80px rgba(0,0,0,0.9))" }} />
+          className="js-hero-product w-full h-full object-contain opacity-70"
+          style={{ filter: "drop-shadow(0 40px 80px rgba(11,14,11,0.18))" }} />
       </div>
 
       {/* Alt progress çizgisi */}
@@ -136,10 +130,10 @@ export default function Hero({ stats, settings }: { stats: Stats | null; setting
 
       {/* Scroll indicator */}
       <div className="anim-hero-sub absolute bottom-8 left-1/2 -translate-x-1/2 z-10 hidden md:flex flex-col items-center gap-2">
-        <div className="relative w-5 h-8 rounded-full border border-white/20 flex justify-center pt-1.5">
+        <div className="relative w-5 h-8 rounded-full border border-[#0b0e0b]/20 flex justify-center pt-1.5">
           <div className="w-1 h-2 rounded-full bg-[#e55f28] animate-bounce" />
         </div>
-        <span className="eyebrow text-white/20" style={{ fontSize: 9 }}>KAYDIR</span>
+        <span className="eyebrow text-[#0b0e0b]/35" style={{ fontSize: 9 }}>KAYDIR</span>
       </div>
     </section>
   );

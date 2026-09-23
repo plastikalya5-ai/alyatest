@@ -14,11 +14,10 @@ export default function Collection({ products }: { products: Product[] }) {
   const BG = ["#181d18","#1e241e","#161b16","#1a1f1a"];
 
   return (
-    <section id="collection" className="bg-[#0b0e0b]" data-bg="#0b0e0b" style={{ paddingBlock:"clamp(72px,9vw,130px)" }}>
+    <section id="collection" className="bg-[#eae6dd]" data-bg="#eae6dd" style={{ paddingBlock:"clamp(72px,9vw,130px)" }}>
       <div className="flex flex-wrap items-end justify-between gap-4 mb-10" style={{ paddingInline:"clamp(20px,5vw,80px)" }}>
         <div>
-          <p className="anim-eyebrow eyebrow text-[#e55f28] mb-3">— Tüm Koleksiyon</p>
-          <h2 className="anim-split-heading heading text-[#eae6dd]" style={{ fontSize:"clamp(44px,7vw,96px)" }}>
+          <h2 className="anim-split-heading heading text-[#0b0e0b]" style={{ fontSize:"clamp(44px,7vw,96px)" }}>
             {products.length}+ MODEL
           </h2>
         </div>

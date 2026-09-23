@@ -13,7 +13,7 @@ export default function HorizontalPin({ products }: { products: Product[] }) {
         {/* Sol sabit başlık */}
         <div className="absolute left-0 top-0 bottom-0 z-10 flex flex-col justify-center bg-[#eae6dd]"
           style={{ width: "clamp(200px,22vw,320px)", paddingLeft: "clamp(20px,5vw,80px)", paddingRight: 40 }}>
-          <p className="anim-eyebrow eyebrow text-[#6b7366] mb-4">— Sürükle</p>
+          <p className="anim-eyebrow eyebrow text-[#6b7366] mb-4">Sürükle</p>
           <h2 className="heading text-[#0b0e0b]" style={{ fontSize: "clamp(40px,5vw,72px)" }}>
             TÜM<br />FORM<br />LAR.
           </h2>
@@ -67,7 +67,7 @@ export default function HorizontalPin({ products }: { products: Product[] }) {
       {/* Mobil: normal grid */}
       <section className="md:hidden bg-[#eae6dd]" data-bg="#eae6dd"
         style={{ paddingBlock: "clamp(56px,8vw,100px)", paddingInline: "clamp(20px,5vw,80px)" }}>
-        <p className="anim-eyebrow eyebrow text-[#6b7366] mb-3">— Koleksiyon</p>
+        <p className="anim-eyebrow eyebrow text-[#6b7366] mb-3">Koleksiyon</p>
         <h2 className="anim-split-heading heading text-[#0b0e0b] mb-8"
           style={{ fontSize: "clamp(44px,10vw,72px)" }}>
           TÜM FORMLAR.

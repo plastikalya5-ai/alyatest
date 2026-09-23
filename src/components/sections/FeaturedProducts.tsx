@@ -2,19 +2,19 @@ import type { Product } from "@/lib/supabase";
 
 export default function FeaturedProducts({ products }: { products: Product[] }) {
   return (
-    <section id="products" className="bg-[#111511]" data-bg="#111511"
+    <section id="products" className="bg-[#eae6dd]" data-bg="#eae6dd"
       style={{ paddingBlock: "clamp(72px,9vw,130px)" }}>
       <div style={{ paddingInline: "clamp(20px,5vw,80px)" }}>
 
         <div className="flex flex-wrap items-end justify-between gap-4 mb-12">
           <div>
             <p className="anim-eyebrow eyebrow text-[#e55f28] mb-3">— Öne Çıkan Ürünler</p>
-            <h2 className="anim-split-heading heading text-[#eae6dd]"
+            <h2 className="anim-split-heading heading text-[#0b0e0b]"
               style={{ fontSize: "clamp(44px,7vw,96px)" }}>
               KOLEKSİYON
             </h2>
           </div>
-          <a href="#collection" className="scramble anim-up eyebrow text-[#6b7366] hover:text-white transition-colors">
+          <a href="#collection" className="scramble anim-up eyebrow text-[#6b7366] hover:text-[#0b0e0b] transition-colors">
             Tüm Ürünler →
           </a>
         </div>

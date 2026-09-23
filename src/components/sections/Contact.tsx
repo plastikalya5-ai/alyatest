@@ -41,12 +41,12 @@ export default function Contact({ settings }: { settings: Settings | null }) {
   };
 
   return (
-    <section id="contact" className="bg-[#111511]" data-bg="#111511" style={{ paddingBlock:"clamp(72px,9vw,130px)" }}>
+    <section id="contact" className="bg-[#eae6dd]" data-bg="#eae6dd" style={{ paddingBlock:"clamp(72px,9vw,130px)" }}>
       <div style={{ paddingInline:"clamp(20px,5vw,80px)" }}>
 
         <div className="mb-12">
           <p className="anim-eyebrow eyebrow text-[#e55f28] mb-3">— İletişim</p>
-          <h2 className="anim-split-heading heading text-[#eae6dd]" style={{ fontSize:"clamp(44px,7vw,96px)" }}>
+          <h2 className="anim-split-heading heading text-[#0b0e0b]" style={{ fontSize:"clamp(44px,7vw,96px)" }}>
             BİRLİKTE<br />ÜRETELIM.
           </h2>
         </div>
@@ -61,15 +61,15 @@ export default function Contact({ settings }: { settings: Settings | null }) {
               <a key={c.l} href={c.h}
                 target={c.h.startsWith("http") ? "_blank" : undefined}
                 rel={c.h.startsWith("http") ? "noopener noreferrer nofollow" : undefined}
-                className="flex items-center justify-between py-4 border-b border-white/8 hover:opacity-60 transition-opacity"
+                className="flex items-center justify-between py-4 border-b border-[#0b0e0b]/10 hover:opacity-60 transition-opacity"
                 style={{ transitionDelay:`${i*40}ms` }}>
                 <span className="eyebrow text-[#6b7366] text-[10px]">{c.l}</span>
-                <span className="text-[#eae6dd] text-sm">{c.v} →</span>
+                <span className="text-[#0b0e0b] text-sm">{c.v} →</span>
               </a>
             ))}
             <address className="not-italic mt-8 text-[#6b7366] text-sm leading-loose">
               {s?.address ?? "İkitelli OSB 4B Blok No:26-28 Kat:2, Başakşehir / İstanbul"}<br />
-              <span className="text-white/20">{s?.working_hours ?? "Pzt–Cum 08:30–17:30"}</span>
+              <span className="text-[#0b0e0b]/40">{s?.working_hours ?? "Pzt–Cum 08:30–17:30"}</span>
             </address>
           </div>
 
@@ -78,7 +78,7 @@ export default function Contact({ settings }: { settings: Settings | null }) {
             {sent ? (
               <div className="flex flex-col justify-center min-h-[300px]">
                 <div className="heading text-[#e55f28] text-[72px] mb-3">✓</div>
-                <h3 className="heading text-[#eae6dd] text-4xl mb-3">ALINDI.</h3>
+                <h3 className="heading text-[#0b0e0b] text-4xl mb-3">ALINDI.</h3>
                 <p className="text-[#6b7366] text-[15px] leading-relaxed">En kısa sürede dönüş yapılacaktır.</p>
               </div>
             ) : (
@@ -94,8 +94,8 @@ export default function Contact({ settings }: { settings: Settings | null }) {
                 <div>
                   <label className="eyebrow text-[#6b7366] text-[10px] block mb-2.5">Konu</label>
                   <select value={sub} onChange={e => setSub(e.target.value)}
-                    className="w-full bg-transparent border-b border-white/10 py-3 text-sm outline-none appearance-none"
-                    style={{ color: sub ? "#eae6dd" : "#6b7366" }}>
+                    className="w-full bg-transparent border-b border-[#0b0e0b]/15 py-3 text-sm outline-none appearance-none"
+                    style={{ color: sub ? "#0b0e0b" : "#6b7366" }}>
                     <option value="" disabled>Seçin</option>
                     <option value="Ürün Bilgisi">Ürün Bilgisi</option>
                     <option value="Fiyat Talebi">Fiyat Talebi</option>
@@ -108,7 +108,7 @@ export default function Contact({ settings }: { settings: Settings | null }) {
                 <div>
                   <label className="eyebrow text-[#6b7366] text-[10px] block mb-2.5">Mesajınız *</label>
                   <textarea name="message" required rows={4}
-                    className="w-full bg-transparent border-b border-white/10 py-3 text-sm text-[#eae6dd] outline-none resize-none focus:border-[#e55f28] transition-colors" />
+                    className="w-full bg-transparent border-b border-[#0b0e0b]/15 py-3 text-sm text-[#0b0e0b] outline-none resize-none focus:border-[#e55f28] transition-colors" />
                 </div>
                 {error && <p className="text-[#e55f28] text-xs">{error}</p>}
                 <div className="flex flex-wrap gap-3 pt-2">
@@ -117,11 +117,11 @@ export default function Contact({ settings }: { settings: Settings | null }) {
                     {loading ? "Gönderiliyor..." : "Gönder →"}
                   </button>
                   <a href={wa} target="_blank" rel="noopener noreferrer nofollow"
-                    className="inline-flex items-center gap-2 border border-white/20 hover:border-white/50 text-[#eae6dd] text-[11px] font-semibold tracking-[0.14em] uppercase px-7 py-3.5 transition-colors">
-                    WhatsApp →
+                    className="inline-flex items-center gap-2 border border-[#0b0e0b]/20 hover:border-[#0b0e0b]/50 text-[#0b0e0b] text-[11px] font-semibold tracking-[0.14em] uppercase px-7 py-3.5 transition-colors">
+                    WhatsApp
                   </a>
                 </div>
-                <p className="eyebrow text-white/20 text-[10px]">KVKK kapsamında kişisel verileriniz işlenir.</p>
+                <p className="eyebrow text-[#0b0e0b]/35 text-[10px]">KVKK kapsamında kişisel verileriniz işlenir.</p>
               </form>
             )}
           </div>
@@ -136,7 +136,7 @@ function Field({ label, name, type, required }: { label:string; name:string; typ
     <div>
       <label className="eyebrow text-[#6b7366] text-[10px] block mb-2.5">{label}</label>
       <input name={name} type={type} required={required}
-        className="w-full bg-transparent border-b border-white/10 py-3 text-sm text-[#eae6dd] outline-none focus:border-[#e55f28] transition-colors" />
+        className="w-full bg-transparent border-b border-[#0b0e0b]/15 py-3 text-sm text-[#0b0e0b] outline-none focus:border-[#e55f28] transition-colors" />
     </div>
   );
 }

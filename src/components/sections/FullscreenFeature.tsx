@@ -14,7 +14,7 @@ export default function FullscreenFeature() {
       <div className="relative z-10 w-full"
         style={{ paddingInline: "clamp(20px,5vw,80px)", paddingBlock: "clamp(80px,10vw,140px)" }}>
 
-        <p className="anim-eyebrow eyebrow text-[#e55f28] mb-5">— Üretim Felsefemiz</p>
+        <p className="anim-eyebrow eyebrow text-[#e55f28] mb-5">Üretim Felsefemiz</p>
 
         <h2 className="anim-split-heading heading text-[#eae6dd] mb-8"
           style={{ fontSize: "clamp(52px,10vw,150px)", maxWidth: "72%", lineHeight: 0.88 }}>

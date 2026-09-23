@@ -4,7 +4,7 @@ export default function NotFound() {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "#0b0e0b",
+      background: "#eae6dd",
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
@@ -20,7 +20,7 @@ export default function NotFound() {
         lineHeight: 1,
         letterSpacing: "-0.04em",
         color: "transparent",
-        WebkitTextStroke: "1px rgba(234,230,221,0.12)",
+        WebkitTextStroke: "1px rgba(11,14,11,0.12)",
         userSelect: "none",
         marginBottom: 0,
       }}>
@@ -33,7 +33,7 @@ export default function NotFound() {
       <h1 style={{
         fontSize: "clamp(22px, 4vw, 36px)",
         fontWeight: 700,
-        color: "#eae6dd",
+        color: "#0b0e0b",
         letterSpacing: "-0.03em",
         marginBottom: 12,
         textAlign: "center",
@@ -73,8 +73,8 @@ export default function NotFound() {
           alignItems: "center",
           gap: 8,
           background: "transparent",
-          color: "#eae6dd",
-          border: "1px solid rgba(234,230,221,0.15)",
+          color: "#0b0e0b",
+          border: "1px solid rgba(11,14,11,0.15)",
           borderRadius: 10,
           padding: "12px 24px",
           fontSize: 14,

@@ -28,8 +28,8 @@ export default function Header({ settings }: { settings: Settings | null }) {
 
   return (
     <>
-      <header className={`fixed inset-x-0 top-0 z-80 flex items-center justify-between h-[68px] transition-all duration-500 ${
-        scrolled || open ? "bg-[#0b0e0b]/94 backdrop-blur-xl border-b border-white/8" : "border-b border-transparent"
+      <header className={`fixed inset-x-0 top-0 z-80 flex items-center justify-between h-[68px] bg-[#0b0e0b] transition-all duration-500 ${
+        scrolled || open ? "shadow-[0_8px_24px_rgba(11,14,11,0.18)] border-b border-white/8" : "border-b border-transparent"
       }`} style={{ paddingInline: "clamp(20px,5vw,80px)" }}>
 
         <Link href="/" className="flex items-baseline shrink-0">

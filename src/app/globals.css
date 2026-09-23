@@ -2,15 +2,16 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg:      #0b0e0b;
-  --color-bg2:     #111511;
-  --color-bg3:     #181d18;
-  --color-bg4:     #1e241e;
+  --color-bg:      #eae6dd;
+  --color-bg2:     #e3ddcf;
+  --color-dark:    #0b0e0b;
+  --color-dark2:   #111511;
+  --color-dark3:   #181d18;
   --color-light:   #eae6dd;
   --color-muted:   #6b7366;
   --color-orange:  #e55f28;
   --color-orange2: #c94f1e;
-  --color-border:  rgba(255,255,255,0.08);
+  --color-border:  rgba(11,14,11,0.1);
 
   --font-head: 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
   --font-body: 'Inter', Arial, sans-serif;
@@ -24,8 +25,8 @@ html { overflow-x: hidden; scroll-padding-top: 72px; scroll-behavior: smooth; }
 html, body { scrollbar-width: none; }
 ::-webkit-scrollbar { display: none; }
 body {
-  background-color: #0b0e0b;
-  color: #eae6dd;
+  background-color: #eae6dd;
+  color: #0b0e0b;
   font-family: 'Inter', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
@@ -170,7 +171,7 @@ img { max-width: 100%; display: block; }
 .progress-dot {
   width: 5px; height: 5px;
   border-radius: 9999px;
-  background: rgba(255,255,255,0.2);
+  background: rgba(11,14,11,0.18);
   transition: all 0.4s ease;
 }
 .progress-dot.active {
@@ -179,7 +180,10 @@ img { max-width: 100%; display: block; }
   border-radius: 3px;
 }
 
-/* ── Krem section ────────────────────────── */
+/* ── Krem / koyu bölüm varyantları ────────── */
 .section-cream { background: #eae6dd; color: #0b0e0b; }
 .section-cream .eyebrow { color: #6b7366; }
 .section-cream .heading { color: #0b0e0b; }
+.section-dark { background: #0b0e0b; color: #eae6dd; }
+.section-dark .eyebrow { color: #e55f28; }
+.section-dark .heading { color: #eae6dd; }
