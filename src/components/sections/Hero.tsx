@@ -46,17 +46,13 @@ export default function Hero({ stats, settings }: { stats: Stats | null; setting
         <div className="relative z-10 mb-10">
           <div className="overflow-hidden">
             <h1 className="anim-hero-line heading text-[#0b0e0b]"
-              style={{ fontSize: "clamp(64px,9vw,140px)" }}>İSTANBUL&apos;DA</h1>
-          </div>
-          <div className="overflow-hidden">
-            <h1 className="anim-hero-line heading"
-              style={{ fontSize: "clamp(64px,9vw,140px)", color: "transparent", WebkitTextStroke: "1.5px rgba(11,14,11,0.55)", fontStyle: "italic" }}>
-              ENJEKSİYONLA
+              style={{ fontSize: "clamp(52px,7.5vw,110px)", lineHeight: 0.95 }}>
+              İSTANBUL&apos;DA ENJEKSİYONLA
             </h1>
           </div>
           <div className="overflow-hidden">
-            <h1 className="anim-hero-line heading text-[#0b0e0b]"
-              style={{ fontSize: "clamp(64px,9vw,140px)" }}>ÜRETİYORUZ.</h1>
+            <h1 className="anim-hero-line heading text-[#e55f28]"
+              style={{ fontSize: "clamp(52px,7.5vw,110px)", lineHeight: 0.95 }}>ÜRETİYORUZ.</h1>
           </div>
         </div>
 

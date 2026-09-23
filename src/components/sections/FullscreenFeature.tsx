@@ -17,9 +17,8 @@ export default function FullscreenFeature() {
         <p className="anim-eyebrow eyebrow text-[#e55f28] mb-5">Üretim Felsefemiz</p>
 
         <h2 className="anim-split-heading heading text-[#eae6dd] mb-8"
-          style={{ fontSize: "clamp(52px,10vw,150px)", maxWidth: "72%", lineHeight: 0.88 }}>
-          FİKİRDEN<br />
-          <span className="italic" style={{ color: "transparent", WebkitTextStroke: "1.5px rgba(229,95,40,0.5)" }}>FORMA.</span>
+          style={{ fontSize: "clamp(48px,8vw,110px)", maxWidth: "72%", lineHeight: 0.95 }}>
+          FİKİRDEN <span style={{ color: "#e55f28" }}>FORMA.</span>
         </h2>
 
         <p className="anim-up font-light leading-loose text-[#6b7366] mb-10"
