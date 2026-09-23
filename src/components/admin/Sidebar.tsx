@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState } from 'react'
-import { LayoutDashboard, Package, Tag, MessageSquare, Settings, BarChart2, TrendingUp, Eye, Image, LogOut, ExternalLink, FileText, Bell, Activity, Layers, Globe } from 'lucide-react'
+import { LayoutDashboard, Package, Tag, MessageSquare, Settings, BarChart2, TrendingUp, Eye, Image, LogOut, ExternalLink, FileText, Bell, Activity, Layers, DollarSign, Receipt, Users2, PieChart } from 'lucide-react'
 
 const NAV = [
   { g:'Genel', items:[
@@ -21,6 +21,13 @@ const NAV = [
   { g:'Müşteri', items:[
     { href:'/admin/dashboard/basvurular',   label:'Başvurular',      Icon:MessageSquare },
     { href:'/admin/dashboard/ziyaretciler', label:'Ziyaretçiler',    Icon:Eye },
+  ]},
+  { g:'Muhasebe', items:[
+    { href:'/admin/dashboard/muhasebe/genel',    label:'Genel Bakış',  Icon:DollarSign },
+    { href:'/admin/dashboard/muhasebe/islemler', label:'Gelir/Gider',  Icon:TrendingUp },
+    { href:'/admin/dashboard/muhasebe/faturalar',label:'Faturalar',    Icon:Receipt },
+    { href:'/admin/dashboard/muhasebe/cari',     label:'Cari Hesaplar',Icon:Users2 },
+    { href:'/admin/dashboard/muhasebe/raporlar', label:'Raporlar',     Icon:PieChart },
   ]},
   { g:'Site Yönetimi', items:[
     { href:'/admin/dashboard/icerik',       label:'İçerik',          Icon:FileText },
