@@ -1,6 +1,5 @@
 "use client";
 import { useState } from "react";
-import { submitContact } from "@/lib/supabase";
 import type { Settings } from "@/lib/supabase";
 
 export default function Contact({ settings }: { settings: Settings | null }) {
@@ -23,14 +22,19 @@ export default function Contact({ settings }: { settings: Settings | null }) {
     e.preventDefault();
     setLoading(true); setError("");
     const fd = new FormData(e.currentTarget);
-    const { error: err } = await submitContact({
-      name:    fd.get("name") as string,
-      company: fd.get("company") as string,
-      email:   fd.get("email") as string,
-      phone:   fd.get("phone") as string,
-      subject: sub,
-      message: fd.get("message") as string,
+    const res = await fetch('/api/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name:    fd.get("name"),
+        company: fd.get("company"),
+        email:   fd.get("email"),
+        phone:   fd.get("phone"),
+        subject: sub,
+        message: fd.get("message"),
+      }),
     });
+    const { error: err } = await res.json();
     setLoading(false);
     if (err) { setError("Bir hata oluştu, lütfen tekrar deneyin."); }
     else { setSent(true); }
