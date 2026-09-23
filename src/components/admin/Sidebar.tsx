@@ -6,57 +6,57 @@ import { useEffect, useState } from 'react'
 import { LayoutDashboard, Package, Tag, MessageSquare, Settings, BarChart2, TrendingUp, Eye, Image, LogOut, ExternalLink, FileText, Bell, Activity, Layers, DollarSign, Receipt, Users2, PieChart, Landmark, FileSignature, Warehouse, Boxes, ArrowLeftRight, Cog, Wrench, FlaskConical, Factory, Zap, ClipboardList, PackageSearch, Truck, ShieldCheck, FlameKindling, UserCog } from 'lucide-react'
 
 const NAV = [
-  { g:'Genel', items:[
-    { href:'/admin/dashboard',              label:'Dashboard',       Icon:LayoutDashboard },
-    { href:'/admin/dashboard/analytics',    label:'Analitik',        Icon:TrendingUp },
-    { href:'/admin/dashboard/istatistik',   label:'İstatistikler',   Icon:BarChart2 },
-    { href:'/admin/dashboard/aktivite',     label:'Aktivite Logu',   Icon:Activity },
+  { g:'Genel', mod:['dashboard'], items:[
+    { href:'/admin/dashboard',              label:'Dashboard',       Icon:LayoutDashboard, mod:['dashboard'] },
+    { href:'/admin/dashboard/analytics',    label:'Analitik',        Icon:TrendingUp,      mod:['dashboard'] },
+    { href:'/admin/dashboard/istatistik',   label:'İstatistikler',   Icon:BarChart2,       mod:['dashboard'] },
+    { href:'/admin/dashboard/aktivite',     label:'Aktivite Logu',   Icon:Activity,        mod:['yonetim'] },
   ]},
-  { g:'Ürün Yönetimi', items:[
-    { href:'/admin/dashboard/urunler',      label:'Ürünler',         Icon:Package },
-    { href:'/admin/dashboard/kategoriler',  label:'Kategoriler',     Icon:Tag },
-    { href:'/admin/dashboard/varyantlar',   label:'Varyantlar',      Icon:Layers },
-    { href:'/admin/dashboard/gorseller',    label:'Görseller',       Icon:Image },
+  { g:'Ürün Yönetimi', mod:['yonetim'], items:[
+    { href:'/admin/dashboard/urunler',      label:'Ürünler',         Icon:Package, mod:['yonetim'] },
+    { href:'/admin/dashboard/kategoriler',  label:'Kategoriler',     Icon:Tag,     mod:['yonetim'] },
+    { href:'/admin/dashboard/varyantlar',   label:'Varyantlar',      Icon:Layers,  mod:['yonetim'] },
+    { href:'/admin/dashboard/gorseller',    label:'Görseller',       Icon:Image,   mod:['yonetim'] },
   ]},
-  { g:'Müşteri', items:[
-    { href:'/admin/dashboard/basvurular',   label:'Başvurular',      Icon:MessageSquare },
-    { href:'/admin/dashboard/ziyaretciler', label:'Ziyaretçiler',    Icon:Eye },
+  { g:'Müşteri', mod:['dashboard'], items:[
+    { href:'/admin/dashboard/basvurular',   label:'Başvurular',      Icon:MessageSquare, mod:['dashboard'] },
+    { href:'/admin/dashboard/ziyaretciler', label:'Ziyaretçiler',    Icon:Eye,           mod:['dashboard'] },
   ]},
-  { g:'Muhasebe', items:[
-    { href:'/admin/dashboard/muhasebe/genel',    label:'Genel Bakış',  Icon:DollarSign },
-    { href:'/admin/dashboard/muhasebe/islemler', label:'Gelir/Gider',  Icon:TrendingUp },
-    { href:'/admin/dashboard/muhasebe/faturalar',label:'Faturalar',    Icon:Receipt },
-    { href:'/admin/dashboard/muhasebe/cari',     label:'Cari Hesaplar',Icon:Users2 },
-    { href:'/admin/dashboard/muhasebe/kasa-banka',label:'Kasa/Banka',  Icon:Landmark },
-    { href:'/admin/dashboard/muhasebe/cek-senet', label:'Çek/Senet',   Icon:FileSignature },
-    { href:'/admin/dashboard/muhasebe/raporlar', label:'Raporlar',     Icon:PieChart },
+  { g:'Muhasebe', mod:['muhasebe','muhasebe_cari'], items:[
+    { href:'/admin/dashboard/muhasebe/genel',    label:'Genel Bakış',  Icon:DollarSign,  mod:['muhasebe'] },
+    { href:'/admin/dashboard/muhasebe/islemler', label:'Gelir/Gider',  Icon:TrendingUp,  mod:['muhasebe'] },
+    { href:'/admin/dashboard/muhasebe/faturalar',label:'Faturalar',    Icon:Receipt,     mod:['muhasebe'] },
+    { href:'/admin/dashboard/muhasebe/cari',     label:'Cari Hesaplar',Icon:Users2,      mod:['muhasebe','muhasebe_cari'] },
+    { href:'/admin/dashboard/muhasebe/kasa-banka',label:'Kasa/Banka',  Icon:Landmark,    mod:['muhasebe'] },
+    { href:'/admin/dashboard/muhasebe/cek-senet', label:'Çek/Senet',   Icon:FileSignature,mod:['muhasebe'] },
+    { href:'/admin/dashboard/muhasebe/raporlar', label:'Raporlar',     Icon:PieChart,    mod:['muhasebe'] },
   ]},
-  { g:'Stok / Depo', items:[
-    { href:'/admin/dashboard/stok/depo',       label:'Depolar',           Icon:Warehouse },
-    { href:'/admin/dashboard/stok/hammadde',   label:'Hammadde',          Icon:Boxes },
-    { href:'/admin/dashboard/stok/hareketler', label:'Stok Hareketleri',  Icon:ArrowLeftRight },
+  { g:'Stok / Depo', mod:['stok'], items:[
+    { href:'/admin/dashboard/stok/depo',       label:'Depolar',           Icon:Warehouse,     mod:['stok'] },
+    { href:'/admin/dashboard/stok/hammadde',   label:'Hammadde',          Icon:Boxes,         mod:['stok'] },
+    { href:'/admin/dashboard/stok/hareketler', label:'Stok Hareketleri',  Icon:ArrowLeftRight,mod:['stok'] },
   ]},
-  { g:'Üretim', items:[
-    { href:'/admin/dashboard/uretim/makine',  label:'Makineler',        Icon:Cog },
-    { href:'/admin/dashboard/uretim/kalip',   label:'Kalıplar',         Icon:Wrench },
-    { href:'/admin/dashboard/uretim/recete',  label:'BOM / Reçeteler',  Icon:FlaskConical },
-    { href:'/admin/dashboard/uretim/emirler', label:'Üretim Emirleri',  Icon:Factory },
-    { href:'/admin/dashboard/uretim/canli',   label:'Canlı Üretim',     Icon:Zap },
+  { g:'Üretim', mod:['uretim'], items:[
+    { href:'/admin/dashboard/uretim/makine',  label:'Makineler',        Icon:Cog,          mod:['uretim'] },
+    { href:'/admin/dashboard/uretim/kalip',   label:'Kalıplar',         Icon:Wrench,       mod:['uretim'] },
+    { href:'/admin/dashboard/uretim/recete',  label:'BOM / Reçeteler',  Icon:FlaskConical, mod:['uretim'] },
+    { href:'/admin/dashboard/uretim/emirler', label:'Üretim Emirleri',  Icon:Factory,      mod:['uretim'] },
+    { href:'/admin/dashboard/uretim/canli',   label:'Canlı Üretim',     Icon:Zap,          mod:['uretim'] },
   ]},
-  { g:'Satış / Lojistik', items:[
-    { href:'/admin/dashboard/satis/siparisler',       label:'Satış Siparişleri',    Icon:ClipboardList },
-    { href:'/admin/dashboard/satinalma/siparisler',   label:'Satınalma Siparişleri',Icon:PackageSearch },
-    { href:'/admin/dashboard/sevkiyat',               label:'Sevkiyat / İhracat',   Icon:Truck },
+  { g:'Satış / Lojistik', mod:['satis','satinalma','sevkiyat'], items:[
+    { href:'/admin/dashboard/satis/siparisler',       label:'Satış Siparişleri',    Icon:ClipboardList, mod:['satis'] },
+    { href:'/admin/dashboard/satinalma/siparisler',   label:'Satınalma Siparişleri',Icon:PackageSearch, mod:['satinalma'] },
+    { href:'/admin/dashboard/sevkiyat',               label:'Sevkiyat / İhracat',   Icon:Truck,         mod:['sevkiyat','stok'] },
   ]},
-  { g:'Kalite & Bakım', items:[
-    { href:'/admin/dashboard/kalite/kontrol', label:'Kalite Kontrol', Icon:ShieldCheck },
-    { href:'/admin/dashboard/kalite/fire',    label:'Fire Yönetimi',  Icon:FlameKindling },
+  { g:'Kalite & Bakım', mod:['kalite'], items:[
+    { href:'/admin/dashboard/kalite/kontrol', label:'Kalite Kontrol', Icon:ShieldCheck,  mod:['kalite'] },
+    { href:'/admin/dashboard/kalite/fire',    label:'Fire Yönetimi',  Icon:FlameKindling,mod:['kalite'] },
   ]},
-  { g:'Site Yönetimi', items:[
-    { href:'/admin/dashboard/icerik',       label:'İçerik',          Icon:FileText },
-    { href:'/admin/dashboard/kullanicilar', label:'Kullanıcılar',    Icon:UserCog },
-    { href:'/admin/dashboard/ayarlar',      label:'Ayarlar',         Icon:Settings },
-    { href:'/admin/dashboard/bildirimler',  label:'Bildirimler',     Icon:Bell },
+  { g:'Site Yönetimi', mod:['yonetim'], items:[
+    { href:'/admin/dashboard/icerik',       label:'İçerik',          Icon:FileText, mod:['yonetim'] },
+    { href:'/admin/dashboard/kullanicilar', label:'Kullanıcılar',    Icon:UserCog,  mod:['yonetim'] },
+    { href:'/admin/dashboard/ayarlar',      label:'Ayarlar',         Icon:Settings, mod:['yonetim'] },
+    { href:'/admin/dashboard/bildirimler',  label:'Bildirimler',     Icon:Bell,     mod:['yonetim'] },
   ]},
 ]
 
@@ -64,16 +64,27 @@ export default function AdminSidebar({ onClose }: { onClose?: () => void } = {})
   const pathname = usePathname()
   const [init, setInit] = useState('AP')
   const [name, setName] = useState('Admin')
+  const [moduller, setModuller] = useState<string[]>([])
 
   useEffect(() => {
-    try {
-      createClient().auth.getUser().then(({ data: { user } }) => {
-        if (!user) return
-        const n = user.email?.split('@')[0] || 'Admin'
-        setName(n); setInit(n.slice(0,2).toUpperCase())
-      })
-    } catch {}
+    const sb = createClient()
+    sb.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return
+      const n = user.email?.split('@')[0] || 'Admin'
+      setName(n); setInit(n.slice(0,2).toUpperCase())
+
+      const { data: profile } = await sb.from('admin_profiles').select('role_id').eq('id', user.id).single()
+      if (profile?.role_id) {
+        const { data: role } = await sb.from('roller').select('moduller').eq('id', profile.role_id).single()
+        setModuller(role?.moduller || [])
+      }
+    }).catch(()=>{})
   }, [])
+
+  const hasAccess = (mod: string[]) => moduller.includes('*') || mod.some(m => moduller.includes(m))
+  const visibleNav = NAV
+    .map(sec => ({ ...sec, items: sec.items.filter(i => hasAccess(i.mod)) }))
+    .filter(sec => sec.items.length > 0)
 
   const active = (href: string) => href === '/admin/dashboard' ? pathname === href : pathname.startsWith(href)
 
@@ -92,7 +103,7 @@ export default function AdminSidebar({ onClose }: { onClose?: () => void } = {})
       </div>
 
       <nav className="adm-sb-nav">
-        {NAV.map(sec => (
+        {visibleNav.map(sec => (
           <div key={sec.g}>
             <p className="adm-sb-group">{sec.g}</p>
             {sec.items.map(({ href, label, Icon }) => (
