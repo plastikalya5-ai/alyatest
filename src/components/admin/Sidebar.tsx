@@ -3,29 +3,29 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState } from 'react'
-import { LayoutDashboard, Package, Tag, MessageSquare, Settings, BarChart2, TrendingUp, Eye, Image, LogOut, ExternalLink, FileText, Bell, Activity, Layers, Download } from 'lucide-react'
+import { LayoutDashboard, Package, Tag, MessageSquare, Settings, BarChart2, TrendingUp, Eye, Image, LogOut, ExternalLink, FileText, Bell, Activity, Layers, Globe } from 'lucide-react'
 
 const NAV = [
   { g:'Genel', items:[
-    { href:'/admin/dashboard',              label:'Dashboard',      Icon:LayoutDashboard },
-    { href:'/admin/dashboard/analytics',    label:'Analitik',       Icon:TrendingUp },
-    { href:'/admin/dashboard/istatistik',   label:'İstatistikler',  Icon:BarChart2 },
-    { href:'/admin/dashboard/aktivite',     label:'Aktivite',       Icon:Activity },
+    { href:'/admin/dashboard',              label:'Dashboard',       Icon:LayoutDashboard },
+    { href:'/admin/dashboard/analytics',    label:'Analitik',        Icon:TrendingUp },
+    { href:'/admin/dashboard/istatistik',   label:'İstatistikler',   Icon:BarChart2 },
+    { href:'/admin/dashboard/aktivite',     label:'Aktivite Logu',   Icon:Activity },
   ]},
   { g:'Ürün Yönetimi', items:[
-    { href:'/admin/dashboard/urunler',      label:'Ürünler',        Icon:Package },
-    { href:'/admin/dashboard/kategoriler',  label:'Kategoriler',    Icon:Tag },
-    { href:'/admin/dashboard/varyantlar',   label:'Varyantlar',     Icon:Layers },
-    { href:'/admin/dashboard/gorseller',    label:'Görseller',      Icon:Image },
+    { href:'/admin/dashboard/urunler',      label:'Ürünler',         Icon:Package },
+    { href:'/admin/dashboard/kategoriler',  label:'Kategoriler',     Icon:Tag },
+    { href:'/admin/dashboard/varyantlar',   label:'Varyantlar',      Icon:Layers },
+    { href:'/admin/dashboard/gorseller',    label:'Görseller',       Icon:Image },
   ]},
   { g:'Müşteri', items:[
-    { href:'/admin/dashboard/basvurular',   label:'Başvurular',     Icon:MessageSquare },
-    { href:'/admin/dashboard/ziyaretciler', label:'Ziyaretçiler',   Icon:Eye },
+    { href:'/admin/dashboard/basvurular',   label:'Başvurular',      Icon:MessageSquare },
+    { href:'/admin/dashboard/ziyaretciler', label:'Ziyaretçiler',    Icon:Eye },
   ]},
-  { g:'İçerik & Sistem', items:[
-    { href:'/admin/dashboard/icerik',       label:'İçerik Yönetimi',Icon:FileText },
-    { href:'/admin/dashboard/bildirimler',  label:'Bildirimler',    Icon:Bell },
-    { href:'/admin/dashboard/ayarlar',      label:'Site Ayarları',  Icon:Settings },
+  { g:'Site Yönetimi', items:[
+    { href:'/admin/dashboard/icerik',       label:'İçerik',          Icon:FileText },
+    { href:'/admin/dashboard/ayarlar',      label:'Ayarlar',         Icon:Settings },
+    { href:'/admin/dashboard/bildirimler',  label:'Bildirimler',     Icon:Bell },
   ]},
 ]
 
