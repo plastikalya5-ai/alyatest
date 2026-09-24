@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase/server'
+import { applyQuery } from '@/lib/proxy-query'
 import { encryptField, decryptField } from '@/lib/field-crypto'
 
 // Muhasebe modülüne ait tablolar — sadece bunlara erişilebilir.
@@ -40,16 +41,15 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Oturum gerekli' }, { status: 401 })
 
   const p = Object.fromEntries(new URL(req.url).searchParams)
-  const { table, select='*', order, order_asc='false', eq, gte, lte, limit, count } = p
+  const sp = new URL(req.url).searchParams
+  const table = sp.get('table') || ''
+  const select = sp.get('select') || '*'
+  const count = sp.get('count')
   if (!table || !TABLES.has(table))
     return NextResponse.json({ error: 'Geçersiz tablo' }, { status: 400 })
 
   let q: any = sb.from(table).select(select, count==='true'?{count:'exact',head:true}:undefined)
-  if (eq)  { const [f,...r]=eq.split(':');  q=q.eq(f,r.join(':')) }
-  if (gte) { const [f,...r]=gte.split(':'); q=q.gte(f,r.join(':')) }
-  if (lte) { const [f,...r]=lte.split(':'); q=q.lte(f,r.join(':')) }
-  if (order) q=q.order(order,{ascending:order_asc==='true'})
-  if (limit) q=q.limit(+limit)
+  q = applyQuery(q, sp)
   const { data, error, count:cnt } = await q
   if (error) return NextResponse.json({error:error.message},{status:500})
   const decrypted = Array.isArray(data) ? data.map((row:any)=>decryptRow(table,row)) : data

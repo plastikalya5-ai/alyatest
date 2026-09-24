@@ -1,255 +1,222 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
 import { muh } from '@/lib/muhasebe-client'
-import { erp } from '@/lib/erp-client'
-import { Plus, Pencil, Trash2, X, Search, AlertTriangle, FileSignature } from 'lucide-react'
+import { fmt, fmtK, fmtDate, todayISO, daysBetween } from '@/lib/fmt'
+import { sum } from '@/lib/muh-utils'
+import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Modal, Field, FormGrid, Card, useToast } from '@/components/admin/erp/ui'
+import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
+import { TrendChart } from '@/components/admin/erp/charts'
+import { Plus, Pencil, Trash2, FileSignature, AlertTriangle, CalendarClock, ShieldAlert, Wallet, Repeat, Ban, CheckCircle2 } from 'lucide-react'
 
-const DURUM_CONF: Record<string,{l:string;c:string;bg:string}> = {
-  portfoyde:     {l:'Portföyde',      c:'var(--adm-blue)',  bg:'var(--adm-blue2)'},
-  tahsil_edildi: {l:'Tahsil Edildi',  c:'var(--adm-green)', bg:'var(--adm-green2)'},
-  odendi:        {l:'Ödendi',         c:'var(--adm-green)', bg:'var(--adm-green2)'},
-  karsiliksiz:   {l:'Karşılıksız',    c:'var(--adm-red)',   bg:'var(--adm-red2)'},
-  ciro_edildi:   {l:'Ciro Edildi',    c:'var(--adm-amber)', bg:'var(--adm-amber)18'},
-  iptal:         {l:'İptal',          c:'var(--adm-tx3)',   bg:'var(--adm-s3)'},
+const DURUM: Record<string, { l: string; tone: any }> = {
+  portfoyde: { l: 'Portföyde', tone: 'blue' }, tahsil_edildi: { l: 'Tahsil Edildi', tone: 'green' }, odendi: { l: 'Ödendi', tone: 'green' },
+  karsiliksiz: { l: 'Karşılıksız', tone: 'red' }, ciro_edildi: { l: 'Ciro Edildi', tone: 'amber' }, iptal: { l: 'İptal', tone: 'muted' },
 }
+const bos = () => ({ tip: 'cek', yon: 'alinan', cari_id: '', no: '', banka: '', tutar: '', vade_tarihi: todayISO(), aciklama: '' })
 
 export default function CekSenetPage() {
+  const toast = useToast()
   const [list, setList] = useState<any[]>([])
-  const [cariList, setCariList] = useState<any[]>([])
-  const [kasaList, setKasaList] = useState<any[]>([])
+  const [cariler, setCariler] = useState<any[]>([])
+  const [kasalar, setKasalar] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [tab, setTab] = useState('portfoy')
+  const [yonF, setYonF] = useState('')
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState<any>(null)
-  const [filter, setFilter] = useState('hepsi')
-  const [search, setSearch] = useState('')
-  const [toast, setToast] = useState('')
-  const [form, setForm] = useState({ tip:'cek', yon:'alinan', cari_id:'', no:'', banka:'', tutar:'', vade_tarihi:new Date().toISOString().split('T')[0], aciklama:'' })
-  const [tahsilHedef, setTahsilHedef] = useState<any>(null)
-  const [tahsilKasa, setTahsilKasa] = useState('')
-
-  const showToast = (m:string) => { setToast(m); setTimeout(()=>setToast(''),3000) }
+  const [form, setForm] = useState<any>(bos())
+  const [islem, setIslem] = useState<any>(null) // { rows, tur: 'tahsil'|'ciro', kasa, cari, tarih }
+  const [busy, setBusy] = useState(false)
 
   const load = useCallback(async () => {
-    const [{data:c},{data:cr},{data:k}] = await Promise.all([
-      muh.from('cek_senet').select('*').order('vade_tarihi',{ascending:true}),
-      muh.from('cari_hesaplar').select('id,ad').order('ad',{ascending:true}),
-      erp.from('kasa_banka_hesaplari').select('id,ad').order('ad',{ascending:true}),
+    const [c, cr, k] = await Promise.all([
+      muh.all('cek_senet', '*', q => q.order('vade_tarihi', { ascending: true })),
+      muh.all('cari_hesaplar', 'id,ad,tip'), muh.all('kasa_banka_hesaplari', 'id,ad,tip,aktif'),
     ])
-    setList(c||[]); setCariList(cr||[]); setKasaList(k||[]); setLoading(false)
-  },[])
+    setList(c); setCariler(cr); setKasalar(k.filter((x: any) => x.aktif !== false)); setLoading(false)
+  }, [])
+  useEffect(() => { load() }, [load])
 
-  useEffect(()=>{ load() },[load])
+  const bugun = todayISO()
+  const gun = (c: any) => daysBetween(bugun, c.vade_tarihi) // + = vadeye kalan gün, − = geçmiş
+  const cariAd = useMemo(() => Object.fromEntries(cariler.map(c => [c.id, c.ad])), [cariler])
 
-  function openNew() { setEditing(null); setForm({tip:'cek',yon:'alinan',cari_id:'',no:'',banka:'',tutar:'',vade_tarihi:new Date().toISOString().split('T')[0],aciklama:''}); setModal(true) }
-  function openEdit(c:any) { setEditing(c); setForm({tip:c.tip,yon:c.yon,cari_id:c.cari_id||'',no:c.no||'',banka:c.banka||'',tutar:String(c.tutar),vade_tarihi:c.vade_tarihi,aciklama:c.aciklama||''}); setModal(true) }
+  const portfoy = list.filter(c => c.durum === 'portfoyde')
+  const alinan = portfoy.filter(c => c.yon === 'alinan'), verilen = portfoy.filter(c => c.yon === 'verilen')
+  const yaklasan = portfoy.filter(c => gun(c) >= 0 && gun(c) <= 7)
+  const gecmis = portfoy.filter(c => gun(c) < 0)
+  const karsiliksiz = list.filter(c => c.durum === 'karsiliksiz')
 
-  async function save(e:React.FormEvent) {
-    e.preventDefault()
-    const payload:any = {...form, tutar:+form.tutar, cari_id:form.cari_id||null}
-    if (editing) await muh.from('cek_senet').update({...payload,updated_at:new Date().toISOString()}).eq('id',editing.id)
-    else await muh.from('cek_senet').insert(payload)
-    setModal(false); showToast(editing?'Güncellendi':'Kayıt eklendi'); load()
-  }
-
-  async function durumGuncelle(row:any, durum:string) {
-    if (durum==='tahsil_edildi' || durum==='odendi') {
-      setTahsilHedef({...row, hedefDurum:durum}); setTahsilKasa(kasaList[0]?.id||'')
-      return
-    }
-    await muh.from('cek_senet').update({durum,updated_at:new Date().toISOString()}).eq('id',row.id)
-    showToast('Durum güncellendi'); load()
-  }
-
-  async function tahsilOnayla(e:React.FormEvent) {
-    e.preventDefault()
-    if (!tahsilHedef || !tahsilKasa) return
-    const gelirMi = tahsilHedef.yon === 'alinan'
-    await muh.from('islemler').insert({
-      tip: gelirMi ? 'gelir' : 'gider',
-      tutar: tahsilHedef.tutar,
-      kategori: gelirMi ? 'Çek/Senet Tahsilatı' : 'Çek/Senet Ödemesi',
-      aciklama: `${tahsilHedef.tip==='cek'?'Çek':'Senet'} ${tahsilHedef.no||''} — ${tahsilHedef.banka||''}`,
-      tarih: new Date().toISOString().split('T')[0],
-      cari_id: tahsilHedef.cari_id || null,
-      kasa_hesap_id: tahsilKasa,
-    })
-    await muh.from('cek_senet').update({durum:tahsilHedef.hedefDurum,updated_at:new Date().toISOString()}).eq('id',tahsilHedef.id)
-    setTahsilHedef(null); showToast('Tahsilat/ödeme kasaya işlendi'); load()
-  }
-
-  async function del(id:string) {
-    if (!confirm('Silinsin mi?')) return
-    await muh.from('cek_senet').delete().eq('id',id)
-    showToast('Silindi'); load()
-  }
-
-  const bugun = new Date(); bugun.setHours(0,0,0,0)
-  const yakinTarih = new Date(bugun); yakinTarih.setDate(yakinTarih.getDate()+7)
+  // Vade dağılımı (portföy)
+  const buckets = [
+    { l: 'Geçmiş', t: (d: number) => d < 0 }, { l: '0–7 gün', t: (d: number) => d >= 0 && d <= 7 }, { l: '8–30 gün', t: (d: number) => d > 7 && d <= 30 },
+    { l: '31–60 gün', t: (d: number) => d > 30 && d <= 60 }, { l: '61–90 gün', t: (d: number) => d > 60 && d <= 90 }, { l: '90+ gün', t: (d: number) => d > 90 },
+  ]
+  const vadeData = buckets.map(b => ({ a: sum(alinan.filter(c => b.t(gun(c))), c => c.tutar), v: sum(verilen.filter(c => b.t(gun(c))), c => c.tutar) }))
 
   const filtered = list.filter(c => {
-    if (filter==='yaklasan') {
-      const v = new Date(c.vade_tarihi)
-      if (!(c.durum==='portfoyde' && v>=bugun && v<=yakinTarih)) return false
-    } else if (filter!=='hepsi' && c.durum!==filter) return false
-    if (search && !c.no?.toLowerCase().includes(search.toLowerCase()) && !c.banka?.toLowerCase().includes(search.toLowerCase())) return false
-    return true
+    if (yonF && c.yon !== yonF) return false
+    switch (tab) {
+      case 'portfoy': return c.durum === 'portfoyde'
+      case 'yaklasan': return c.durum === 'portfoyde' && gun(c) >= 0 && gun(c) <= 7
+      case 'gecmis': return c.durum === 'portfoyde' && gun(c) < 0
+      case 'kapali': return ['tahsil_edildi', 'odendi', 'ciro_edildi'].includes(c.durum)
+      case 'karsiliksiz': return c.durum === 'karsiliksiz'
+      default: return true
+    }
   })
 
-  const yaklasanlar = list.filter(c=>{ const v=new Date(c.vade_tarihi); return c.durum==='portfoyde' && v>=bugun && v<=yakinTarih })
-  const portfoyToplam = list.filter(c=>c.durum==='portfoyde').reduce((s,c)=>s+(+c.tutar),0)
-  const alinanToplam = list.filter(c=>c.durum==='portfoyde'&&c.yon==='alinan').reduce((s,c)=>s+(+c.tutar),0)
-  const verilenToplam = list.filter(c=>c.durum==='portfoyde'&&c.yon==='verilen').reduce((s,c)=>s+(+c.tutar),0)
+  /* CRUD */
+  const openNew = () => { setEditing(null); setForm(bos()); setModal(true) }
+  const openEdit = (c: any) => { setEditing(c); setForm({ tip: c.tip, yon: c.yon, cari_id: c.cari_id || '', no: c.no || '', banka: c.banka || '', tutar: String(c.tutar), vade_tarihi: c.vade_tarihi, aciklama: c.aciklama || '' }); setModal(true) }
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault(); if (busy) return
+    if (!(+form.tutar > 0)) { toast.show('Tutar gerekli', true); return }
+    if (form.no && list.some(c => c.no === form.no && c.banka === form.banka && c.id !== editing?.id) && !confirm('Aynı numara ve bankada başka kayıt var. Yine de kaydedilsin mi?')) return
+    setBusy(true)
+    const payload = { ...form, tutar: +form.tutar, cari_id: form.cari_id || null }
+    const r: any = editing ? await muh.from('cek_senet').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', editing.id) : await muh.from('cek_senet').insert(payload)
+    setBusy(false)
+    if (r?.error) { toast.show(r.error, true); return }
+    setModal(false); toast.show(editing ? 'Kayıt güncellendi' : 'Kayıt eklendi'); load()
+  }
+  async function del(c: any) {
+    if (!confirm(`${c.tip === 'cek' ? 'Çek' : 'Senet'} ${c.no || ''} silinsin mi?`)) return
+    await muh.from('cek_senet').delete().eq('id', c.id); toast.show('Silindi'); load()
+  }
+  async function durum(rows: any[], d: string) {
+    for (const r of rows) await muh.from('cek_senet').update({ durum: d, updated_at: new Date().toISOString() }).eq('id', r.id)
+    toast.show(`${rows.length} kayıt: ${DURUM[d].l}`); load()
+  }
+
+  /* Tahsil / Ödeme / Ciro */
+  function openIslem(rows: any[], tur: 'tahsil' | 'ciro') {
+    setIslem({ rows, tur, kasa: kasalar[0]?.id || '', cari: '', tarih: todayISO() })
+  }
+  async function islemOnayla(e: React.FormEvent) {
+    e.preventDefault(); if (busy || !islem) return
+    setBusy(true)
+    try {
+      for (const r of islem.rows) {
+        const ad = `${r.tip === 'cek' ? 'Çek' : 'Senet'} ${r.no || ''}${r.banka ? ' — ' + r.banka : ''}`
+        if (islem.tur === 'tahsil') {
+          const gelir = r.yon === 'alinan'
+          const x: any = await muh.from('islemler').insert({ tip: gelir ? 'gelir' : 'gider', tutar: r.tutar, kategori: gelir ? 'Çek/Senet Tahsilatı' : 'Çek/Senet Ödemesi', aciklama: ad, tarih: islem.tarih, cari_id: r.cari_id || null, kasa_hesap_id: islem.kasa || null, odeme_yontemi: 'cek' })
+          if (x?.error) throw new Error(x.error)
+          await muh.from('cek_senet').update({ durum: gelir ? 'tahsil_edildi' : 'odendi', updated_at: new Date().toISOString() }).eq('id', r.id)
+        } else {
+          // Ciro: alınan çek/senet bir tedarikçiye ödeme olarak devredilir → müşteri tahsilatı + tedarikçi ödemesi (nakit hareketi yok)
+          if (!islem.cari) throw new Error('Ciro edilecek tedarikçiyi seç')
+          const a: any = await muh.from('islemler').insert({ tip: 'gelir', tutar: r.tutar, kategori: 'Çek/Senet Tahsilatı', aciklama: `${ad} (ciro edildi)`, tarih: islem.tarih, cari_id: r.cari_id || null, odeme_yontemi: 'cek' })
+          if (a?.error) throw new Error(a.error)
+          const b: any = await muh.from('islemler').insert({ tip: 'gider', tutar: r.tutar, kategori: 'Çek/Senet Ödemesi', aciklama: `${ad} (ciro)`, tarih: islem.tarih, cari_id: islem.cari, odeme_yontemi: 'cek' })
+          if (b?.error) throw new Error(b.error)
+          await muh.from('cek_senet').update({ durum: 'ciro_edildi', updated_at: new Date().toISOString(), aciklama: `${r.aciklama ? r.aciklama + ' · ' : ''}Ciro: ${cariAd[islem.cari]}` }).eq('id', r.id)
+        }
+      }
+      toast.show(islem.tur === 'tahsil' ? 'Tahsilat/ödeme işlendi' : 'Ciro işlendi'); setIslem(null); load()
+    } catch (err: any) { toast.show(err.message, true) }
+    setBusy(false)
+  }
+
+  const cols: Col<any>[] = [
+    {
+      key: 'vade', label: 'Vade', width: 150, sort: c => c.vade_tarihi, render: c => {
+        const g = gun(c), acik = c.durum === 'portfoyde'
+        return <div><div style={{ fontWeight: 600 }}>{fmtDate(c.vade_tarihi)}</div>{acik && <div style={{ fontSize: 11, color: g < 0 ? 'var(--adm-red)' : g <= 7 ? 'var(--adm-amber)' : 'var(--adm-tx3)', fontWeight: g <= 7 ? 700 : 400 }}>{g < 0 ? `${-g} gün geçmiş` : g === 0 ? 'Bugün' : `${g} gün kaldı`}</div>}</div>
+      },
+    },
+    { key: 'tip', label: 'Tür', width: 80, sort: c => c.tip, render: c => <span style={{ display: 'inline-flex', gap: 5, alignItems: 'center' }}><FileSignature size={13} style={{ color: 'var(--adm-tx3)' }} />{c.tip === 'cek' ? 'Çek' : 'Senet'}</span> },
+    { key: 'yon', label: 'Yön', width: 90, sort: c => c.yon, render: c => <Badge tone={c.yon === 'alinan' ? 'green' : 'red'}>{c.yon === 'alinan' ? 'Alınan' : 'Verilen'}</Badge> },
+    { key: 'no', label: 'No / Banka', sort: c => c.no || '', render: c => <div><div style={{ fontWeight: 600, fontFamily: 'JetBrains Mono,monospace', fontSize: 12 }}>{c.no || '—'}</div><div style={{ fontSize: 11, color: 'var(--adm-tx3)' }}>{c.banka || ''}</div></div> },
+    { key: 'cari', label: 'Cari', sort: c => cariAd[c.cari_id] || '', render: c => cariAd[c.cari_id] || <span style={{ color: 'var(--adm-tx3)' }}>—</span>, hideSm: true },
+    { key: 'tutar', label: 'Tutar', align: 'right', sort: c => +c.tutar, render: c => <Money v={+c.tutar} tone={c.yon === 'alinan' ? 'green' : 'red'} />, total: rs => <Money v={sum(rs, c => (c.yon === 'alinan' ? 1 : -1) * c.tutar)} tone="auto" /> },
+    { key: 'durum', label: 'Durum', width: 120, sort: c => c.durum, render: c => <Badge tone={DURUM[c.durum]?.tone}>{DURUM[c.durum]?.l}</Badge> },
+    {
+      key: 'act', label: '', width: 190, align: 'right', render: c => (
+        <span style={{ display: 'inline-flex', gap: 4 }}>
+          {c.durum === 'portfoyde' && <>
+            <button className="adm-btn" style={{ padding: '4px 10px', fontSize: 11.5, background: c.yon === 'alinan' ? 'var(--adm-green)' : 'var(--adm-red)' }} onClick={() => openIslem([c], 'tahsil')}>{c.yon === 'alinan' ? 'Tahsil Et' : 'Öde'}</button>
+            {c.yon === 'alinan' && <button className="adm-btn-ghost" style={{ padding: '4px 8px' }} title="Tedarikçiye ciro et" onClick={() => openIslem([c], 'ciro')}><Repeat size={12} /></button>}
+            <button className="adm-btn-ghost" style={{ padding: '4px 8px' }} title="Karşılıksız" onClick={() => confirm('Karşılıksız çıktı olarak işaretlensin mi?') && durum([c], 'karsiliksiz')}><Ban size={12} /></button>
+          </>}
+          <button className="adm-btn-ghost" style={{ padding: '4px 8px' }} onClick={() => openEdit(c)}><Pencil size={12} /></button>
+          <button className="adm-btn-danger" style={{ padding: '4px 8px' }} onClick={() => del(c)}><Trash2 size={12} /></button>
+        </span>),
+    },
+  ]
 
   return (
-    <div style={{flex:1,overflow:'auto'}}>
-      <AdminTopBar title="Çek / Senet Takibi"/>
-      <div style={{padding:24}}>
+    <div style={{ flex: 1, overflow: 'auto' }}>
+      <AdminTopBar title="Çek / Senet Takibi" />
+      <Page>
+        <PageHead title="Çek & Senet Portföyü" sub="Vade takibi, tahsilat, ciro ve karşılıksız yönetimi" actions={<button className="adm-btn" onClick={openNew}><Plus size={14} />Çek/Senet Ekle</button>} />
 
-        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:12,marginBottom:20}}>
-          {[
-            {label:'Portföyde Toplam', value:muh.fmt(portfoyToplam), color:'var(--adm-ac)'},
-            {label:'Alınan (Tahsil Edilecek)', value:muh.fmt(alinanToplam), color:'var(--adm-green)'},
-            {label:'Verilen (Ödenecek)', value:muh.fmt(verilenToplam), color:'var(--adm-red)'},
-            {label:'Vadesi Yaklaşan (7g)', value:yaklasanlar.length, color:'var(--adm-amber)'},
-          ].map(s=>(
-            <div key={s.label} className="adm-kpi" style={{borderLeft:`2.5px solid ${s.color}`,padding:'14px 16px'}}>
-              <p className="adm-kpi-label">{s.label}</p>
-              <p className="adm-kpi-value" style={{fontSize:18,color:s.color}}>{s.value}</p>
-            </div>
-          ))}
+        <KpiGrid min={190}>
+          <Kpi label="Tahsil Edilecek" value={fmtK(sum(alinan, c => c.tutar))} Icon={Wallet} color="var(--adm-green)" sub={`${alinan.length} alınan çek/senet`} />
+          <Kpi label="Ödenecek" value={fmtK(sum(verilen, c => c.tutar))} Icon={Wallet} color="var(--adm-red)" sub={`${verilen.length} verilen çek/senet`} />
+          <Kpi label="7 Gün İçinde" value={yaklasan.length} Icon={CalendarClock} color="var(--adm-amber)" sub={fmtK(sum(yaklasan, c => (c.yon === 'alinan' ? 1 : -1) * c.tutar)) + ' net'} onClick={() => setTab('yaklasan')} />
+          <Kpi label="Vadesi Geçmiş" value={gecmis.length} Icon={AlertTriangle} color={gecmis.length ? 'var(--adm-red)' : 'var(--adm-green)'} sub={gecmis.length ? fmtK(sum(gecmis, c => c.tutar)) : 'Gecikme yok'} onClick={() => setTab('gecmis')} />
+          <Kpi label="Karşılıksız" value={karsiliksiz.length} Icon={ShieldAlert} color={karsiliksiz.length ? 'var(--adm-red)' : 'var(--adm-green)'} sub={karsiliksiz.length ? fmtK(sum(karsiliksiz, c => c.tutar)) : 'Kayıt yok'} onClick={() => setTab('karsiliksiz')} />
+        </KpiGrid>
+
+        <Card title="Vade Dağılımı (portföy)" pad={16} style={{ marginBottom: 16 }}>
+          <TrendChart type="bar" height={190} labels={buckets.map(b => b.l)} series={[{ name: 'Tahsil edilecek', color: '#14b088', data: vadeData.map(d => d.a) }, { name: 'Ödenecek', color: '#e14b4b', data: vadeData.map(d => d.v) }]} />
+        </Card>
+
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' }}>
+          <Tabs value={tab} onChange={setTab} tabs={[
+            { v: 'portfoy', l: 'Portföyde', n: portfoy.length }, { v: 'yaklasan', l: '7 gün', n: yaklasan.length }, { v: 'gecmis', l: 'Vadesi geçmiş', n: gecmis.length },
+            { v: 'kapali', l: 'Kapananlar' }, { v: 'karsiliksiz', l: 'Karşılıksız', n: karsiliksiz.length }, { v: 'hepsi', l: 'Tümü', n: list.length },
+          ]} />
+          <Tabs value={yonF} onChange={setYonF} tabs={[{ v: '', l: 'Alınan + Verilen' }, { v: 'alinan', l: 'Alınan' }, { v: 'verilen', l: 'Verilen' }]} />
         </div>
 
-        {yaklasanlar.length>0 && (
-          <div style={{display:'flex',alignItems:'center',gap:8,padding:'10px 14px',background:'var(--adm-amber)18',border:'1px solid var(--adm-amber)',borderRadius:10,marginBottom:16,fontSize:12.5,color:'var(--adm-tx)'}}>
-            <AlertTriangle size={15} style={{color:'var(--adm-amber)',flexShrink:0}}/>
-            <span><b>{yaklasanlar.length}</b> çek/senedin vadesi önümüzdeki 7 gün içinde doluyor.</span>
-          </div>
+        <DataGrid rows={filtered} cols={cols} rowKey={c => c.id} loading={loading} csvName="cek-senet" storageKey="ceksenet" defaultSort={{ key: 'vade', dir: 'asc' }}
+          searchText={c => `${c.no || ''} ${c.banka || ''} ${cariAd[c.cari_id] || ''} ${c.tutar}`} searchPlaceholder="No, banka, cari, tutar..."
+          selectable bulkActions={(sel, clear) => {
+            const acik = sel.filter(s => s.durum === 'portfoyde')
+            return acik.length ? <button className="adm-btn" style={{ padding: '3px 12px', fontSize: 12, background: 'var(--adm-green)' }} onClick={() => { openIslem(acik, 'tahsil'); clear() }}><CheckCircle2 size={12} />{acik.length} kaydı toplu tahsil/öde</button> : null
+          }}
+          emptyTitle="Bu görünümde kayıt yok" />
+      </Page>
+
+      <Modal open={modal} onClose={() => setModal(false)} onSubmit={save} title={editing ? 'Kaydı Düzenle' : 'Yeni Çek / Senet'} width={560}
+        footer={<><button type="button" className="adm-btn-ghost" onClick={() => setModal(false)}>İptal</button><button type="submit" className="adm-btn" disabled={busy}>Kaydet</button></>}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+          <div style={{ display: 'flex', gap: 6 }}>{[['cek', 'Çek'], ['senet', 'Senet']].map(([k, l]) => <button key={k} type="button" onClick={() => setForm((f: any) => ({ ...f, tip: k }))} className={form.tip === k ? 'adm-btn' : 'adm-btn-ghost'} style={{ flex: 1, justifyContent: 'center' }}>{l}</button>)}</div>
+          <div style={{ display: 'flex', gap: 6 }}>{[['alinan', 'Alınan'], ['verilen', 'Verilen']].map(([k, l]) => <button key={k} type="button" onClick={() => setForm((f: any) => ({ ...f, yon: k }))} className={form.yon === k ? 'adm-btn' : 'adm-btn-ghost'} style={{ flex: 1, justifyContent: 'center', background: form.yon === k ? (k === 'alinan' ? 'var(--adm-green)' : 'var(--adm-red)') : undefined }}>{l}</button>)}</div>
+        </div>
+        <FormGrid>
+          <Field label="Tutar (₺) *"><input type="number" step="0.01" min="0" required autoFocus className="adm-inp" value={form.tutar} onChange={e => setForm((f: any) => ({ ...f, tutar: e.target.value }))} style={{ fontSize: 16, fontWeight: 700 }} /></Field>
+          <Field label="Vade Tarihi *"><input type="date" required className="adm-inp" value={form.vade_tarihi} onChange={e => setForm((f: any) => ({ ...f, vade_tarihi: e.target.value }))} /></Field>
+          <Field label="Çek / Senet No"><input className="adm-inp" value={form.no} onChange={e => setForm((f: any) => ({ ...f, no: e.target.value }))} /></Field>
+          <Field label="Banka"><input className="adm-inp" value={form.banka} onChange={e => setForm((f: any) => ({ ...f, banka: e.target.value }))} /></Field>
+          <Field label="Cari" span={2}><select className="adm-inp" value={form.cari_id} onChange={e => setForm((f: any) => ({ ...f, cari_id: e.target.value }))}><option value="">— Seçilmedi —</option>{cariler.map(c => <option key={c.id} value={c.id}>{c.ad}</option>)}</select></Field>
+          <Field label="Açıklama" span={2}><input className="adm-inp" value={form.aciklama} onChange={e => setForm((f: any) => ({ ...f, aciklama: e.target.value }))} /></Field>
+        </FormGrid>
+      </Modal>
+
+      <Modal open={!!islem} onClose={() => setIslem(null)} onSubmit={islemOnayla} width={500}
+        title={islem && (islem.tur === 'ciro' ? 'Çeki Ciro Et' : `${islem.rows.length > 1 ? `${islem.rows.length} kayıt` : (islem.rows[0].yon === 'alinan' ? 'Tahsilat' : 'Ödeme')} — Onay`)}
+        footer={<><button type="button" className="adm-btn-ghost" onClick={() => setIslem(null)}>İptal</button><button type="submit" className="adm-btn" disabled={busy}>Onayla</button></>}>
+        {islem && (
+          <FormGrid cols={1}>
+            <div style={{ padding: 12, borderRadius: 10, background: 'var(--adm-s2)', fontSize: 12.5 }}>
+              {islem.rows.slice(0, 4).map((r: any) => <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}><span>{r.tip === 'cek' ? 'Çek' : 'Senet'} {r.no || ''} · {cariAd[r.cari_id] || '—'}</span><b>{fmt(r.tutar)}</b></div>)}
+              {islem.rows.length > 4 && <div style={{ color: 'var(--adm-tx3)' }}>+ {islem.rows.length - 4} kayıt daha</div>}
+              <div style={{ borderTop: '1px dashed var(--adm-bdr2)', marginTop: 6, paddingTop: 6, display: 'flex', justifyContent: 'space-between' }}><span>Toplam</span><b>{fmt(sum(islem.rows, (r: any) => r.tutar))}</b></div>
+            </div>
+            {islem.tur === 'tahsil'
+              ? <Field label="Kasa / Banka" hint="Tutar bu hesaba işlenir"><select className="adm-inp" required value={islem.kasa} onChange={e => setIslem((i: any) => ({ ...i, kasa: e.target.value }))}><option value="">Seçin</option>{kasalar.map(k => <option key={k.id} value={k.id}>{k.ad}</option>)}</select></Field>
+              : <Field label="Ciro edilecek tedarikçi" hint="Nakit hareketi olmaz; tedarikçi borcu düşer, müşteri tahsilatı kaydedilir"><select className="adm-inp" required value={islem.cari} onChange={e => setIslem((i: any) => ({ ...i, cari: e.target.value }))}><option value="">Seçin</option>{cariler.filter(c => c.tip !== 'musteri').map(c => <option key={c.id} value={c.id}>{c.ad}</option>)}</select></Field>}
+            <Field label="İşlem Tarihi"><input type="date" className="adm-inp" value={islem.tarih} onChange={e => setIslem((i: any) => ({ ...i, tarih: e.target.value }))} /></Field>
+          </FormGrid>
         )}
-
-        <div style={{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap'}}>
-          <div style={{position:'relative',flex:1,minWidth:160,maxWidth:260}}>
-            <Search size={13} style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'var(--adm-tx3)'}}/>
-            <input className="adm-inp" placeholder="No / banka ara..." value={search} onChange={e=>setSearch(e.target.value)} style={{paddingLeft:30}}/>
-          </div>
-          {[['hepsi','Tümü'],['portfoyde','Portföyde'],['yaklasan','Vadesi Yaklaşan'],['tahsil_edildi','Tahsil Edildi'],['karsiliksiz','Karşılıksız']].map(([v,l])=>(
-            <button key={v} onClick={()=>setFilter(v)} className={filter===v?'adm-btn':'adm-btn-ghost'} style={{fontSize:11,padding:'5px 12px'}}>{l}</button>
-          ))}
-          <div style={{flex:1}}/>
-          <button className="adm-btn" onClick={openNew}><Plus size={14}/>Çek/Senet Ekle</button>
-        </div>
-
-        <div className="adm-card">
-          <div className="adm-card-h">Kayıtlar ({filtered.length})</div>
-          {loading ? <p style={{padding:40,textAlign:'center',color:'var(--adm-tx3)'}}>Yükleniyor...</p>
-          : filtered.length===0 ? <p style={{padding:40,textAlign:'center',color:'var(--adm-tx3)',fontSize:13}}>Kayıt bulunamadı</p>
-          : filtered.map(c=>{
-            const d = DURUM_CONF[c.durum]||DURUM_CONF.portfoyde
-            const cari = cariList.find((x:any)=>x.id===c.cari_id)
-            const v = new Date(c.vade_tarihi)
-            const yakin = c.durum==='portfoyde' && v>=bugun && v<=yakinTarih
-            return (
-              <div key={c.id} className="adm-row">
-                <div style={{width:36,height:36,borderRadius:9,background:c.yon==='alinan'?'var(--adm-green2)':'var(--adm-red2)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                  <FileSignature size={15} style={{color:c.yon==='alinan'?'var(--adm-green)':'var(--adm-red)'}}/>
-                </div>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{display:'flex',alignItems:'center',gap:8}}>
-                    <p style={{fontSize:13,fontWeight:700,color:'var(--adm-tx)'}}>{c.tip==='cek'?'Çek':'Senet'} {c.no?`#${c.no}`:''}</p>
-                    <span className="adm-badge" style={{background:c.yon==='alinan'?'var(--adm-green2)':'var(--adm-red2)',color:c.yon==='alinan'?'var(--adm-green)':'var(--adm-red)',fontSize:10}}>{c.yon==='alinan'?'Alınan':'Verilen'}</span>
-                    {yakin && <span className="adm-badge" style={{background:'var(--adm-amber)18',color:'var(--adm-amber)',fontSize:10}}>Vade Yakın</span>}
-                  </div>
-                  <p style={{fontSize:11.5,color:'var(--adm-tx3)'}}>{cari?.ad||'—'} · {c.banka||'—'} · Vade: {muh.date(c.vade_tarihi)}</p>
-                </div>
-                <div style={{display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
-                  <span style={{fontSize:14,fontWeight:700,fontFamily:'JetBrains Mono,monospace',color:'var(--adm-tx)'}}>{muh.fmt(c.tutar)}</span>
-                  <select className="adm-inp" style={{fontSize:11,padding:'4px 8px',width:'auto'}} value={c.durum} onChange={e=>durumGuncelle(c,e.target.value)}>
-                    {Object.entries(DURUM_CONF).map(([k,v])=><option key={k} value={k}>{v.l}</option>)}
-                  </select>
-                  <button className="adm-btn-ghost" style={{padding:'5px 9px'}} onClick={()=>openEdit(c)}><Pencil size={12}/></button>
-                  <button className="adm-btn-danger" style={{padding:'5px 9px'}} onClick={()=>del(c.id)}><Trash2 size={12}/></button>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      {modal && (
-        <div className="adm-modal-bg" onClick={e=>{if(e.target===e.currentTarget)setModal(false)}}>
-          <div className="adm-modal">
-            <div className="adm-modal-h">
-              {editing?'Çek/Senet Düzenle':'Yeni Çek/Senet'}
-              <button onClick={()=>setModal(false)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--adm-tx3)'}}><X size={18}/></button>
-            </div>
-            <form onSubmit={save}>
-              <div className="adm-modal-b" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
-                <div>
-                  <label className="adm-label">Tip</label>
-                  <div style={{display:'flex',gap:6}}>
-                    {[['cek','Çek'],['senet','Senet']].map(([v,l])=>(
-                      <button key={v} type="button" onClick={()=>setForm(f=>({...f,tip:v}))} className={form.tip===v?'adm-btn':'adm-btn-ghost'} style={{fontSize:12,padding:'5px 14px'}}>{l}</button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label className="adm-label">Yön</label>
-                  <div style={{display:'flex',gap:6}}>
-                    {[['alinan','Alınan'],['verilen','Verilen']].map(([v,l])=>(
-                      <button key={v} type="button" onClick={()=>setForm(f=>({...f,yon:v}))} className={form.yon===v?'adm-btn':'adm-btn-ghost'} style={{fontSize:12,padding:'5px 14px'}}>{l}</button>
-                    ))}
-                  </div>
-                </div>
-                <div style={{gridColumn:'1/-1'}}>
-                  <label className="adm-label">Cari Hesap</label>
-                  <select className="adm-inp" value={form.cari_id} onChange={e=>setForm(f=>({...f,cari_id:e.target.value}))}>
-                    <option value="">Seçin (opsiyonel)</option>
-                    {cariList.map((c:any)=><option key={c.id} value={c.id}>{c.ad}</option>)}
-                  </select>
-                </div>
-                <div><label className="adm-label">Çek/Senet No</label><input className="adm-inp" value={form.no} onChange={e=>setForm(f=>({...f,no:e.target.value}))}/></div>
-                <div><label className="adm-label">Banka</label><input className="adm-inp" value={form.banka} onChange={e=>setForm(f=>({...f,banka:e.target.value}))}/></div>
-                <div><label className="adm-label">Tutar (₺) *</label><input type="number" step="0.01" className="adm-inp" required value={form.tutar} onChange={e=>setForm(f=>({...f,tutar:e.target.value}))}/></div>
-                <div><label className="adm-label">Vade Tarihi *</label><input type="date" className="adm-inp" required value={form.vade_tarihi} onChange={e=>setForm(f=>({...f,vade_tarihi:e.target.value}))}/></div>
-                <div style={{gridColumn:'1/-1'}}><label className="adm-label">Açıklama</label><textarea className="adm-inp" rows={2} value={form.aciklama} onChange={e=>setForm(f=>({...f,aciklama:e.target.value}))}/></div>
-              </div>
-              <div className="adm-modal-f">
-                <button type="button" className="adm-btn-ghost" onClick={()=>setModal(false)}>İptal</button>
-                <button type="submit" className="adm-btn">Kaydet</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {tahsilHedef && (
-        <div className="adm-modal-bg" onClick={e=>{if(e.target===e.currentTarget)setTahsilHedef(null)}}>
-          <div className="adm-modal">
-            <div className="adm-modal-h">
-              {tahsilHedef.hedefDurum==='tahsil_edildi'?'Tahsilat':'Ödeme'} — Kasa/Banka Seç
-              <button onClick={()=>setTahsilHedef(null)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--adm-tx3)'}}><X size={18}/></button>
-            </div>
-            <form onSubmit={tahsilOnayla}>
-              <div className="adm-modal-b">
-                <p style={{fontSize:12.5,color:'var(--adm-tx3)',marginBottom:14}}>
-                  {muh.fmt(tahsilHedef.tutar)} tutarındaki {tahsilHedef.tip==='cek'?'çek':'senet'} hangi kasa/banka hesabına {tahsilHedef.yon==='alinan'?'girecek':'çıkacak'}?
-                </p>
-                <label className="adm-label">Kasa/Banka Hesabı *</label>
-                <select className="adm-inp" required value={tahsilKasa} onChange={e=>setTahsilKasa(e.target.value)}>
-                  <option value="">Seçin</option>
-                  {kasaList.map((k:any)=><option key={k.id} value={k.id}>{k.ad}</option>)}
-                </select>
-              </div>
-              <div className="adm-modal-f">
-                <button type="button" className="adm-btn-ghost" onClick={()=>setTahsilHedef(null)}>İptal</button>
-                <button type="submit" className="adm-btn">Onayla</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {toast && <div className="adm-toast">✓ {toast}</div>}
+      </Modal>
+      {toast.node}
     </div>
   )
 }

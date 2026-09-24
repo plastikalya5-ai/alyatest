@@ -1,269 +1,341 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
 import { muh } from '@/lib/muhasebe-client'
 import { erp } from '@/lib/erp-client'
-import { Plus, Pencil, Trash2, X, User, Building2, Search, Phone, Mail, Download, FileBarChart } from 'lucide-react'
+import { fmt, fmtK, fmtDate, todayISO, daysBetween, csvDownload } from '@/lib/fmt'
+import { sum, kalanTutar, acikFatura } from '@/lib/muh-utils'
+import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, InfoRow, Divider, Empty, useToast } from '@/components/admin/erp/ui'
+import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
+import {
+  Plus, Pencil, Trash2, User, Building2, Phone, Mail, MessageCircle, FileBarChart, HandCoins, Users2, AlertTriangle, Scale, Wallet, Printer, Download, Receipt, FileSignature,
+} from 'lucide-react'
+
+const TIP: Record<string, { l: string; tone: any; Icon: any }> = {
+  musteri: { l: 'Müşteri', tone: 'blue', Icon: User }, tedarikci: { l: 'Tedarikçi', tone: 'amber', Icon: Building2 }, diger: { l: 'Diğer', tone: 'muted', Icon: User },
+}
+const DURUM: Record<string, { l: string; tone: any }> = { taslak: { l: 'Taslak', tone: 'muted' }, onaylandi: { l: 'Açık', tone: 'blue' }, odendi: { l: 'Ödendi', tone: 'green' }, iptal: { l: 'İptal', tone: 'red' } }
+const bosForm = { tip: 'musteri', ad: '', vergi_no: '', telefon: '', email: '', adres: '', notlar: '', fiyat_listesi_id: '' }
+
+const vergiGecerli = (v: string) => !v || /^\d{10}$|^\d{11}$/.test(v.replace(/\s/g, ''))
+const waNumara = (t: string) => { const d = (t || '').replace(/\D/g, ''); return d.startsWith('90') ? d : d.startsWith('0') ? '9' + d : d.length === 10 ? '90' + d : d }
 
 export default function CariPage() {
+  const toast = useToast()
   const [list, setList] = useState<any[]>([])
   const [islemler, setIslemler] = useState<any[]>([])
   const [faturalar, setFaturalar] = useState<any[]>([])
+  const [cekler, setCekler] = useState<any[]>([])
+  const [kasalar, setKasalar] = useState<any[]>([])
   const [fiyatListeleri, setFiyatListeleri] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+
+  const [tab, setTab] = useState('hepsi')
+  const [detay, setDetay] = useState<any>(null)
+  const [dTab, setDTab] = useState('ozet')
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState<any>(null)
-  const [detay, setDetay] = useState<any>(null)
-  const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState('hepsi')
-  const [toast, setToast] = useState('')
-  const [form, setForm] = useState({ tip:'musteri', ad:'', vergi_no:'', telefon:'', email:'', adres:'', notlar:'', fiyat_listesi_id:'' })
-
-  const showToast = (m:string) => { setToast(m); setTimeout(()=>setToast(''),3000) }
+  const [form, setForm] = useState<any>(bosForm)
+  const [odeme, setOdeme] = useState<any>(null) // tahsilat / ödeme modalı
+  const [busy, setBusy] = useState(false)
 
   const load = useCallback(async () => {
-    const [{data:c},{data:i},{data:f},{data:fl}] = await Promise.all([
-      muh.from('cari_hesaplar').select('*').order('ad',{ascending:true}),
-      muh.from('islemler').select('*'),
-      muh.from('faturalar').select('*'),
-      erp.from('fiyat_listeleri').select('id,ad').order('ad',{ascending:true}),
+    const [c, i, f, cs, k, fl] = await Promise.all([
+      muh.all('cari_hesaplar', '*', q => q.order('ad', { ascending: true })),
+      muh.all('islemler', '*'), muh.all('faturalar', '*'), muh.all('cek_senet', '*'), muh.all('kasa_banka_hesaplari', 'id,ad,tip,aktif'),
+      erp.from('fiyat_listeleri').select('id,ad').order('ad', { ascending: true }),
     ])
-    setList(c||[]); setIslemler(i||[]); setFaturalar(f||[]); setFiyatListeleri(fl||[]); setLoading(false)
-    setDetay((d:any)=>d ? (c||[]).find((x:any)=>x.id===d.id) || null : null)
-  },[])
+    setList(c); setIslemler(i); setFaturalar(f); setCekler(cs); setKasalar(k); setFiyatListeleri(fl.data || []); setLoading(false)
+    setDetay((d: any) => (d ? c.find((x: any) => x.id === d.id) || null : null))
+  }, [])
+  useEffect(() => { load() }, [load])
 
-  useEffect(()=>{ load() },[load])
+  const bugun = todayISO()
+  // Cari başına özet metrikler
+  const M = useMemo(() => {
+    const m: Record<string, any> = {}
+    list.forEach(c => { m[c.id] = { ciro: 0, acik: 0, gecikmis: 0, fatSay: 0, son: null as string | null } })
+    faturalar.forEach(f => {
+      const x = m[f.cari_id]; if (!x) return
+      x.fatSay++
+      if (['onaylandi', 'odendi'].includes(f.durum) && f.tip === 'satis') x.ciro += +f.toplam || 0
+      if (acikFatura(f) && f.tip !== 'iade') { const k = kalanTutar(f); x.acik += k; if (f.vade && f.vade < bugun) x.gecikmis += k }
+      if (!x.son || f.tarih > x.son) x.son = f.tarih
+    })
+    islemler.forEach(i => { const x = m[i.cari_id]; if (x && (!x.son || i.tarih > x.son)) x.son = i.tarih })
+    return m
+  }, [list, faturalar, islemler, bugun])
 
-  function openNew() { setEditing(null); setForm({tip:'musteri',ad:'',vergi_no:'',telefon:'',email:'',adres:'',notlar:'',fiyat_listesi_id:''}); setModal(true) }
-  function openEdit(c:any) { setEditing(c); setForm({tip:c.tip,ad:c.ad,vergi_no:c.vergi_no||'',telefon:c.telefon||'',email:c.email||'',adres:c.adres||'',notlar:c.notlar||'',fiyat_listesi_id:c.fiyat_listesi_id||''}); setModal(true) }
-
-  async function save(e:React.FormEvent) {
-    e.preventDefault()
-    const payload:any = {...form, fiyat_listesi_id: form.fiyat_listesi_id||null}
-    if (editing) await muh.from('cari_hesaplar').update({...payload,updated_at:new Date().toISOString()}).eq('id',editing.id)
-    else await muh.from('cari_hesaplar').insert(payload)
-    setModal(false); showToast(editing?'Güncellendi':'Eklendi'); load()
-  }
-
-  async function del(id:string) {
-    if (!confirm('Silinsin mi?')) return
-    await muh.from('cari_hesaplar').delete().eq('id',id)
-    showToast('Silindi'); load(); setDetay(null)
-  }
+  const alacak = sum(list.filter(c => +c.bakiye > 0), c => c.bakiye)
+  const borc = sum(list.filter(c => +c.bakiye < 0), c => -c.bakiye)
+  const gecikmis = sum(Object.values(M), (x: any) => x.gecikmis)
 
   const filtered = list.filter(c => {
-    if (filter!=='hepsi' && c.tip!==filter) return false
-    if (search && !c.ad?.toLowerCase().includes(search.toLowerCase()) && !c.email?.toLowerCase().includes(search.toLowerCase())) return false
+    if (tab === 'musteri' || tab === 'tedarikci') return c.tip === tab
+    if (tab === 'bakiyeli') return Math.abs(+c.bakiye) > 0.005
+    if (tab === 'gecikmis') return M[c.id]?.gecikmis > 0
     return true
   })
 
-  // ---- Ekstre: cariye ait fatura + işlem hareketlerini kronolojik birleştir, bakiye yürüt ----
-  function ekstreHesapla(cariId:string) {
-    const hareketler: {tarih:string; aciklama:string; borc:number; alacak:number}[] = []
-    faturalar.filter(f=>f.cari_id===cariId && ['onaylandi','odendi'].includes(f.durum)).forEach(f=>{
-      const borcMu = f.tip==='satis' // satış: cari bize borçlanır (borç); alış/iade: bizim borcumuz (alacak)
-      hareketler.push({ tarih:f.tarih, aciklama:`Fatura ${f.no}`, borc: borcMu?f.toplam:0, alacak: borcMu?0:f.toplam })
+  /* ── Ekstre: fatura + işlem hareketleri, yürüyen bakiye (borç − alacak; + = cari bize borçlu) ── */
+  const ekstre = useCallback((cariId: string) => {
+    const h: { tarih: string; aciklama: string; tur: string; borc: number; alacak: number }[] = []
+    faturalar.filter(f => f.cari_id === cariId && ['onaylandi', 'odendi'].includes(f.durum)).forEach(f => {
+      const b = f.tip === 'satis'
+      h.push({ tarih: f.tarih, aciklama: `Fatura ${f.no}`, tur: f.tip === 'satis' ? 'Satış faturası' : f.tip === 'alis' ? 'Alış faturası' : 'İade', borc: b ? +f.toplam : 0, alacak: b ? 0 : +f.toplam })
     })
-    islemler.filter(i=>i.cari_id===cariId).forEach(i=>{
-      // gelir = tahsilat (borç azalır/alacak), gider = ödeme (bizim borcumuz azalır/borç)
-      hareketler.push({ tarih:i.tarih, aciklama:i.aciklama||i.kategori||'İşlem', borc: i.tip==='gider'?i.tutar:0, alacak: i.tip==='gelir'?i.tutar:0 })
+    islemler.filter(i => i.cari_id === cariId).forEach(i => h.push({ tarih: i.tarih, aciklama: i.aciklama || i.kategori || 'İşlem', tur: i.tip === 'gelir' ? 'Tahsilat' : 'Ödeme', borc: i.tip === 'gider' ? +i.tutar : 0, alacak: i.tip === 'gelir' ? +i.tutar : 0 }))
+    h.sort((a, b) => a.tarih.localeCompare(b.tarih))
+    let b = 0
+    return h.map(x => { b += x.borc - x.alacak; return { ...x, bakiye: b } })
+  }, [faturalar, islemler])
+
+  function ekstreYazdir(c: any) {
+    const ek = ekstre(c.id)
+    const rows = ek.map(h => `<tr><td>${fmtDate(h.tarih)}</td><td>${h.aciklama}</td><td>${h.tur}</td><td style="text-align:right">${h.borc ? fmt(h.borc) : ''}</td><td style="text-align:right">${h.alacak ? fmt(h.alacak) : ''}</td><td style="text-align:right;font-weight:600">${fmt(h.bakiye)}</td></tr>`).join('')
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${c.ad} - Ekstre</title><style>
+      body{font-family:Arial,sans-serif;color:#0b0e0b;padding:40px;max-width:860px;margin:0 auto}h1{font-size:20px;margin:0 0 4px}.muted{color:#6b7366;font-size:12px}
+      table{width:100%;border-collapse:collapse;margin-top:24px}th,td{padding:8px 6px;font-size:12.5px;border-bottom:1px solid #ddd;text-align:left}th{color:#6b7366;font-size:11px;text-transform:uppercase}
+      .header{display:flex;justify-content:space-between;border-bottom:2px solid #e55f28;padding-bottom:16px;margin-bottom:16px}.toplam{margin-top:16px;text-align:right;font-size:15px;font-weight:700}@media print{body{padding:0}}</style></head><body>
+      <div class="header"><div><h1>ALYA PLASTİK</h1><p class="muted">Cari Hesap Ekstresi</p></div><div style="text-align:right"><h1>${c.ad}</h1><p class="muted">${new Date().toLocaleDateString('tr-TR')} itibarıyla</p></div></div>
+      <table><thead><tr><th>Tarih</th><th>Açıklama</th><th>Tür</th><th style="text-align:right">Borç</th><th style="text-align:right">Alacak</th><th style="text-align:right">Bakiye</th></tr></thead><tbody>${rows}</tbody></table>
+      <p class="toplam">Güncel Bakiye: ${fmt(ek.length ? ek[ek.length - 1].bakiye : 0)}</p></body></html>`
+    const w = window.open('', '_blank'); if (w) { w.document.write(html); w.document.close(); w.focus(); setTimeout(() => w.print(), 300) }
+  }
+
+  /* ── CRUD ── */
+  function openNew() { setEditing(null); setForm(bosForm); setModal(true) }
+  function openEdit(c: any) { setEditing(c); setForm({ tip: c.tip, ad: c.ad, vergi_no: c.vergi_no || '', telefon: c.telefon || '', email: c.email || '', adres: c.adres || '', notlar: c.notlar || '', fiyat_listesi_id: c.fiyat_listesi_id || '' }); setModal(true) }
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault(); if (busy) return
+    if (!vergiGecerli(form.vergi_no)) { toast.show('Vergi no / TC 10 veya 11 haneli olmalı', true); return }
+    const dup = list.find(c => c.ad.trim().toLocaleLowerCase('tr') === form.ad.trim().toLocaleLowerCase('tr') && c.id !== editing?.id)
+    if (dup && !confirm(`“${dup.ad}” adlı bir cari zaten var. Yine de kaydedilsin mi?`)) return
+    setBusy(true)
+    const payload = { ...form, ad: form.ad.trim(), vergi_no: form.vergi_no.replace(/\s/g, '') || null, fiyat_listesi_id: form.fiyat_listesi_id || null }
+    const r: any = editing ? await muh.from('cari_hesaplar').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', editing.id) : await muh.from('cari_hesaplar').insert(payload)
+    setBusy(false)
+    if (r?.error) { toast.show(r.error, true); return }
+    setModal(false); toast.show(editing ? 'Cari güncellendi' : 'Cari eklendi'); load()
+  }
+
+  async function del(c: any) {
+    const x = M[c.id]
+    if (Math.abs(+c.bakiye) > 0.005 && !confirm(`${c.ad} hesabının ${fmt(c.bakiye)} bakiyesi var. Yine de silinsin mi?`)) return
+    if (x?.fatSay && !confirm(`${x.fatSay} faturası bulunan cari siliniyor. Emin misin?`)) return
+    if (!x?.fatSay && Math.abs(+c.bakiye) <= 0.005 && !confirm(`${c.ad} silinsin mi?`)) return
+    const r: any = await muh.from('cari_hesaplar').delete().eq('id', c.id)
+    if (r?.error) { toast.show('Silinemedi: ' + r.error, true); return }
+    toast.show('Cari silindi'); setDetay(null); load()
+  }
+
+  function openOdeme(c: any) {
+    const b = +c.bakiye
+    setOdeme({ cari: c, tip: b < 0 || c.tip === 'tedarikci' ? 'gider' : 'gelir', tutar: Math.abs(b) > 0.005 ? String(Math.abs(b)) : '', kasa: '', yontem: 'havale', tarih: todayISO(), aciklama: '' })
+  }
+  async function kaydetOdeme(e: React.FormEvent) {
+    e.preventDefault(); if (busy || !odeme) return
+    if (!(+odeme.tutar > 0)) { toast.show('Tutar gerekli', true); return }
+    setBusy(true)
+    const r: any = await muh.from('islemler').insert({
+      tip: odeme.tip, kategori: odeme.tip === 'gelir' ? 'Cari Tahsilat' : 'Cari Ödeme', tutar: +odeme.tutar, tarih: odeme.tarih, odeme_yontemi: odeme.yontemi ?? odeme.yontem,
+      cari_id: odeme.cari.id, kasa_hesap_id: odeme.kasa || null, aciklama: odeme.aciklama || `${odeme.cari.ad} — ${odeme.tip === 'gelir' ? 'tahsilat' : 'ödeme'}`,
     })
-    hareketler.sort((a,b)=>a.tarih.localeCompare(b.tarih))
-    let bakiye = 0
-    return hareketler.map(h=>{ bakiye += h.borc - h.alacak; return {...h, bakiye} })
+    setBusy(false)
+    if (r?.error) { toast.show(r.error, true); return }
+    toast.show(odeme.tip === 'gelir' ? 'Tahsilat kaydedildi' : 'Ödeme kaydedildi'); setOdeme(null); load()
   }
 
-  function cariBakiye(cariId:string) {
-    const ek = ekstreHesapla(cariId)
-    return ek.length ? ek[ek.length-1].bakiye : 0
-  }
+  /* ── Grid ── */
+  const cols: Col<any>[] = [
+    {
+      key: 'ad', label: 'Cari', sort: c => c.ad, render: c => {
+        const T = TIP[c.tip] || TIP.diger
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 9, background: 'var(--adm-s2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><T.Icon size={15} style={{ color: 'var(--adm-tx2)' }} /></div>
+            <div style={{ minWidth: 0 }}><div style={{ fontWeight: 600 }}>{c.ad}</div><div style={{ fontSize: 11, color: 'var(--adm-tx3)' }}>{c.telefon || c.email || '—'}</div></div>
+          </div>)
+      },
+    },
+    { key: 'tip', label: 'Tür', width: 96, sort: c => c.tip, render: c => <Badge tone={(TIP[c.tip] || TIP.diger).tone}>{(TIP[c.tip] || TIP.diger).l}</Badge> },
+    {
+      key: 'bakiye', label: 'Bakiye', align: 'right', sort: c => +c.bakiye,
+      render: c => Math.abs(+c.bakiye) < 0.005 ? <span style={{ color: 'var(--adm-tx3)' }}>Kapalı</span> : (
+        <div><Money v={Math.abs(+c.bakiye)} tone={+c.bakiye > 0 ? 'green' : 'red'} /><div style={{ fontSize: 10.5, color: 'var(--adm-tx3)' }}>{+c.bakiye > 0 ? 'bize borçlu' : 'biz borçluyuz'}</div></div>),
+      total: rs => <Money v={sum(rs, c => c.bakiye)} tone="auto" />, csv: c => +c.bakiye,
+    },
+    { key: 'acik', label: 'Açık Fatura', align: 'right', sort: c => M[c.id]?.acik || 0, render: c => M[c.id]?.acik > 0 ? <Money v={M[c.id].acik} bold={false} /> : <span style={{ color: 'var(--adm-tx3)' }}>—</span>, hideSm: true },
+    { key: 'gec', label: 'Vadesi Geçen', align: 'right', sort: c => M[c.id]?.gecikmis || 0, render: c => M[c.id]?.gecikmis > 0 ? <Money v={M[c.id].gecikmis} tone="red" /> : <span style={{ color: 'var(--adm-tx3)' }}>—</span>, hideSm: true },
+    { key: 'ciro', label: 'Toplam Ciro', align: 'right', sort: c => M[c.id]?.ciro || 0, render: c => M[c.id]?.ciro > 0 ? <Money v={M[c.id].ciro} bold={false} /> : <span style={{ color: 'var(--adm-tx3)' }}>—</span>, hidden: true },
+    { key: 'son', label: 'Son Hareket', sort: c => M[c.id]?.son || '', render: c => M[c.id]?.son ? <span style={{ fontSize: 12 }}>{fmtDate(M[c.id].son)}<span style={{ color: 'var(--adm-tx3)' }}> · {daysBetween(M[c.id].son)}g önce</span></span> : '—', hideSm: true },
+    { key: 'vergi', label: 'Vergi No', sort: c => c.vergi_no || '', render: c => c.vergi_no || '—', hidden: true },
+    { key: 'act', label: '', width: 100, align: 'right', render: c => (
+      <span style={{ display: 'inline-flex', gap: 4 }} onClick={e => e.stopPropagation()}>
+        <button className="adm-btn-ghost" style={{ padding: '4px 7px' }} title={+c.bakiye < 0 ? 'Ödeme yap' : 'Tahsilat al'} onClick={() => openOdeme(c)}><HandCoins size={12} /></button>
+        <button className="adm-btn-ghost" style={{ padding: '4px 7px' }} onClick={() => openEdit(c)}><Pencil size={12} /></button>
+        <button className="adm-btn-danger" style={{ padding: '4px 7px' }} onClick={() => del(c)}><Trash2 size={12} /></button>
+      </span>) },
+  ]
 
-  function ekstreYazdir(cari:any) {
-    const ek = ekstreHesapla(cari.id)
-    const satirlar = ek.map(h=>`
-      <tr>
-        <td>${muh.date(h.tarih)}</td><td>${h.aciklama}</td>
-        <td style="text-align:right">${h.borc?muh.fmt(h.borc):''}</td>
-        <td style="text-align:right">${h.alacak?muh.fmt(h.alacak):''}</td>
-        <td style="text-align:right;font-weight:600">${muh.fmt(h.bakiye)}</td>
-      </tr>`).join('')
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${cari.ad} - Ekstre</title>
-      <style>
-        body{font-family:Arial,sans-serif;color:#0b0e0b;padding:40px;max-width:800px;margin:0 auto}
-        h1{font-size:20px;margin:0 0 4px} .muted{color:#6b7366;font-size:12px}
-        table{width:100%;border-collapse:collapse;margin-top:24px}
-        th,td{padding:8px 6px;font-size:13px;border-bottom:1px solid #ddd;text-align:left}
-        th{color:#6b7366;font-size:11px;text-transform:uppercase}
-        .header{display:flex;justify-content:space-between;border-bottom:2px solid #e55f28;padding-bottom:16px;margin-bottom:16px}
-        .toplam{margin-top:16px;text-align:right;font-size:15px;font-weight:700}
-        @media print{body{padding:0}}
-      </style></head><body>
-        <div class="header">
-          <div><h1>ALYA PLASTİK</h1><p class="muted">Cari Hesap Ekstresi</p></div>
-          <div style="text-align:right"><h1>${cari.ad}</h1><p class="muted">${new Date().toLocaleDateString('tr-TR')} itibarıyla</p></div>
-        </div>
-        <table>
-          <thead><tr><th>Tarih</th><th>Açıklama</th><th style="text-align:right">Borç</th><th style="text-align:right">Alacak</th><th style="text-align:right">Bakiye</th></tr></thead>
-          <tbody>${satirlar}</tbody>
-        </table>
-        <p class="toplam">Güncel Bakiye: ${muh.fmt(ek.length?ek[ek.length-1].bakiye:0)}</p>
-      </body></html>`
-    const w = window.open('', '_blank')
-    if (w) { w.document.write(html); w.document.close(); w.focus(); setTimeout(()=>w.print(),300) }
-  }
-
-  const TIP_CONF: Record<string,{l:string;Icon:any;c:string}> = {
-    musteri:    {l:'Müşteri',    Icon:User,      c:'var(--adm-blue)'},
-    tedarikci:  {l:'Tedarikçi', Icon:Building2, c:'var(--adm-amber)'},
-    diger:      {l:'Diğer',     Icon:User,      c:'var(--adm-tx3)'},
-  }
-
-  const detayEkstre = detay ? ekstreHesapla(detay.id) : []
+  const dm = detay ? M[detay.id] : null
+  const dEk = detay ? ekstre(detay.id) : []
+  const dFat = detay ? faturalar.filter(f => f.cari_id === detay.id).sort((a, b) => b.tarih.localeCompare(a.tarih)) : []
+  const dCek = detay ? cekler.filter(c => c.cari_id === detay.id) : []
+  const hatirlatma = detay ? `Merhaba ${detay.ad}, Alya Plastik hesabınızda ${fmt(Math.abs(detay.bakiye))} tutarında ${+detay.bakiye > 0 ? 'ödenmemiş bakiye' : 'ödeme bakiyesi'} görünmektedir. Bilginize sunarız.` : ''
 
   return (
-    <div style={{flex:1,overflow:'auto'}}>
-      <AdminTopBar title="Cari Hesaplar"/>
-      <div style={{padding:24}}>
+    <div style={{ flex: 1, overflow: 'auto' }}>
+      <AdminTopBar title="Cari Hesaplar" />
+      <Page>
+        <PageHead title="Cari Hesap Yönetimi" sub="Müşteri ve tedarikçi bakiyeleri, ekstre, tahsilat/ödeme takibi"
+          actions={<button className="adm-btn" onClick={openNew}><Plus size={14} />Yeni Cari</button>} />
 
-        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:20}}>
-          {[
-            {label:'Müşteri',    value:list.filter(c=>c.tip==='musteri').length,   color:'var(--adm-blue)'},
-            {label:'Tedarikçi',  value:list.filter(c=>c.tip==='tedarikci').length, color:'var(--adm-amber)'},
-            {label:'Toplam',     value:list.length,                                color:'var(--adm-ac)'},
-          ].map(s=>(
-            <div key={s.label} className="adm-kpi" style={{borderLeft:`2.5px solid ${s.color}`,padding:'14px 16px'}}>
-              <p className="adm-kpi-label">{s.label}</p>
-              <p className="adm-kpi-value" style={{fontSize:24,color:s.color}}>{s.value}</p>
-            </div>
-          ))}
+        <KpiGrid min={190}>
+          <Kpi label="Toplam Alacak" value={fmtK(alacak)} Icon={HandCoins} color="var(--adm-green)" sub={`${list.filter(c => +c.bakiye > 0).length} cari bize borçlu`} />
+          <Kpi label="Toplam Borç" value={fmtK(borc)} Icon={Wallet} color="var(--adm-red)" sub={`${list.filter(c => +c.bakiye < 0).length} cariye borçluyuz`} />
+          <Kpi label="Net Pozisyon" value={fmtK(alacak - borc)} Icon={Scale} color={alacak - borc >= 0 ? 'var(--adm-blue)' : 'var(--adm-red)'} sub="Alacak − Borç" />
+          <Kpi label="Vadesi Geçen" value={fmtK(gecikmis)} Icon={AlertTriangle} color={gecikmis > 0 ? 'var(--adm-red)' : 'var(--adm-green)'} sub={gecikmis > 0 ? `${list.filter(c => M[c.id]?.gecikmis > 0).length} cari gecikmede` : 'Gecikme yok'} />
+          <Kpi label="Toplam Cari" value={list.length} Icon={Users2} color="var(--adm-ac)" sub={`${list.filter(c => c.tip === 'musteri').length} müşteri · ${list.filter(c => c.tip === 'tedarikci').length} tedarikçi`} />
+        </KpiGrid>
+
+        <div style={{ marginBottom: 12 }}>
+          <Tabs value={tab} onChange={setTab} tabs={[
+            { v: 'hepsi', l: 'Tümü', n: list.length }, { v: 'musteri', l: 'Müşteriler', n: list.filter(c => c.tip === 'musteri').length },
+            { v: 'tedarikci', l: 'Tedarikçiler', n: list.filter(c => c.tip === 'tedarikci').length },
+            { v: 'bakiyeli', l: 'Bakiyesi olan', n: list.filter(c => Math.abs(+c.bakiye) > 0.005).length },
+            { v: 'gecikmis', l: 'Vadesi geçen', n: list.filter(c => M[c.id]?.gecikmis > 0).length },
+          ]} />
         </div>
 
-        <div style={{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap'}}>
-          <div style={{position:'relative',flex:1,minWidth:180,maxWidth:280}}>
-            <Search size={13} style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'var(--adm-tx3)'}}/>
-            <input className="adm-inp" placeholder="Ara..." value={search} onChange={e=>setSearch(e.target.value)} style={{paddingLeft:30}}/>
-          </div>
-          {[['hepsi','Tümü'],['musteri','Müşteri'],['tedarikci','Tedarikçi']].map(([v,l])=>(
-            <button key={v} onClick={()=>setFilter(v)} className={filter===v?'adm-btn':'adm-btn-ghost'} style={{fontSize:12,padding:'5px 14px'}}>{l}</button>
-          ))}
-          <div style={{flex:1}}/>
-          <button className="adm-btn-ghost" style={{fontSize:12}} onClick={()=>muh.exportCsv('cari-hesaplar.csv',filtered)}><Download size={13}/>CSV</button>
-          <button className="adm-btn" onClick={openNew}><Plus size={14}/>Cari Ekle</button>
-        </div>
+        <DataGrid rows={filtered} cols={cols} rowKey={c => c.id} loading={loading} csvName="cari-hesaplar" storageKey="cari"
+          searchText={c => `${c.ad} ${c.email || ''} ${c.telefon || ''} ${c.vergi_no || ''}`} searchPlaceholder="Ad, telefon, e-posta, vergi no..."
+          onRowClick={c => { setDetay(c); setDTab('ozet') }} activeKey={detay?.id}
+          emptyTitle="Cari bulunamadı" emptySub="Yeni Cari butonuyla ilk hesabı ekle" />
+      </Page>
 
-        <div className={`adm-detail-grid ${detay?'has-detail':''}`}>
-        <div className="adm-card">
-          <div className="adm-card-h">Cari Listesi ({filtered.length})</div>
-          {loading ? <p style={{padding:40,textAlign:'center',color:'var(--adm-tx3)'}}>Yükleniyor...</p>
-          : filtered.length===0 ? <p style={{padding:40,textAlign:'center',color:'var(--adm-tx3)',fontSize:13}}>Cari bulunamadı</p>
-          : filtered.map(c => {
-            const conf = TIP_CONF[c.tip]||TIP_CONF.diger
-            const bakiye = cariBakiye(c.id)
-            return (
-              <div key={c.id} className="adm-row" style={{cursor:'pointer',background:detay?.id===c.id?'var(--adm-ac3)':''}} onClick={()=>setDetay(c)}>
-                <div style={{width:38,height:38,borderRadius:10,background:conf.c+'18',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                  <conf.Icon size={16} style={{color:conf.c}}/>
-                </div>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:2}}>
-                    <p style={{fontSize:13.5,fontWeight:700,color:'var(--adm-tx)'}}>{c.ad}</p>
-                    <span className="adm-badge" style={{background:conf.c+'18',color:conf.c,fontSize:10}}>{conf.l}</span>
-                  </div>
-                  <div style={{display:'flex',gap:12,flexWrap:'wrap'}}>
-                    {c.telefon && <span style={{display:'flex',alignItems:'center',gap:4,fontSize:11.5,color:'var(--adm-tx3)'}}><Phone size={10}/>{c.telefon}</span>}
-                    {c.email && <span style={{display:'flex',alignItems:'center',gap:4,fontSize:11.5,color:'var(--adm-tx3)'}}><Mail size={10}/>{c.email}</span>}
-                    {c.vergi_no && <span style={{fontSize:11.5,color:'var(--adm-tx3)'}}>VKN: {c.vergi_no}</span>}
-                  </div>
-                </div>
-                {bakiye!==0 && (
-                  <span style={{fontSize:13,fontWeight:700,fontFamily:'JetBrains Mono,monospace',color:bakiye>0?'var(--adm-red)':'var(--adm-green)',flexShrink:0}}>
-                    {bakiye>0?'Borçlu: ':'Alacaklı: '}{muh.fmt(Math.abs(bakiye))}
-                  </span>
-                )}
-                <div style={{display:'flex',gap:6,flexShrink:0}}>
-                  <button className="adm-btn-ghost" style={{padding:'5px 9px'}} onClick={(e)=>{e.stopPropagation();openEdit(c)}}><Pencil size={12}/></button>
-                  <button className="adm-btn-danger" style={{padding:'5px 9px'}} onClick={(e)=>{e.stopPropagation();del(c.id)}}><Trash2 size={12}/></button>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
+      {/* Detay */}
+      <Drawer open={!!detay} onClose={() => setDetay(null)} width={640}
+        title={detay && <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>{detay.ad}<Badge tone={(TIP[detay.tip] || TIP.diger).tone}>{(TIP[detay.tip] || TIP.diger).l}</Badge></span>}
+        sub={detay && [detay.telefon, detay.email].filter(Boolean).join(' · ') || 'İletişim bilgisi yok'}
+        footer={detay && <>
+          <button className="adm-btn-ghost" onClick={() => openEdit(detay)}><Pencil size={13} />Düzenle</button>
+          <button className="adm-btn" onClick={() => openOdeme(detay)}><HandCoins size={14} />{+detay.bakiye < 0 ? 'Ödeme Yap' : 'Tahsilat Al'}</button>
+        </>}>
         {detay && (
-          <div className="adm-card" style={{height:'fit-content',position:'sticky',top:0,maxHeight:'80vh',overflow:'auto'}}>
-            <div className="adm-card-h">
-              <span>{detay.ad} — Ekstre</span>
-              <button onClick={()=>setDetay(null)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--adm-tx3)'}}><X size={16}/></button>
-            </div>
-            <div style={{padding:16}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14,padding:12,background:'var(--adm-s3)',borderRadius:8}}>
-                <span style={{fontSize:12.5,color:'var(--adm-tx3)'}}>Güncel Bakiye</span>
-                <span style={{fontSize:16,fontWeight:700,fontFamily:'JetBrains Mono,monospace',color:cariBakiye(detay.id)>0?'var(--adm-red)':'var(--adm-green)'}}>
-                  {muh.fmt(Math.abs(cariBakiye(detay.id)))} {cariBakiye(detay.id)>0?'(Borçlu)':cariBakiye(detay.id)<0?'(Alacaklı)':''}
-                </span>
-              </div>
-              {detayEkstre.length===0 ? <p style={{fontSize:12,color:'var(--adm-tx3)',textAlign:'center',padding:20}}>Hareket yok</p>
-              : detayEkstre.map((h,i)=>(
-                <div key={i} style={{padding:'8px 0',borderBottom:'1px solid var(--adm-bdr)'}}>
-                  <div style={{display:'flex',justifyContent:'space-between'}}>
-                    <span style={{fontSize:12,fontWeight:600,color:'var(--adm-tx)'}}>{h.aciklama}</span>
-                    <span style={{fontSize:11,color:'var(--adm-tx3)'}}>{muh.date(h.tarih)}</span>
-                  </div>
-                  <div style={{display:'flex',justifyContent:'space-between',marginTop:2}}>
-                    <span style={{fontSize:11.5,color:h.borc?'var(--adm-red)':'var(--adm-green)'}}>
-                      {h.borc?`Borç: ${muh.fmt(h.borc)}`:`Alacak: ${muh.fmt(h.alacak)}`}
-                    </span>
-                    <span style={{fontSize:11.5,fontFamily:'JetBrains Mono,monospace',color:'var(--adm-tx3)'}}>Bakiye: {muh.fmt(h.bakiye)}</span>
-                  </div>
+          <div>
+            <div style={{ padding: '18px 20px 0' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(130px,1fr))', gap: 10, marginBottom: 14 }}>
+                <div style={{ padding: 12, borderRadius: 10, background: 'var(--adm-s2)' }}>
+                  <div className="adm-kpi-label" style={{ marginBottom: 4 }}>Bakiye</div>
+                  <Money v={Math.abs(+detay.bakiye)} tone={Math.abs(+detay.bakiye) < 0.005 ? undefined : +detay.bakiye > 0 ? 'green' : 'red'} size={17} />
+                  <div style={{ fontSize: 10.5, color: 'var(--adm-tx3)' }}>{Math.abs(+detay.bakiye) < 0.005 ? 'hesap kapalı' : +detay.bakiye > 0 ? 'bize borçlu' : 'biz borçluyuz'}</div>
                 </div>
-              ))}
-              <button className="adm-btn-ghost" style={{width:'100%',marginTop:14}} onClick={()=>ekstreYazdir(detay)}><FileBarChart size={13}/>Ekstre Yazdır / PDF</button>
+                <div style={{ padding: 12, borderRadius: 10, background: 'var(--adm-s2)' }}><div className="adm-kpi-label" style={{ marginBottom: 4 }}>Açık Fatura</div><Money v={dm?.acik || 0} size={17} /></div>
+                <div style={{ padding: 12, borderRadius: 10, background: dm?.gecikmis ? 'var(--adm-red2)' : 'var(--adm-s2)' }}><div className="adm-kpi-label" style={{ marginBottom: 4 }}>Vadesi Geçen</div><Money v={dm?.gecikmis || 0} tone={dm?.gecikmis ? 'red' : undefined} size={17} /></div>
+                <div style={{ padding: 12, borderRadius: 10, background: 'var(--adm-s2)' }}><div className="adm-kpi-label" style={{ marginBottom: 4 }}>Toplam Ciro</div><Money v={dm?.ciro || 0} size={17} /></div>
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+                {detay.telefon && <a className="adm-btn-ghost" href={`tel:${detay.telefon}`} style={{ textDecoration: 'none' }}><Phone size={13} />Ara</a>}
+                {detay.telefon && <a className="adm-btn-ghost" target="_blank" rel="noreferrer" href={`https://wa.me/${waNumara(detay.telefon)}?text=${encodeURIComponent(hatirlatma)}`} style={{ textDecoration: 'none', color: 'var(--adm-green)' }}><MessageCircle size={13} />WhatsApp Hatırlat</a>}
+                {detay.email && <a className="adm-btn-ghost" href={`mailto:${detay.email}?subject=${encodeURIComponent('Cari hesap bilgilendirmesi')}&body=${encodeURIComponent(hatirlatma)}`} style={{ textDecoration: 'none' }}><Mail size={13} />E-posta</a>}
+                <button className="adm-btn-ghost" onClick={() => ekstreYazdir(detay)}><Printer size={13} />Ekstre Yazdır</button>
+              </div>
+              <Tabs value={dTab} onChange={setDTab} tabs={[{ v: 'ozet', l: 'Bilgiler' }, { v: 'ekstre', l: 'Ekstre', n: dEk.length }, { v: 'fatura', l: 'Faturalar', n: dFat.length }, { v: 'cek', l: 'Çek/Senet', n: dCek.length }]} />
             </div>
+
+            {dTab === 'ozet' && (
+              <div style={{ padding: 20 }}>
+                <InfoRow k="Vergi No / TC" v={detay.vergi_no || '—'} />
+                <InfoRow k="Telefon" v={detay.telefon || '—'} />
+                <InfoRow k="E-posta" v={detay.email || '—'} />
+                <InfoRow k="Adres" v={detay.adres || '—'} />
+                <InfoRow k="Fiyat listesi" v={fiyatListeleri.find(f => f.id === detay.fiyat_listesi_id)?.ad || 'Varsayılan'} />
+                <InfoRow k="Fatura sayısı" v={dm?.fatSay || 0} />
+                <InfoRow k="Son hareket" v={dm?.son ? fmtDate(dm.son) : '—'} />
+                <InfoRow k="Kayıt tarihi" v={fmtDate(detay.created_at)} />
+                {detay.notlar && <><Divider label="Notlar" /><p style={{ fontSize: 13, color: 'var(--adm-tx2)', margin: 0, whiteSpace: 'pre-wrap' }}>{detay.notlar}</p></>}
+                <div style={{ marginTop: 22 }}><button className="adm-btn-danger" onClick={() => del(detay)}><Trash2 size={13} />Cariyi Sil</button></div>
+              </div>
+            )}
+
+            {dTab === 'ekstre' && (
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px 20px 0', gap: 8 }}>
+                  <button className="adm-btn-ghost" style={{ fontSize: 12 }} disabled={!dEk.length} onClick={() => csvDownload(`ekstre-${detay.ad}.csv`, dEk.map(h => ({ Tarih: h.tarih, Açıklama: h.aciklama, Tür: h.tur, Borç: h.borc, Alacak: h.alacak, Bakiye: h.bakiye })))}><Download size={12} />CSV</button>
+                </div>
+                {dEk.length === 0 ? <Empty icon={<FileBarChart size={28} />} title="Hareket yok" sub="Bu cariye ait onaylı fatura ya da işlem bulunmuyor" /> : (
+                  <div style={{ overflow: 'auto', padding: '8px 0' }}>
+                    <table className="adm-tbl">
+                      <thead><tr><th>Tarih</th><th>Açıklama</th><th style={{ textAlign: 'right' }}>Borç</th><th style={{ textAlign: 'right' }}>Alacak</th><th style={{ textAlign: 'right' }}>Bakiye</th></tr></thead>
+                      <tbody>{[...dEk].reverse().map((h, i) => (
+                        <tr key={i}>
+                          <td style={{ whiteSpace: 'nowrap' }}>{fmtDate(h.tarih)}</td>
+                          <td><div style={{ fontWeight: 500 }}>{h.aciklama}</div><div style={{ fontSize: 11, color: 'var(--adm-tx3)' }}>{h.tur}</div></td>
+                          <td style={{ textAlign: 'right' }}>{h.borc ? <Money v={h.borc} bold={false} /> : ''}</td>
+                          <td style={{ textAlign: 'right' }}>{h.alacak ? <Money v={h.alacak} bold={false} /> : ''}</td>
+                          <td style={{ textAlign: 'right' }}><Money v={h.bakiye} tone="auto" /></td>
+                        </tr>))}</tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {dTab === 'fatura' && (dFat.length === 0 ? <Empty icon={<Receipt size={28} />} title="Fatura yok" /> : dFat.map(f => (
+              <div key={f.id} className="adm-row">
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{f.no} <span style={{ color: 'var(--adm-tx3)', fontWeight: 400 }}>· {f.tip === 'satis' ? 'Satış' : f.tip === 'alis' ? 'Alış' : 'İade'}</span></div>
+                  <div style={{ fontSize: 11.5, color: f.vade && f.vade < bugun && acikFatura(f) ? 'var(--adm-red)' : 'var(--adm-tx3)' }}>{fmtDate(f.tarih)}{f.vade ? ` · vade ${fmtDate(f.vade)}` : ''}</div>
+                </div>
+                <div style={{ textAlign: 'right' }}><Money v={+f.toplam} bold={false} />{acikFatura(f) && +f.odenen_tutar > 0 && <div style={{ fontSize: 10.5, color: 'var(--adm-tx3)' }}>kalan {fmt(kalanTutar(f))}</div>}</div>
+                <Badge tone={DURUM[f.durum]?.tone}>{DURUM[f.durum]?.l}</Badge>
+              </div>)))}
+
+            {dTab === 'cek' && (dCek.length === 0 ? <Empty icon={<FileSignature size={28} />} title="Çek/senet yok" /> : dCek.map(c => (
+              <div key={c.id} className="adm-row">
+                <div style={{ flex: 1 }}><div style={{ fontSize: 13, fontWeight: 600 }}>{c.tip === 'cek' ? 'Çek' : 'Senet'} {c.no || ''}</div><div style={{ fontSize: 11.5, color: 'var(--adm-tx3)' }}>{c.banka || ''} · vade {fmtDate(c.vade_tarihi)}</div></div>
+                <Money v={+c.tutar} tone={c.yon === 'alinan' ? 'green' : 'red'} /><Badge tone={c.durum === 'portfoyde' ? 'blue' : c.durum === 'karsiliksiz' ? 'red' : 'green'}>{c.durum.replace('_', ' ')}</Badge>
+              </div>)))}
           </div>
         )}
-        </div>
-      </div>
+      </Drawer>
 
-      {modal && (
-        <div className="adm-modal-bg" onClick={e=>{if(e.target===e.currentTarget)setModal(false)}}>
-          <div className="adm-modal">
-            <div className="adm-modal-h">
-              {editing?'Cari Düzenle':'Yeni Cari Hesap'}
-              <button onClick={()=>setModal(false)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--adm-tx3)'}}><X size={18}/></button>
-            </div>
-            <form onSubmit={save}>
-              <div className="adm-modal-b" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
-                <div style={{gridColumn:'1/-1'}}>
-                  <label className="adm-label">Tip</label>
-                  <div style={{display:'flex',gap:6}}>
-                    {[['musteri','Müşteri'],['tedarikci','Tedarikçi'],['diger','Diğer']].map(([v,l])=>(
-                      <button key={v} type="button" onClick={()=>setForm(f=>({...f,tip:v}))}
-                        className={form.tip===v?'adm-btn':'adm-btn-ghost'} style={{fontSize:12,padding:'5px 14px'}}>{l}</button>
-                    ))}
-                  </div>
-                </div>
-                <div style={{gridColumn:'1/-1'}}><label className="adm-label">Ad / Unvan *</label><input className="adm-inp" required value={form.ad} onChange={e=>setForm(f=>({...f,ad:e.target.value}))} placeholder="Şirket veya kişi adı"/></div>
-                <div><label className="adm-label">Vergi No / TC</label><input className="adm-inp" value={form.vergi_no} onChange={e=>setForm(f=>({...f,vergi_no:e.target.value}))} placeholder="1234567890"/></div>
-                <div><label className="adm-label">Telefon</label><input className="adm-inp" value={form.telefon} onChange={e=>setForm(f=>({...f,telefon:e.target.value}))} placeholder="+90 5xx xxx xx xx"/></div>
-                <div><label className="adm-label">E-posta</label><input type="email" className="adm-inp" value={form.email} onChange={e=>setForm(f=>({...f,email:e.target.value}))} placeholder="firma@mail.com"/></div>
-                <div><label className="adm-label">Adres</label><input className="adm-inp" value={form.adres} onChange={e=>setForm(f=>({...f,adres:e.target.value}))} placeholder="İstanbul..."/></div>
-                <div><label className="adm-label">Fiyat Listesi</label>
-                  <select className="adm-inp" value={form.fiyat_listesi_id} onChange={e=>setForm(f=>({...f,fiyat_listesi_id:e.target.value}))}>
-                    <option value="">Varsayılan (liste fiyatı)</option>
-                    {fiyatListeleri.map((fl:any)=><option key={fl.id} value={fl.id}>{fl.ad}</option>)}
-                  </select>
-                </div>
-                <div style={{gridColumn:'1/-1'}}><label className="adm-label">Notlar</label><textarea className="adm-inp" rows={2} value={form.notlar} onChange={e=>setForm(f=>({...f,notlar:e.target.value}))} placeholder="Ek bilgiler..."/></div>
-              </div>
-              <div className="adm-modal-f">
-                <button type="button" className="adm-btn-ghost" onClick={()=>setModal(false)}>İptal</button>
-                <button type="submit" className="adm-btn">Kaydet</button>
-              </div>
-            </form>
-          </div>
+      {/* Cari formu */}
+      <Modal open={modal} onClose={() => setModal(false)} onSubmit={save} title={editing ? 'Cariyi Düzenle' : 'Yeni Cari Hesap'} width={600}
+        footer={<><button type="button" className="adm-btn-ghost" onClick={() => setModal(false)}>İptal</button><button type="submit" className="adm-btn" disabled={busy}>{busy ? 'Kaydediliyor...' : 'Kaydet'}</button></>}>
+        <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+          {Object.entries(TIP).map(([k, v]) => <button key={k} type="button" onClick={() => setForm((f: any) => ({ ...f, tip: k }))} className={form.tip === k ? 'adm-btn' : 'adm-btn-ghost'} style={{ flex: 1, justifyContent: 'center' }}><v.Icon size={13} />{v.l}</button>)}
         </div>
-      )}
-      {toast && <div className="adm-toast">✓ {toast}</div>}
+        <FormGrid>
+          <Field label="Ad / Unvan *" span={2}><input className="adm-inp" required autoFocus value={form.ad} onChange={e => setForm((f: any) => ({ ...f, ad: e.target.value }))} /></Field>
+          <Field label="Vergi No / TC" hint={form.vergi_no && !vergiGecerli(form.vergi_no) ? '10 (vergi no) veya 11 (TC) hane olmalı' : undefined}><input className="adm-inp" inputMode="numeric" value={form.vergi_no} onChange={e => setForm((f: any) => ({ ...f, vergi_no: e.target.value.replace(/[^\d\s]/g, '') }))} style={form.vergi_no && !vergiGecerli(form.vergi_no) ? { borderColor: 'var(--adm-red)' } : undefined} /></Field>
+          <Field label="Telefon"><input className="adm-inp" value={form.telefon} onChange={e => setForm((f: any) => ({ ...f, telefon: e.target.value }))} placeholder="05xx xxx xx xx" /></Field>
+          <Field label="E-posta"><input type="email" className="adm-inp" value={form.email} onChange={e => setForm((f: any) => ({ ...f, email: e.target.value }))} /></Field>
+          <Field label="Fiyat Listesi"><select className="adm-inp" value={form.fiyat_listesi_id} onChange={e => setForm((f: any) => ({ ...f, fiyat_listesi_id: e.target.value }))}><option value="">Varsayılan</option>{fiyatListeleri.map(f => <option key={f.id} value={f.id}>{f.ad}</option>)}</select></Field>
+          <Field label="Adres" span={2}><input className="adm-inp" value={form.adres} onChange={e => setForm((f: any) => ({ ...f, adres: e.target.value }))} /></Field>
+          <Field label="Notlar" span={2}><textarea className="adm-inp" rows={2} value={form.notlar} onChange={e => setForm((f: any) => ({ ...f, notlar: e.target.value }))} /></Field>
+        </FormGrid>
+      </Modal>
+
+      {/* Tahsilat / Ödeme */}
+      <Modal open={!!odeme} onClose={() => setOdeme(null)} onSubmit={kaydetOdeme} width={480}
+        title={odeme && <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>{odeme.cari.ad}
+          <span style={{ display: 'flex', gap: 4 }}>{(['gelir', 'gider'] as const).map(t => <button key={t} type="button" onClick={() => setOdeme((o: any) => ({ ...o, tip: t }))} style={{ padding: '4px 12px', borderRadius: 7, fontSize: 12, fontWeight: 700, border: 'none', fontFamily: 'inherit', background: odeme.tip === t ? (t === 'gelir' ? 'var(--adm-green)' : 'var(--adm-red)') : 'var(--adm-s3)', color: odeme.tip === t ? '#fff' : 'var(--adm-tx3)' }}>{t === 'gelir' ? 'Tahsilat' : 'Ödeme'}</button>)}</span></span>}
+        footer={<><button type="button" className="adm-btn-ghost" onClick={() => setOdeme(null)}>İptal</button><button type="submit" className="adm-btn" disabled={busy} style={{ background: odeme?.tip === 'gelir' ? 'var(--adm-green)' : 'var(--adm-red)' }}>Kaydet</button></>}>
+        {odeme && (
+          <FormGrid>
+            <Field label="Tutar (₺) *"><input type="number" step="0.01" className="adm-inp" required autoFocus value={odeme.tutar} onChange={e => setOdeme((o: any) => ({ ...o, tutar: e.target.value }))} style={{ fontSize: 16, fontWeight: 700 }} /></Field>
+            <Field label="Tarih"><input type="date" className="adm-inp" value={odeme.tarih} onChange={e => setOdeme((o: any) => ({ ...o, tarih: e.target.value }))} /></Field>
+            <Field label="Kasa / Banka" hint={odeme.kasa ? undefined : 'Seçilmezse hesap bakiyesi değişmez'}><select className="adm-inp" value={odeme.kasa} onChange={e => setOdeme((o: any) => ({ ...o, kasa: e.target.value }))}><option value="">— Seçilmedi —</option>{kasalar.filter(k => k.aktif !== false).map(k => <option key={k.id} value={k.id}>{k.ad}</option>)}</select></Field>
+            <Field label="Yöntem"><select className="adm-inp" value={odeme.yontem} onChange={e => setOdeme((o: any) => ({ ...o, yontem: e.target.value }))}><option value="nakit">Nakit</option><option value="havale">Havale/EFT</option><option value="kredi_karti">Kredi Kartı</option><option value="cek">Çek</option><option value="diger">Diğer</option></select></Field>
+            <Field label="Açıklama" span={2}><input className="adm-inp" value={odeme.aciklama} onChange={e => setOdeme((o: any) => ({ ...o, aciklama: e.target.value }))} /></Field>
+            <div style={{ gridColumn: 'span 2', fontSize: 12, color: 'var(--adm-tx3)' }}>Bakiye: {fmt(odeme.cari.bakiye)} → <b style={{ color: 'var(--adm-tx)' }}>{fmt(+odeme.cari.bakiye + (odeme.tip === 'gelir' ? -1 : 1) * (+odeme.tutar || 0))}</b></div>
+          </FormGrid>
+        )}
+      </Modal>
+      {toast.node}
     </div>
   )
 }

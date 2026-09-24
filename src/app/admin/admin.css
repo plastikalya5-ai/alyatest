@@ -92,3 +92,24 @@ select.adm-inp { cursor: pointer; }
 @keyframes admFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes admPulse { 0%,100%{opacity:1}50%{opacity:.5} }
 @keyframes admSpin { to { transform: rotate(360deg); } }
+
+/* ── ERP kit ── */
+@keyframes admSlideIn { from { transform: translateX(40px); opacity: 0 } to { transform: none; opacity: 1 } }
+@keyframes admShimmer { 0% { background-position: 200% 0 } 100% { background-position: -200% 0 } }
+.adm-tbl { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12.5px; }
+.adm-tbl th { position: sticky; top: 0; z-index: 2; background: var(--adm-s2); text-align: left; font-size: 10.5px; font-weight: 700; color: var(--adm-tx3); text-transform: uppercase; letter-spacing: .06em; padding: 9px 12px; border-bottom: 1px solid var(--adm-bdr); white-space: nowrap; user-select: none; }
+.adm-tbl th.sortable { cursor: pointer !important; }
+.adm-tbl th.sortable:hover { color: var(--adm-tx); }
+.adm-tbl td { padding: 10px 12px; border-bottom: 1px solid var(--adm-bdr); color: var(--adm-tx); vertical-align: middle; }
+.adm-tbl.compact td { padding: 6px 12px; }
+.adm-tbl tbody tr { transition: background .1s; }
+.adm-tbl tbody tr:hover { background: rgba(20,20,30,0.03); }
+.adm-tbl tbody tr.clickable { cursor: pointer !important; }
+.adm-tbl tbody tr.active { background: var(--adm-ac2); }
+.adm-tbl tfoot td { position: sticky; bottom: 0; background: var(--adm-s2); font-weight: 700; border-top: 1px solid var(--adm-bdr2); border-bottom: none; }
+.adm-chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--adm-bdr); background: var(--adm-s1); border-radius: 8px; padding: 5px 10px; font-size: 12px; color: var(--adm-tx2); font-family: inherit; }
+.adm-chip.on { border-color: var(--adm-ac); background: var(--adm-ac2); color: var(--adm-ac); font-weight: 600; }
+.adm-sel { background: var(--adm-s1); border: 1px solid var(--adm-bdr); border-radius: 8px; padding: 6px 10px; font-size: 12px; color: var(--adm-tx2); font-family: inherit; outline: none; }
+.adm-sel:focus { border-color: var(--adm-ac); }
+.adm-kbd { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; border: 1px solid var(--adm-bdr2); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; color: var(--adm-tx3); background: var(--adm-s1); }
+@media (max-width: 720px) { .adm-hide-sm { display: none !important; } }
