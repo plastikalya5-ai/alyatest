@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase/server'
+import { encryptField, decryptField } from '@/lib/field-crypto'
 
 // Muhasebe modülüne ait tablolar — sadece bunlara erişilebilir.
 // Gerçek yetki kontrolü RLS (private.has_module) tarafından yapılır; bu allowlist ek bir savunma katmanı.
@@ -7,6 +8,26 @@ const TABLES = new Set([
   'cari_hesaplar','faturalar','fatura_kalemleri','islemler','muhasebe_kategoriler',
   'kasa_banka_hesaplari','cek_senet','product_variants','products',
 ])
+
+// Alan-seviyesi şifrelenecek hassas kimlik alanları (tablo -> kolonlar)
+const ENCRYPTED_FIELDS: Record<string,string[]> = {
+  cari_hesaplar: ['vergi_no'],
+}
+
+function decryptRow(table:string, row:any) {
+  const fields = ENCRYPTED_FIELDS[table]
+  if (!fields || !row) return row
+  const out = {...row}
+  for (const f of fields) if (out[f] != null) out[f] = decryptField(out[f])
+  return out
+}
+function encryptPayload(table:string, payload:any) {
+  const fields = ENCRYPTED_FIELDS[table]
+  if (!fields) return payload
+  const out = {...payload}
+  for (const f of fields) if (out[f] != null) out[f] = encryptField(out[f])
+  return out
+}
 
 async function requireSession() {
   const sb = await createServerSupabase()
@@ -31,7 +52,8 @@ export async function GET(req: NextRequest) {
   if (limit) q=q.limit(+limit)
   const { data, error, count:cnt } = await q
   if (error) return NextResponse.json({error:error.message},{status:500})
-  return NextResponse.json({ data, count: cnt })
+  const decrypted = Array.isArray(data) ? data.map((row:any)=>decryptRow(table,row)) : data
+  return NextResponse.json({ data: decrypted, count: cnt })
 }
 
 export async function POST(req: NextRequest) {
@@ -44,14 +66,17 @@ export async function POST(req: NextRequest) {
 
   let r: any
   if (op === 'insert') {
-    const payload = Array.isArray(data) ? data.map(d=>({...d, created_by:user.id})) : { ...data, created_by: user.id }
+    const enc = Array.isArray(data) ? data.map((d:any)=>encryptPayload(table,d)) : encryptPayload(table,data)
+    const payload = Array.isArray(enc) ? enc.map(d=>({...d, created_by:user.id})) : { ...enc, created_by: user.id }
     r = await sb.from(table).insert(payload).select()
   } else if (op === 'update') {
-    r = await sb.from(table).update({ ...data, updated_by: user.id }).eq('id', id).select()
+    const enc = encryptPayload(table, data)
+    r = await sb.from(table).update({ ...enc, updated_by: user.id }).eq('id', id).select()
   } else if (op === 'delete') {
     r = await sb.from(table).delete().eq('id', id)
   } else if (op === 'upsert') {
-    const payload = Array.isArray(data) ? data.map(d=>({...d, created_by:user.id})) : { ...data, created_by: user.id }
+    const enc = Array.isArray(data) ? data.map((d:any)=>encryptPayload(table,d)) : encryptPayload(table,data)
+    const payload = Array.isArray(enc) ? enc.map(d=>({...d, created_by:user.id})) : { ...enc, created_by: user.id }
     r = await sb.from(table).upsert(payload).select()
   } else {
     return NextResponse.json({ error: 'Geçersiz işlem' }, { status: 400 })
@@ -61,5 +86,6 @@ export async function POST(req: NextRequest) {
   const recordId = id || r?.data?.[0]?.id
   sb.from('admin_activity').insert({ action: op, table_name: table, record_id: recordId, user_id: user.id }).then(()=>{})
 
-  return NextResponse.json({ ok: true, data: r?.data })
+  const decrypted = Array.isArray(r?.data) ? r.data.map((row:any)=>decryptRow(table,row)) : r?.data
+  return NextResponse.json({ ok: true, data: decrypted })
 }
