@@ -3,15 +3,18 @@ import { useEffect, useState, useCallback } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
 import { erp } from '@/lib/erp-client'
 import { muh } from '@/lib/muhasebe-client'
-import { Plus, Pencil, Trash2, X, Search, AlertTriangle, Boxes } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Search, AlertTriangle, Boxes, Layers } from 'lucide-react'
 
 export default function HammaddePage() {
   const [list, setList] = useState<any[]>([])
   const [depolar, setDepolar] = useState<any[]>([])
   const [tedarikciler, setTedarikciler] = useState<any[]>([])
+  const [lotlar, setLotlar] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState<any>(null)
+  const [detay, setDetay] = useState<any>(null)
+  const [lotForm, setLotForm] = useState({ lot_no:'', miktar:'', giris_tarihi:new Date().toISOString().split('T')[0], tedarikci_id:'' })
   const [search, setSearch] = useState('')
   const [sadeceKritik, setSadeceKritik] = useState(false)
   const [toast, setToast] = useState('')
@@ -20,12 +23,13 @@ export default function HammaddePage() {
   const showToast = (m:string) => { setToast(m); setTimeout(()=>setToast(''),3000) }
 
   const load = useCallback(async () => {
-    const [{data:h},{data:d},{data:c}] = await Promise.all([
+    const [{data:h},{data:d},{data:c},{data:l}] = await Promise.all([
       erp.from('hammaddeler').select('*').order('ad',{ascending:true}),
       erp.from('depolar').select('id,ad').order('ad',{ascending:true}),
       muh.from('cari_hesaplar').select('id,ad').eq('tip','tedarikci').order('ad',{ascending:true}),
+      erp.from('hammadde_lotlari').select('*').order('giris_tarihi',{ascending:false}),
     ])
-    setList(h||[]); setDepolar(d||[]); setTedarikciler(c||[]); setLoading(false)
+    setList(h||[]); setDepolar(d||[]); setTedarikciler(c||[]); setLotlar(l||[]); setLoading(false)
   },[])
   useEffect(()=>{ load() },[load])
 
@@ -45,12 +49,26 @@ export default function HammaddePage() {
     showToast('Silindi'); load()
   }
 
+  async function lotEkle(e:React.FormEvent) {
+    e.preventDefault()
+    if (!detay) return
+    await erp.from('hammadde_lotlari').insert({...lotForm, miktar:+lotForm.miktar, hammadde_id:detay.id, tedarikci_id:lotForm.tedarikci_id||null})
+    setLotForm({lot_no:'',miktar:'',giris_tarihi:new Date().toISOString().split('T')[0],tedarikci_id:''})
+    showToast('Lot eklendi'); load()
+  }
+  async function lotSil(id:string) {
+    if (!confirm('Lot kaydı silinsin mi?')) return
+    await erp.from('hammadde_lotlari').delete().eq('id',id)
+    showToast('Lot silindi'); load()
+  }
+
   const filtered = list.filter(h=>{
     if (sadeceKritik && +h.mevcut_stok > +h.min_stok) return false
     if (search && !h.ad?.toLowerCase().includes(search.toLowerCase()) && !h.kod?.toLowerCase().includes(search.toLowerCase())) return false
     return true
   })
   const kritikSayi = list.filter(h=>+h.mevcut_stok <= +h.min_stok).length
+  const detayLotlar = detay ? lotlar.filter(l=>l.hammadde_id===detay.id) : []
 
   return (
     <div style={{flex:1,overflow:'auto'}}>
@@ -79,6 +97,7 @@ export default function HammaddePage() {
           <button className="adm-btn" onClick={openNew}><Plus size={14}/>Hammadde Ekle</button>
         </div>
 
+        <div className={`adm-detail-grid ${detay?'has-detail':''}`}>
         <div className="adm-card">
           <div className="adm-card-h">Hammaddeler ({filtered.length})</div>
           {loading ? <p style={{padding:40,textAlign:'center',color:'var(--adm-tx3)'}}>Yükleniyor...</p>
@@ -86,7 +105,7 @@ export default function HammaddePage() {
           : filtered.map(h=>{
             const kritik = +h.mevcut_stok <= +h.min_stok
             return (
-              <div key={h.id} className="adm-row">
+              <div key={h.id} className="adm-row" style={{cursor:'pointer',background:detay?.id===h.id?'var(--adm-ac3)':''}} onClick={()=>setDetay(h)}>
                 <div style={{width:36,height:36,borderRadius:9,background:kritik?'var(--adm-red2)':'var(--adm-ac2)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
                   <Boxes size={15} style={{color:kritik?'var(--adm-red)':'var(--adm-ac)'}}/>
                 </div>
@@ -98,12 +117,51 @@ export default function HammaddePage() {
                   <p style={{fontSize:15,fontWeight:700,fontFamily:'JetBrains Mono,monospace',color:kritik?'var(--adm-red)':'var(--adm-tx)'}}>{muh.fmtN(h.mevcut_stok)} {h.birim}</p>
                 </div>
                 <div style={{display:'flex',gap:6,flexShrink:0}}>
-                  <button className="adm-btn-ghost" style={{padding:'5px 9px'}} onClick={()=>openEdit(h)}><Pencil size={12}/></button>
-                  <button className="adm-btn-danger" style={{padding:'5px 9px'}} onClick={()=>del(h.id)}><Trash2 size={12}/></button>
+                  <button className="adm-btn-ghost" style={{padding:'5px 9px'}} onClick={(e)=>{e.stopPropagation();openEdit(h)}}><Pencil size={12}/></button>
+                  <button className="adm-btn-danger" style={{padding:'5px 9px'}} onClick={(e)=>{e.stopPropagation();del(h.id)}}><Trash2 size={12}/></button>
                 </div>
               </div>
             )
           })}
+        </div>
+
+        {detay && (
+          <div className="adm-card" style={{height:'fit-content',position:'sticky',top:0,maxHeight:'80vh',overflow:'auto'}}>
+            <div className="adm-card-h">
+              <span style={{display:'flex',alignItems:'center',gap:6}}><Layers size={14}/>{detay.ad} — Lot/Parti</span>
+              <button onClick={()=>setDetay(null)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--adm-tx3)'}}><X size={16}/></button>
+            </div>
+            <div style={{padding:16}}>
+              <form onSubmit={lotEkle} style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:16,paddingBottom:16,borderBottom:'1px solid var(--adm-bdr)'}}>
+                <div style={{gridColumn:'1/-1'}}><label className="adm-label" style={{fontSize:10.5}}>Lot No</label><input className="adm-inp" style={{fontSize:12}} value={lotForm.lot_no} onChange={e=>setLotForm(f=>({...f,lot_no:e.target.value}))} placeholder="LOT-2026-001"/></div>
+                <div><label className="adm-label" style={{fontSize:10.5}}>Miktar ({detay.birim}) *</label><input type="number" step="0.001" required className="adm-inp" style={{fontSize:12}} value={lotForm.miktar} onChange={e=>setLotForm(f=>({...f,miktar:e.target.value}))}/></div>
+                <div><label className="adm-label" style={{fontSize:10.5}}>Giriş Tarihi</label><input type="date" className="adm-inp" style={{fontSize:12}} value={lotForm.giris_tarihi} onChange={e=>setLotForm(f=>({...f,giris_tarihi:e.target.value}))}/></div>
+                <div style={{gridColumn:'1/-1'}}><label className="adm-label" style={{fontSize:10.5}}>Tedarikçi</label>
+                  <select className="adm-inp" style={{fontSize:12}} value={lotForm.tedarikci_id} onChange={e=>setLotForm(f=>({...f,tedarikci_id:e.target.value}))}>
+                    <option value="">Seçin</option>
+                    {tedarikciler.map((t:any)=><option key={t.id} value={t.id}>{t.ad}</option>)}
+                  </select>
+                </div>
+                <button type="submit" className="adm-btn" style={{gridColumn:'1/-1',fontSize:12}}><Plus size={13}/>Lot Ekle</button>
+              </form>
+
+              {detayLotlar.length===0 ? <p style={{fontSize:12,color:'var(--adm-tx3)',textAlign:'center',padding:10}}>Henüz lot kaydı yok</p>
+              : detayLotlar.map((l:any)=>{
+                const t = tedarikciler.find((x:any)=>x.id===l.tedarikci_id)
+                return (
+                  <div key={l.id} className="adm-row" style={{padding:'8px 0'}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <p style={{fontSize:12.5,fontWeight:600,color:'var(--adm-tx)'}}>{l.lot_no||'(Lot no yok)'}</p>
+                      <p style={{fontSize:11,color:'var(--adm-tx3)'}}>{muh.date(l.giris_tarihi)} {t?`· ${t.ad}`:''}</p>
+                    </div>
+                    <span style={{fontSize:12.5,fontWeight:600,fontFamily:'JetBrains Mono,monospace',color:'var(--adm-tx)'}}>{muh.fmtN(l.miktar)} {detay.birim}</span>
+                    <button className="adm-btn-ghost" style={{padding:'4px 8px'}} onClick={()=>lotSil(l.id)}><Trash2 size={11}/></button>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
         </div>
       </div>
 
