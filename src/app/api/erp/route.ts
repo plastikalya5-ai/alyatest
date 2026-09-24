@@ -9,7 +9,8 @@ const TABLES = new Set([
   'uretim_emirleri','uretim_hareketleri',
   'sevkiyatlar','ihracat_detaylari',
   'kalite_kontrol_kayitlari','fire_kayitlari',
-  'roller',
+  'roller','kasa_banka_hesaplari',
+  'fiyat_listeleri','fiyat_listesi_kalemleri','iskonto_kademeleri','banka_ekstre_kayitlari',
 ])
 
 // Salt-okunur view'lar — sadece GET (select) izinli, hiçbir yazma işlemi yapılamaz.

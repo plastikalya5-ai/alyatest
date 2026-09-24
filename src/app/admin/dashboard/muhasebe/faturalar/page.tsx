@@ -2,7 +2,8 @@
 import { useEffect, useState, useCallback } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
 import { muh } from '@/lib/muhasebe-client'
-import { Plus, X, FileText, Search, Download, Eye } from 'lucide-react'
+import { Plus, X, FileText, Search, Download, Eye, RefreshCw } from 'lucide-react'
+import { erp } from '@/lib/erp-client'
 
 const DURUM_CONF: Record<string,{l:string;c:string;bg:string}> = {
   taslak:    {l:'Taslak',     c:'var(--adm-tx3)',   bg:'var(--adm-s3)'},
@@ -21,6 +22,9 @@ export default function FaturalarPage() {
   const [search, setSearch] = useState('')
   const [toast, setToast] = useState('')
   const [pageSize, setPageSize] = useState(200)
+  const [kasaListesi, setKasaListesi] = useState<any[]>([])
+  const [dovizModal, setDovizModal] = useState(false)
+  const [dovizForm, setDovizForm] = useState({ kur:'', kasa_hesap_id:'' })
   const [kalemleri, setKalemleri] = useState([{urun_adi:'',miktar:1,birim:'adet',birim_fiyat:0,kdv_orani:20,toplam:0}])
   const [form, setForm] = useState({
     tip:'satis', no:`F-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`,
@@ -31,11 +35,12 @@ export default function FaturalarPage() {
   const showToast = (m:string) => { setToast(m); setTimeout(()=>setToast(''),3000) }
 
   const load = useCallback(async () => {
-    const [{data:f},{data:c}] = await Promise.all([
+    const [{data:f},{data:c},{data:k}] = await Promise.all([
       muh.from('faturalar').select('*').order('created_at',{ascending:false}).limit(pageSize),
       muh.from('cari_hesaplar').select('id,ad,tip').order('ad',{ascending:true}),
+      erp.from('kasa_banka_hesaplari').select('id,ad').order('ad',{ascending:true}),
     ])
-    setFaturalar(f||[]); setCariList(c||[]); setLoading(false)
+    setFaturalar(f||[]); setCariList(c||[]); setKasaListesi(k||[]); setLoading(false)
   },[pageSize])
 
   useEffect(()=>{ load() },[load])
@@ -119,6 +124,43 @@ export default function FaturalarPage() {
     await muh.from('faturalar').update({durum,updated_at:new Date().toISOString()}).eq('id',id)
     showToast('Durum güncellendi'); load()
     if (detay?.id===id) setDetay((d:any)=>({...d,durum}))
+  }
+
+  // Döviz faturasını güncel kurla tahsil et — gerçek kasa girişi, cari kapama ve kur farkını ayrı ayrı kaydeder
+  async function dovizTahsilEt(e:React.FormEvent) {
+    e.preventDefault()
+    if (!detay || !dovizForm.kur || !dovizForm.kasa_hesap_id) return
+    const D = +detay.doviz_tutari || 0
+    const K0 = +detay.kur || 1
+    const K1 = +dovizForm.kur
+    const gercekTL = D*K1
+    const orijinalTL = D*K0
+    const fark = gercekTL - orijinalTL // pozitif: kur farkı geliri, negatif: kur farkı gideri
+    const tarih = new Date().toISOString().split('T')[0]
+
+    await Promise.all([
+      // 1) Kasaya gerçek TL girişi (cari'ye dokunmaz)
+      muh.from('islemler').insert({
+        tip:'gelir', tutar:gercekTL, kategori:'Döviz Tahsilatı', tarih,
+        kasa_hesap_id: dovizForm.kasa_hesap_id,
+        aciklama:`${detay.no} — ${D} ${detay.para_birimi} × ${K1}`,
+      }),
+      // 2) Cari bakiyeyi orijinal (faturalanmış) TL tutarla tam kapat (kasaya dokunmaz)
+      muh.from('islemler').insert({
+        tip:'gelir', tutar:orijinalTL, kategori:'Fatura Kapama', tarih,
+        cari_id: detay.cari_id,
+        aciklama:`${detay.no} kapatma (fatura kuru: ${K0})`,
+      }),
+      // 3) Kur farkını ayrı P&L kaydı olarak işle (ne kasa ne cari etkilenir)
+      ...(Math.abs(fark) > 0.01 ? [muh.from('islemler').insert({
+        tip: fark>0?'gelir':'gider', tutar: Math.abs(fark),
+        kategori: fark>0?'Kur Farkı Geliri':'Kur Farkı Gideri', tarih,
+        aciklama:`${detay.no} — fatura kuru ${K0}, tahsilat kuru ${K1}`,
+      })] : []),
+    ])
+    await muh.from('faturalar').update({durum:'odendi',updated_at:new Date().toISOString()}).eq('id',detay.id)
+    setDovizModal(false); setDovizForm({kur:'',kasa_hesap_id:''})
+    showToast('Tahsilat ve kur farkı işlendi'); load()
   }
 
   const filtered = faturalar.filter(f => {
@@ -227,6 +269,11 @@ export default function FaturalarPage() {
                   ))}
                 </div>
                 <button className="adm-btn-ghost" style={{width:'100%'}} onClick={()=>yazdir(detay)}><Download size={13}/>Yazdır / PDF</button>
+                {detay.para_birimi && detay.para_birimi!=='TRY' && detay.durum!=='odendi' && (
+                  <button className="adm-btn-ghost" style={{width:'100%',marginTop:8}} onClick={()=>{setDovizForm({kur:String(detay.kur||1),kasa_hesap_id:''});setDovizModal(true)}}>
+                    <RefreshCw size={13}/>Güncel Kurla Tahsil Et
+                  </button>
+                )}
                 {detay.notlar && <p style={{fontSize:12.5,color:'var(--adm-tx3)',marginTop:12,lineHeight:1.6}}>{detay.notlar}</p>}
               </div>
             </div>
@@ -309,6 +356,44 @@ export default function FaturalarPage() {
           </div>
         </div>
       )}
+      {dovizModal && detay && (
+        <div className="adm-modal-bg" onClick={e=>{if(e.target===e.currentTarget)setDovizModal(false)}}>
+          <div className="adm-modal">
+            <div className="adm-modal-h">{detay.no} — Güncel Kurla Tahsil Et<button onClick={()=>setDovizModal(false)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--adm-tx3)'}}><X size={18}/></button></div>
+            <form onSubmit={dovizTahsilEt}>
+              <div className="adm-modal-b">
+                <p style={{fontSize:12,color:'var(--adm-tx3)',marginBottom:14}}>
+                  Fatura {detay.doviz_tutari} {detay.para_birimi} olarak kesildi (kur: {detay.kur}). Tahsilat gününün kurunu gir, sistem gerçek TL girişini, cari kapamayı ve kur farkını otomatik ayrıştırsın.
+                </p>
+                <div style={{marginBottom:14}}>
+                  <label className="adm-label">Tahsilat Günü Kuru (1 {detay.para_birimi} = ? ₺)</label>
+                  <input type="number" step="0.0001" required className="adm-inp" value={dovizForm.kur} onChange={e=>setDovizForm(f=>({...f,kur:e.target.value}))}/>
+                </div>
+                <div style={{marginBottom:10}}>
+                  <label className="adm-label">Kasa/Banka Hesabı *</label>
+                  <select className="adm-inp" required value={dovizForm.kasa_hesap_id} onChange={e=>setDovizForm(f=>({...f,kasa_hesap_id:e.target.value}))}>
+                    <option value="">Seçin</option>
+                    {kasaListesi.map((k:any)=><option key={k.id} value={k.id}>{k.ad}</option>)}
+                  </select>
+                </div>
+                {dovizForm.kur && (
+                  <p style={{fontSize:12,color:'var(--adm-tx3)'}}>
+                    Kasaya girecek: <b>{muh.fmt((+detay.doviz_tutari||0)*(+dovizForm.kur))}</b> ·
+                    Kur farkı: <b style={{color:((+dovizForm.kur)-(+detay.kur))>=0?'var(--adm-green)':'var(--adm-red)'}}>
+                      {muh.fmt(Math.abs((+detay.doviz_tutari||0)*((+dovizForm.kur)-(+detay.kur))))} {((+dovizForm.kur)-(+detay.kur))>=0?'(gelir)':'(gider)'}
+                    </b>
+                  </p>
+                )}
+              </div>
+              <div className="adm-modal-f">
+                <button type="button" className="adm-btn-ghost" onClick={()=>setDovizModal(false)}>İptal</button>
+                <button type="submit" className="adm-btn">Tahsil Et</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {toast && <div className="adm-toast">✓ {toast}</div>}
     </div>
   )
