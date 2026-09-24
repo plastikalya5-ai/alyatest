@@ -39,6 +39,50 @@ export default function FaturalarPage() {
 
   useEffect(()=>{ load() },[load])
 
+  async function yazdir(fatura:any) {
+    const { data: kalem } = await muh.from('fatura_kalemleri').select('*').eq('fatura_id',fatura.id)
+    const cari = cariList.find((c:any)=>c.id===fatura.cari_id)
+    const satirlar = (kalem||[]).map((k:any)=>`
+      <tr>
+        <td>${k.urun_adi||''}</td>
+        <td style="text-align:right">${k.miktar} ${k.birim||'adet'}</td>
+        <td style="text-align:right">${muh.fmt(k.birim_fiyat)}</td>
+        <td style="text-align:right">%${k.kdv_orani ?? 20}</td>
+        <td style="text-align:right">${muh.fmt(k.toplam ?? (k.miktar*k.birim_fiyat*(1+(k.kdv_orani??20)/100)))}</td>
+      </tr>`).join('')
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${fatura.no}</title>
+      <style>
+        body{font-family:Arial,sans-serif;color:#0b0e0b;padding:40px;max-width:800px;margin:0 auto}
+        h1{font-size:20px;margin:0 0 4px}
+        .muted{color:#6b7366;font-size:12px}
+        table{width:100%;border-collapse:collapse;margin-top:24px}
+        th,td{padding:8px 6px;font-size:13px;border-bottom:1px solid #ddd;text-align:left}
+        th{color:#6b7366;font-size:11px;text-transform:uppercase}
+        .toplam{margin-top:16px;text-align:right;font-size:15px;font-weight:700}
+        .header{display:flex;justify-content:space-between;border-bottom:2px solid #e55f28;padding-bottom:16px;margin-bottom:16px}
+        @media print{body{padding:0}}
+      </style></head>
+      <body>
+        <div class="header">
+          <div><h1>ALYA PLASTİK</h1><p class="muted">Fatura</p></div>
+          <div style="text-align:right"><h1>${fatura.no}</h1><p class="muted">${muh.date(fatura.tarih)} ${fatura.vade?`· Vade: ${muh.date(fatura.vade)}`:''}</p></div>
+        </div>
+        <p><b>${fatura.tip==='satis'?'Müşteri':'Tedarikçi'}:</b> ${cari?.ad||'—'}</p>
+        <table>
+          <thead><tr><th>Ürün</th><th style="text-align:right">Miktar</th><th style="text-align:right">Birim Fiyat</th><th style="text-align:right">KDV</th><th style="text-align:right">Toplam</th></tr></thead>
+          <tbody>${satirlar}</tbody>
+        </table>
+        <div class="toplam">
+          <p class="muted">Ara Toplam: ${muh.fmt(fatura.ara_toplam)}</p>
+          <p class="muted">KDV: ${muh.fmt(fatura.kdv_tutari)}</p>
+          <p>Genel Toplam: ${muh.fmt(fatura.toplam)}</p>
+        </div>
+        ${fatura.notlar?`<p class="muted" style="margin-top:24px">${fatura.notlar}</p>`:''}
+      </body></html>`
+    const w = window.open('', '_blank')
+    if (w) { w.document.write(html); w.document.close(); w.focus(); setTimeout(()=>w.print(),300) }
+  }
+
   function hesaplaKalem(idx:number, field:string, val:any) {
     const yeni = [...kalemleri]
     yeni[idx] = {...yeni[idx],[field]:val}
@@ -167,7 +211,7 @@ export default function FaturalarPage() {
                   ))}
                 </div>
                 <p style={{fontSize:12,color:'var(--adm-tx3)',marginBottom:8}}>Durum Değiştir:</p>
-                <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:14}}>
                   {Object.entries(DURUM_CONF).map(([k,v])=>(
                     <button key={k} onClick={()=>durumGuncelle(detay.id,k)}
                       className={detay.durum===k?'adm-btn':'adm-btn-ghost'}
@@ -176,6 +220,7 @@ export default function FaturalarPage() {
                     </button>
                   ))}
                 </div>
+                <button className="adm-btn-ghost" style={{width:'100%'}} onClick={()=>yazdir(detay)}><Download size={13}/>Yazdır / PDF</button>
                 {detay.notlar && <p style={{fontSize:12.5,color:'var(--adm-tx3)',marginTop:12,lineHeight:1.6}}>{detay.notlar}</p>}
               </div>
             </div>

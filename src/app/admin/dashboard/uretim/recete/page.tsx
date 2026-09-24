@@ -15,7 +15,7 @@ export default function RecetePage() {
   const [modal, setModal] = useState(false)
   const [detay, setDetay] = useState<any>(null)
   const [toast, setToast] = useState('')
-  const [form, setForm] = useState({ urun_id:'', versiyon:'1', kalip_id:'', kavite_sayisi:'1', hedef_cevrim_suresi:'', hedef_fire_orani:'0', iscilik_maliyeti:'0', notlar:'' })
+  const [form, setForm] = useState({ urun_id:'', versiyon:'1', kalip_id:'', kavite_sayisi:'1', hedef_cevrim_suresi:'', hedef_fire_orani:'0', iscilik_maliyeti:'0', genel_gider_maliyeti:'0', amortisman_maliyeti:'0', notlar:'' })
   const [receteKalemleri, setReceteKalemleri] = useState([{hammadde_id:'',miktar:0,birim:'gr'}])
 
   const showToast = (m:string) => { setToast(m); setTimeout(()=>setToast(''),3000) }
@@ -33,14 +33,14 @@ export default function RecetePage() {
   useEffect(()=>{ load() },[load])
 
   function openNew() {
-    setForm({urun_id:'',versiyon:'1',kalip_id:'',kavite_sayisi:'1',hedef_cevrim_suresi:'',hedef_fire_orani:'0',iscilik_maliyeti:'0',notlar:''})
+    setForm({urun_id:'',versiyon:'1',kalip_id:'',kavite_sayisi:'1',hedef_cevrim_suresi:'',hedef_fire_orani:'0',iscilik_maliyeti:'0',genel_gider_maliyeti:'0',amortisman_maliyeti:'0',notlar:''})
     setReceteKalemleri([{hammadde_id:'',miktar:0,birim:'gr'}])
     setModal(true)
   }
 
   async function save(e:React.FormEvent) {
     e.preventDefault()
-    const payload:any = {...form, versiyon:+form.versiyon, kalip_id:form.kalip_id||null, kavite_sayisi:+form.kavite_sayisi, hedef_cevrim_suresi:form.hedef_cevrim_suresi?+form.hedef_cevrim_suresi:null, hedef_fire_orani:+form.hedef_fire_orani, iscilik_maliyeti:+form.iscilik_maliyeti}
+    const payload:any = {...form, versiyon:+form.versiyon, kalip_id:form.kalip_id||null, kavite_sayisi:+form.kavite_sayisi, hedef_cevrim_suresi:form.hedef_cevrim_suresi?+form.hedef_cevrim_suresi:null, hedef_fire_orani:+form.hedef_fire_orani, iscilik_maliyeti:+form.iscilik_maliyeti, genel_gider_maliyeti:+form.genel_gider_maliyeti, amortisman_maliyeti:+form.amortisman_maliyeti}
     const { data } = await erp.from('urun_receteleri').insert(payload)
     const receteId = (data as any)?.[0]?.id
     if (receteId) {
@@ -119,9 +119,17 @@ export default function RecetePage() {
                   <span style={{fontSize:12.5,color:'var(--adm-tx3)'}}>İşçilik Maliyeti</span>
                   <span style={{fontSize:12.5,fontFamily:'JetBrains Mono,monospace',color:'var(--adm-tx)'}}>{muh.fmt(detay.iscilik_maliyeti||0)}</span>
                 </div>
+                <div style={{display:'flex',justifyContent:'space-between',padding:'6px 0'}}>
+                  <span style={{fontSize:12.5,color:'var(--adm-tx3)'}}>Genel Gider</span>
+                  <span style={{fontSize:12.5,fontFamily:'JetBrains Mono,monospace',color:'var(--adm-tx)'}}>{muh.fmt(detay.genel_gider_maliyeti||0)}</span>
+                </div>
+                <div style={{display:'flex',justifyContent:'space-between',padding:'6px 0'}}>
+                  <span style={{fontSize:12.5,color:'var(--adm-tx3)'}}>Amortisman</span>
+                  <span style={{fontSize:12.5,fontFamily:'JetBrains Mono,monospace',color:'var(--adm-tx)'}}>{muh.fmt(detay.amortisman_maliyeti||0)}</span>
+                </div>
                 <div style={{display:'flex',justifyContent:'space-between',padding:'10px 0',marginTop:6,borderTop:'2px solid var(--adm-bdr)'}}>
                   <span style={{fontSize:13,fontWeight:700,color:'var(--adm-tx)'}}>Toplam Birim Maliyet</span>
-                  <span style={{fontSize:14,fontWeight:700,color:'var(--adm-green)',fontFamily:'JetBrains Mono,monospace'}}>{muh.fmt(detayMaliyet+(+detay.iscilik_maliyeti||0))}</span>
+                  <span style={{fontSize:14,fontWeight:700,color:'var(--adm-green)',fontFamily:'JetBrains Mono,monospace'}}>{muh.fmt(detayMaliyet+(+detay.iscilik_maliyeti||0)+(+detay.genel_gider_maliyeti||0)+(+detay.amortisman_maliyeti||0))}</span>
                 </div>
                 <button className="adm-btn-danger" style={{width:'100%',marginTop:14}} onClick={()=>del(detay.id)}><Trash2 size={12}/>Reçeteyi Sil</button>
               </div>
@@ -153,6 +161,8 @@ export default function RecetePage() {
                 <div><label className="adm-label">Hedef Çevrim (sn)</label><input type="number" className="adm-inp" value={form.hedef_cevrim_suresi} onChange={e=>setForm(f=>({...f,hedef_cevrim_suresi:e.target.value}))}/></div>
                 <div><label className="adm-label">Hedef Fire %</label><input type="number" step="0.1" className="adm-inp" value={form.hedef_fire_orani} onChange={e=>setForm(f=>({...f,hedef_fire_orani:e.target.value}))}/></div>
                 <div><label className="adm-label">İşçilik Maliyeti (₺/adet)</label><input type="number" step="0.01" className="adm-inp" value={form.iscilik_maliyeti} onChange={e=>setForm(f=>({...f,iscilik_maliyeti:e.target.value}))}/></div>
+                <div><label className="adm-label">Genel Gider (₺/adet)</label><input type="number" step="0.01" className="adm-inp" value={form.genel_gider_maliyeti} onChange={e=>setForm(f=>({...f,genel_gider_maliyeti:e.target.value}))}/></div>
+                <div><label className="adm-label">Amortisman (₺/adet)</label><input type="number" step="0.01" className="adm-inp" value={form.amortisman_maliyeti} onChange={e=>setForm(f=>({...f,amortisman_maliyeti:e.target.value}))}/></div>
 
                 <div style={{gridColumn:'1/-1'}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>

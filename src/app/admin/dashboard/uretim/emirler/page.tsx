@@ -41,7 +41,7 @@ export default function UretimEmirleriPage() {
       erp.from('kaliplar').select('id,ad').order('ad',{ascending:true}),
       erp.from('urun_receteleri').select('id,urun_id,versiyon').eq('aktif',true),
       erp.from('satis_siparisleri').select('id,no').order('created_at',{ascending:false}),
-      erp.from('hammaddeler').select('id,ad,birim,mevcut_stok,tedarikci_id').order('ad',{ascending:true}),
+      erp.from('hammaddeler').select('id,ad,birim,mevcut_stok,tedarikci_id,ortalama_maliyet').order('ad',{ascending:true}),
       erp.from('recete_kalemleri').select('*'),
     ])
     setList(ue||[]); setUrunler(u||[]); setMakineler(m||[]); setKaliplar(k||[]); setReceteler(r||[]); setSiparisler(s||[]); setHammaddeler(h||[]); setReceteKalemleri(rk||[]); setLoading(false)
@@ -96,9 +96,12 @@ export default function UretimEmirleriPage() {
       })
       const siparisId = (data as any)?.[0]?.id
       if (siparisId) {
-        await Promise.all(kalemler.map(k=>erp.from('satinalma_siparisi_kalemleri').insert({
-          siparis_id: siparisId, hammadde_id: k.hammadde_id, miktar: Math.ceil(k.eksik), birim_fiyat: 0,
-        })))
+        await Promise.all(kalemler.map(k=>{
+          const h = hammaddeler.find((x:any)=>x.id===k.hammadde_id)
+          return erp.from('satinalma_siparisi_kalemleri').insert({
+            siparis_id: siparisId, hammadde_id: k.hammadde_id, miktar: Math.ceil(k.eksik), birim_fiyat: h?.ortalama_maliyet||0,
+          })
+        }))
       }
     }
     setMrpModal(false); showToast('Satınalma sipariş(ler)i oluşturuldu'); load()
