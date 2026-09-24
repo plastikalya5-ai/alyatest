@@ -18,7 +18,7 @@ export default function HammaddePage() {
   const [search, setSearch] = useState('')
   const [sadeceKritik, setSadeceKritik] = useState(false)
   const [toast, setToast] = useState('')
-  const [form, setForm] = useState({ kod:'', ad:'', aciklama:'', birim:'kg', mevcut_stok:'0', min_stok:'0', max_stok:'', ortalama_maliyet:'0', tedarikci_id:'', depo_id:'' })
+  const [form, setForm] = useState({ kod:'', ad:'', aciklama:'', birim:'kg', mevcut_stok:'0', min_stok:'0', max_stok:'', ortalama_maliyet:'0', tedarikci_id:'', depo_id:'', barkod:'' })
 
   const showToast = (m:string) => { setToast(m); setTimeout(()=>setToast(''),3000) }
 
@@ -33,8 +33,8 @@ export default function HammaddePage() {
   },[])
   useEffect(()=>{ load() },[load])
 
-  function openNew() { setEditing(null); setForm({kod:'',ad:'',aciklama:'',birim:'kg',mevcut_stok:'0',min_stok:'0',max_stok:'',ortalama_maliyet:'0',tedarikci_id:'',depo_id:''}); setModal(true) }
-  function openEdit(h:any) { setEditing(h); setForm({kod:h.kod,ad:h.ad,aciklama:h.aciklama||'',birim:h.birim,mevcut_stok:String(h.mevcut_stok),min_stok:String(h.min_stok),max_stok:h.max_stok?String(h.max_stok):'',ortalama_maliyet:String(h.ortalama_maliyet),tedarikci_id:h.tedarikci_id||'',depo_id:h.depo_id||''}); setModal(true) }
+  function openNew() { setEditing(null); setForm({kod:'',ad:'',aciklama:'',birim:'kg',mevcut_stok:'0',min_stok:'0',max_stok:'',ortalama_maliyet:'0',tedarikci_id:'',depo_id:'',barkod:''}); setModal(true) }
+  function openEdit(h:any) { setEditing(h); setForm({kod:h.kod,ad:h.ad,aciklama:h.aciklama||'',birim:h.birim,mevcut_stok:String(h.mevcut_stok),min_stok:String(h.min_stok),max_stok:h.max_stok?String(h.max_stok):'',ortalama_maliyet:String(h.ortalama_maliyet),tedarikci_id:h.tedarikci_id||'',depo_id:h.depo_id||'',barkod:h.barkod||''}); setModal(true) }
 
   async function save(e:React.FormEvent) {
     e.preventDefault()
@@ -194,6 +194,7 @@ export default function HammaddePage() {
                     {depolar.map((d:any)=><option key={d.id} value={d.id}>{d.ad}</option>)}
                   </select>
                 </div>
+                <div><label className="adm-label">Barkod</label><input className="adm-inp" value={form.barkod} onChange={e=>setForm(f=>({...f,barkod:e.target.value}))} placeholder="8690000000000"/></div>
                 <div style={{gridColumn:'1/-1'}}><label className="adm-label">Açıklama</label><textarea className="adm-inp" rows={2} value={form.aciklama} onChange={e=>setForm(f=>({...f,aciklama:e.target.value}))}/></div>
               </div>
               <div className="adm-modal-f"><button type="button" className="adm-btn-ghost" onClick={()=>setModal(false)}>İptal</button><button type="submit" className="adm-btn">Kaydet</button></div>

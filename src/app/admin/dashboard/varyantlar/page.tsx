@@ -11,7 +11,7 @@ export default function AdminVaryantlarPage() {
   const [variants, setVariants] = useState<any[]>([])
   const [selProd, setSelProd] = useState<any>(null)
   const [modal, setModal] = useState(false)
-  const [form, setForm] = useState({ name:'', color:'', size:'', stock:0, sort_order:0 })
+  const [form, setForm] = useState({ name:'', color:'', size:'', stock:0, sort_order:0, barkod:'' })
   const [toast, setToast] = useState('')
 
   const showToast = (msg:string) => { setToast(msg); setTimeout(()=>setToast(''),3000) }
@@ -31,7 +31,7 @@ export default function AdminVaryantlarPage() {
   async function addVariant(e: React.FormEvent) {
     e.preventDefault()
     await sb.from('product_variants').insert({ ...form, product_id: selProd.id })
-    setModal(false); setForm({ name:'', color:'', size:'', stock:0, sort_order:0 })
+    setModal(false); setForm({ name:'', color:'', size:'', stock:0, sort_order:0, barkod:'' })
     showToast('Varyant eklendi'); loadVariants(selProd.id)
   }
 
@@ -144,6 +144,10 @@ export default function AdminVaryantlarPage() {
                 <div>
                   <label className="adm-label">Sıra</label>
                   <input type="number" className="adm-inp" value={form.sort_order} onChange={e=>setForm(f=>({...f,sort_order:+e.target.value}))}/>
+                </div>
+                <div style={{gridColumn:'1/-1'}}>
+                  <label className="adm-label">Barkod</label>
+                  <input className="adm-inp" value={form.barkod} onChange={e=>setForm(f=>({...f,barkod:e.target.value}))} placeholder="8690000000000"/>
                 </div>
               </div>
               <div className="adm-modal-f">

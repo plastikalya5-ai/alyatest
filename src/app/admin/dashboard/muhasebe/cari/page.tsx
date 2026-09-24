@@ -2,12 +2,14 @@
 import { useEffect, useState, useCallback } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
 import { muh } from '@/lib/muhasebe-client'
+import { erp } from '@/lib/erp-client'
 import { Plus, Pencil, Trash2, X, User, Building2, Search, Phone, Mail, Download, FileBarChart } from 'lucide-react'
 
 export default function CariPage() {
   const [list, setList] = useState<any[]>([])
   const [islemler, setIslemler] = useState<any[]>([])
   const [faturalar, setFaturalar] = useState<any[]>([])
+  const [fiyatListeleri, setFiyatListeleri] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState<any>(null)
@@ -15,29 +17,31 @@ export default function CariPage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('hepsi')
   const [toast, setToast] = useState('')
-  const [form, setForm] = useState({ tip:'musteri', ad:'', vergi_no:'', telefon:'', email:'', adres:'', notlar:'' })
+  const [form, setForm] = useState({ tip:'musteri', ad:'', vergi_no:'', telefon:'', email:'', adres:'', notlar:'', fiyat_listesi_id:'' })
 
   const showToast = (m:string) => { setToast(m); setTimeout(()=>setToast(''),3000) }
 
   const load = useCallback(async () => {
-    const [{data:c},{data:i},{data:f}] = await Promise.all([
+    const [{data:c},{data:i},{data:f},{data:fl}] = await Promise.all([
       muh.from('cari_hesaplar').select('*').order('ad',{ascending:true}),
       muh.from('islemler').select('*'),
       muh.from('faturalar').select('*'),
+      erp.from('fiyat_listeleri').select('id,ad').order('ad',{ascending:true}),
     ])
-    setList(c||[]); setIslemler(i||[]); setFaturalar(f||[]); setLoading(false)
+    setList(c||[]); setIslemler(i||[]); setFaturalar(f||[]); setFiyatListeleri(fl||[]); setLoading(false)
     setDetay((d:any)=>d ? (c||[]).find((x:any)=>x.id===d.id) || null : null)
   },[])
 
   useEffect(()=>{ load() },[load])
 
-  function openNew() { setEditing(null); setForm({tip:'musteri',ad:'',vergi_no:'',telefon:'',email:'',adres:'',notlar:''}); setModal(true) }
-  function openEdit(c:any) { setEditing(c); setForm({tip:c.tip,ad:c.ad,vergi_no:c.vergi_no||'',telefon:c.telefon||'',email:c.email||'',adres:c.adres||'',notlar:c.notlar||''}); setModal(true) }
+  function openNew() { setEditing(null); setForm({tip:'musteri',ad:'',vergi_no:'',telefon:'',email:'',adres:'',notlar:'',fiyat_listesi_id:''}); setModal(true) }
+  function openEdit(c:any) { setEditing(c); setForm({tip:c.tip,ad:c.ad,vergi_no:c.vergi_no||'',telefon:c.telefon||'',email:c.email||'',adres:c.adres||'',notlar:c.notlar||'',fiyat_listesi_id:c.fiyat_listesi_id||''}); setModal(true) }
 
   async function save(e:React.FormEvent) {
     e.preventDefault()
-    if (editing) await muh.from('cari_hesaplar').update({...form,updated_at:new Date().toISOString()}).eq('id',editing.id)
-    else await muh.from('cari_hesaplar').insert(form)
+    const payload:any = {...form, fiyat_listesi_id: form.fiyat_listesi_id||null}
+    if (editing) await muh.from('cari_hesaplar').update({...payload,updated_at:new Date().toISOString()}).eq('id',editing.id)
+    else await muh.from('cari_hesaplar').insert(payload)
     setModal(false); showToast(editing?'Güncellendi':'Eklendi'); load()
   }
 
@@ -243,6 +247,12 @@ export default function CariPage() {
                 <div><label className="adm-label">Telefon</label><input className="adm-inp" value={form.telefon} onChange={e=>setForm(f=>({...f,telefon:e.target.value}))} placeholder="+90 5xx xxx xx xx"/></div>
                 <div><label className="adm-label">E-posta</label><input type="email" className="adm-inp" value={form.email} onChange={e=>setForm(f=>({...f,email:e.target.value}))} placeholder="firma@mail.com"/></div>
                 <div><label className="adm-label">Adres</label><input className="adm-inp" value={form.adres} onChange={e=>setForm(f=>({...f,adres:e.target.value}))} placeholder="İstanbul..."/></div>
+                <div><label className="adm-label">Fiyat Listesi</label>
+                  <select className="adm-inp" value={form.fiyat_listesi_id} onChange={e=>setForm(f=>({...f,fiyat_listesi_id:e.target.value}))}>
+                    <option value="">Varsayılan (liste fiyatı)</option>
+                    {fiyatListeleri.map((fl:any)=><option key={fl.id} value={fl.id}>{fl.ad}</option>)}
+                  </select>
+                </div>
                 <div style={{gridColumn:'1/-1'}}><label className="adm-label">Notlar</label><textarea className="adm-inp" rows={2} value={form.notlar} onChange={e=>setForm(f=>({...f,notlar:e.target.value}))} placeholder="Ek bilgiler..."/></div>
               </div>
               <div className="adm-modal-f">

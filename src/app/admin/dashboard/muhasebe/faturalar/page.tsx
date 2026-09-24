@@ -24,7 +24,8 @@ export default function FaturalarPage() {
   const [kalemleri, setKalemleri] = useState([{urun_adi:'',miktar:1,birim:'adet',birim_fiyat:0,kdv_orani:20,toplam:0}])
   const [form, setForm] = useState({
     tip:'satis', no:`F-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`,
-    cari_id:'', tarih:new Date().toISOString().split('T')[0], vade:'', kdv_orani:20, notlar:''
+    cari_id:'', tarih:new Date().toISOString().split('T')[0], vade:'', kdv_orani:20, notlar:'',
+    para_birimi:'TRY', kur:'1',
   })
 
   const showToast = (m:string) => { setToast(m); setTimeout(()=>setToast(''),3000) }
@@ -76,6 +77,7 @@ export default function FaturalarPage() {
           <p class="muted">Ara Toplam: ${muh.fmt(fatura.ara_toplam)}</p>
           <p class="muted">KDV: ${muh.fmt(fatura.kdv_tutari)}</p>
           <p>Genel Toplam: ${muh.fmt(fatura.toplam)}</p>
+          ${fatura.para_birimi && fatura.para_birimi!=='TRY' ? `<p class="muted">(${(+fatura.doviz_tutari||0).toFixed(2)} ${fatura.para_birimi} × kur ${fatura.kur})</p>` : ''}
         </div>
         ${fatura.notlar?`<p class="muted" style="margin-top:24px">${fatura.notlar}</p>`:''}
       </body></html>`
@@ -92,13 +94,17 @@ export default function FaturalarPage() {
 
   const araToplam = kalemleri.reduce((s,k)=>s+(k.miktar*k.birim_fiyat),0)
   const kdvTutari = kalemleri.reduce((s,k)=>s+(k.miktar*k.birim_fiyat*k.kdv_orani/100),0)
-  const toplam = araToplam + kdvTutari
+  const toplamDoviz = araToplam + kdvTutari
+  const kurDeger = +form.kur || 1
+  const toplam = toplamDoviz * kurDeger
 
   async function save(e:React.FormEvent) {
     e.preventDefault()
     const { data } = await muh.from('faturalar').insert({
-      ...form, cari_id:form.cari_id||null, vade:form.vade||null,
-      ara_toplam:araToplam, kdv_tutari:kdvTutari, toplam, durum:'taslak'
+      ...form, cari_id:form.cari_id||null, vade:form.vade||null, kur:kurDeger,
+      ara_toplam:araToplam*kurDeger, kdv_tutari:kdvTutari*kurDeger, toplam,
+      doviz_tutari: form.para_birimi!=='TRY' ? toplamDoviz : null,
+      durum:'taslak'
     })
     const faturaId = (data as any)?.[0]?.id
     if (faturaId) {
@@ -256,6 +262,14 @@ export default function FaturalarPage() {
                 <div><label className="adm-label">Tarih</label><input type="date" className="adm-inp" value={form.tarih} onChange={e=>setForm(f=>({...f,tarih:e.target.value}))}/></div>
                 <div><label className="adm-label">Vade Tarihi</label><input type="date" className="adm-inp" value={form.vade} onChange={e=>setForm(f=>({...f,vade:e.target.value}))}/></div>
                 <div><label className="adm-label">KDV %</label><input type="number" className="adm-inp" value={form.kdv_orani} onChange={e=>setForm(f=>({...f,kdv_orani:+e.target.value}))}/></div>
+                <div><label className="adm-label">Para Birimi</label>
+                  <select className="adm-inp" value={form.para_birimi} onChange={e=>setForm(f=>({...f,para_birimi:e.target.value, kur: e.target.value==='TRY'?'1':f.kur}))}>
+                    {['TRY','USD','EUR','GBP'].map(p=><option key={p} value={p}>{p}</option>)}
+                  </select>
+                </div>
+                {form.para_birimi!=='TRY' && (
+                  <div><label className="adm-label">Kur (1 {form.para_birimi} = ? ₺)</label><input type="number" step="0.0001" className="adm-inp" value={form.kur} onChange={e=>setForm(f=>({...f,kur:e.target.value}))}/></div>
+                )}
 
                 {/* Kalemler */}
                 <div style={{gridColumn:'1/-1'}}>
@@ -277,10 +291,12 @@ export default function FaturalarPage() {
                   ))}
                   <div style={{textAlign:'right',padding:'8px 0',borderTop:'1px solid var(--adm-bdr)',marginTop:4}}>
                     <span style={{fontSize:12,color:'var(--adm-tx3)'}}>Ara Toplam: </span>
-                    <span style={{fontWeight:700,fontFamily:'JetBrains Mono,monospace',color:'var(--adm-tx)'}}>{muh.fmt(araToplam)}</span>
+                    <span style={{fontWeight:700,fontFamily:'JetBrains Mono,monospace',color:'var(--adm-tx)'}}>{araToplam.toFixed(2)} {form.para_birimi}</span>
                     <span style={{fontSize:12,color:'var(--adm-tx3)',marginLeft:12}}>KDV: </span>
-                    <span style={{fontWeight:700,fontFamily:'JetBrains Mono,monospace',color:'var(--adm-amber)'}}>{muh.fmt(kdvTutari)}</span>
-                    <span style={{fontSize:14,fontWeight:700,marginLeft:12,color:'var(--adm-green)',fontFamily:'JetBrains Mono,monospace'}}>= {muh.fmt(toplam)}</span>
+                    <span style={{fontWeight:700,fontFamily:'JetBrains Mono,monospace',color:'var(--adm-amber)'}}>{kdvTutari.toFixed(2)} {form.para_birimi}</span>
+                    <span style={{fontSize:14,fontWeight:700,marginLeft:12,color:'var(--adm-green)',fontFamily:'JetBrains Mono,monospace'}}>
+                      = {form.para_birimi!=='TRY' ? `${toplamDoviz.toFixed(2)} ${form.para_birimi} → ` : ''}{muh.fmt(toplam)}
+                    </span>
                   </div>
                 </div>
                 <div style={{gridColumn:'1/-1'}}><label className="adm-label">Notlar</label><textarea className="adm-inp" rows={2} value={form.notlar} onChange={e=>setForm(f=>({...f,notlar:e.target.value}))}/></div>

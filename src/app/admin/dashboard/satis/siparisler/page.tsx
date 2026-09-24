@@ -20,6 +20,8 @@ export default function SatisSiparisleriPage() {
   const [cariList, setCariList] = useState<any[]>([])
   const [variantlar, setVariantlar] = useState<any[]>([])
   const [kalemler, setKalemler] = useState<any[]>([])
+  const [fiyatKalemleri, setFiyatKalemleri] = useState<any[]>([])
+  const [iskontoKademeleri, setIskontoKademeleri] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(false)
   const [detay, setDetay] = useState<any>(null)
@@ -31,15 +33,37 @@ export default function SatisSiparisleriPage() {
   const showToast = (m:string) => { setToast(m); setTimeout(()=>setToast(''),3000) }
 
   const load = useCallback(async () => {
-    const [{data:s},{data:c},{data:v},{data:k}] = await Promise.all([
+    const [{data:s},{data:c},{data:v},{data:k},{data:fk},{data:ik}] = await Promise.all([
       erp.from('satis_siparisleri').select('*').order('created_at',{ascending:false}),
-      muh.from('cari_hesaplar').select('id,ad').order('ad',{ascending:true}),
+      muh.from('cari_hesaplar').select('id,ad,fiyat_listesi_id').order('ad',{ascending:true}),
       muh.from('product_variants').select('id,name,product_id,stock').order('name',{ascending:true}),
       erp.from('satis_siparisi_kalemleri').select('*'),
+      erp.from('fiyat_listesi_kalemleri').select('*'),
+      erp.from('iskonto_kademeleri').select('*').eq('aktif',true).order('min_miktar',{ascending:false}),
     ])
-    setList(s||[]); setCariList(c||[]); setVariantlar(v||[]); setKalemler(k||[]); setLoading(false)
+    setList(s||[]); setCariList(c||[]); setVariantlar(v||[]); setKalemler(k||[]); setFiyatKalemleri(fk||[]); setIskontoKademeleri(ik||[]); setLoading(false)
   },[])
   useEffect(()=>{ load() },[load])
+
+  // Cari'nin fiyat listesi + miktar kademeli iskontoya göre net birim fiyat hesapla
+  function fiyatHesapla(variantId:string, miktar:number, cariId:string): number | null {
+    if (!variantId) return null
+    const cari = cariList.find((c:any)=>c.id===cariId)
+    let taban = 0
+    if (cari?.fiyat_listesi_id) {
+      const fk = fiyatKalemleri.find((x:any)=>x.fiyat_listesi_id===cari.fiyat_listesi_id && x.variant_id===variantId)
+      if (fk) taban = fk.fiyat
+    }
+    if (!taban) return null
+    const kademe = iskontoKademeleri.find((k:any)=>miktar>=k.min_miktar)
+    return kademe ? +(taban*(1-kademe.iskonto_yuzdesi/100)).toFixed(2) : taban
+  }
+
+  function otomatikFiyatUygula(index:number, y:typeof siparisKalemleri) {
+    const hesap = fiyatHesapla(y[index].variant_id, y[index].miktar, form.cari_id)
+    if (hesap!==null) y[index] = {...y[index], birim_fiyat: hesap}
+    return y
+  }
 
   function openNew() {
     setForm({no:`SS-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`,cari_id:'',tarih:new Date().toISOString().split('T')[0],teslim_tarihi:'',notlar:''})
@@ -48,6 +72,7 @@ export default function SatisSiparisleriPage() {
   }
 
   async function save(e:React.FormEvent) {
+
     e.preventDefault()
     const payload:any = {...form, cari_id:form.cari_id||null, teslim_tarihi:form.teslim_tarihi||null}
     const { data } = await erp.from('satis_siparisleri').insert(payload)
@@ -175,19 +200,25 @@ export default function SatisSiparisleriPage() {
                     <button type="button" className="adm-btn-ghost" style={{fontSize:11,padding:'3px 10px'}} onClick={()=>setSiparisKalemleri(k=>[...k,{variant_id:'',urun_adi:'',miktar:1,birim_fiyat:0}])}>+ Kalem Ekle</button>
                   </div>
                   {siparisKalemleri.map((k,i)=>(
-                    <div key={i} style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr auto',gap:6,marginBottom:8}}>
+                    <div key={i} style={{display:'grid',gridTemplateColumns:'2fr 1fr 0.7fr 1fr auto',gap:6,marginBottom:8}}>
                       <select className="adm-inp" style={{fontSize:12}} value={k.variant_id} onChange={e=>{
                         const v = variantlar.find((x:any)=>x.id===e.target.value)
-                        const y=[...siparisKalemleri]; y[i]={...y[i],variant_id:e.target.value,urun_adi:v?.name||y[i].urun_adi}; setSiparisKalemleri(y)
+                        let y=[...siparisKalemleri]; y[i]={...y[i],variant_id:e.target.value,urun_adi:v?.name||y[i].urun_adi}
+                        y = otomatikFiyatUygula(i,y); setSiparisKalemleri(y)
                       }}>
                         <option value="">Varyant seç (opsiyonel)</option>
                         {variantlar.map((v:any)=><option key={v.id} value={v.id}>{v.name} (stok: {v.stock})</option>)}
                       </select>
                       <input className="adm-inp" placeholder="Ürün adı" style={{fontSize:12}} value={k.urun_adi} onChange={e=>{const y=[...siparisKalemleri];y[i]={...y[i],urun_adi:e.target.value};setSiparisKalemleri(y)}}/>
-                      <input type="number" className="adm-inp" placeholder="Miktar" style={{fontSize:12}} value={k.miktar} onChange={e=>{const y=[...siparisKalemleri];y[i]={...y[i],miktar:+e.target.value};setSiparisKalemleri(y)}}/>
+                      <input type="number" className="adm-inp" placeholder="Miktar" style={{fontSize:12}} value={k.miktar} onChange={e=>{
+                        let y=[...siparisKalemleri]; y[i]={...y[i],miktar:+e.target.value}
+                        y = otomatikFiyatUygula(i,y); setSiparisKalemleri(y)
+                      }}/>
+                      <input type="number" step="0.01" className="adm-inp" placeholder="Birim ₺" style={{fontSize:12}} value={k.birim_fiyat} onChange={e=>{const y=[...siparisKalemleri];y[i]={...y[i],birim_fiyat:+e.target.value};setSiparisKalemleri(y)}}/>
                       <button type="button" onClick={()=>setSiparisKalemleri(k=>k.filter((_,j)=>j!==i))} style={{background:'none',border:'none',cursor:'pointer',color:'var(--adm-red)'}} disabled={siparisKalemleri.length===1}><X size={14}/></button>
                     </div>
                   ))}
+                  <p style={{fontSize:10.5,color:'var(--adm-tx3)',marginTop:-2}}>Cari&apos;nin fiyat listesi ve miktar kademeli iskonto varsa birim fiyat otomatik dolar, elle de değiştirilebilir.</p>
                 </div>
                 <div style={{gridColumn:'1/-1'}}><label className="adm-label">Notlar</label><textarea className="adm-inp" rows={2} value={form.notlar} onChange={e=>setForm(f=>({...f,notlar:e.target.value}))}/></div>
               </div>

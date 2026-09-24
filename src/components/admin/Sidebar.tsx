@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState } from 'react'
-import { LayoutDashboard, Package, Tag, MessageSquare, Settings, BarChart2, TrendingUp, Eye, Image, LogOut, ExternalLink, FileText, Bell, Activity, Layers, DollarSign, Receipt, Users2, PieChart, Landmark, FileSignature, Warehouse, Boxes, ArrowLeftRight, Cog, Wrench, FlaskConical, Factory, Zap, ClipboardList, PackageSearch, Truck, ShieldCheck, FlameKindling, UserCog } from 'lucide-react'
+import { LayoutDashboard, Package, Tag, MessageSquare, Settings, BarChart2, TrendingUp, Eye, Image, LogOut, ExternalLink, FileText, Bell, Activity, Layers, DollarSign, Receipt, Users2, PieChart, Landmark, FileSignature, Warehouse, Boxes, ArrowLeftRight, Cog, Wrench, FlaskConical, Factory, Zap, ClipboardList, PackageSearch, Truck, ShieldCheck, FlameKindling, UserCog, ScanLine } from 'lucide-react'
 
 const NAV = [
   { g:'Genel', mod:['dashboard'], items:[
@@ -28,13 +28,16 @@ const NAV = [
     { href:'/admin/dashboard/muhasebe/faturalar',label:'Faturalar',    Icon:Receipt,     mod:['muhasebe'] },
     { href:'/admin/dashboard/muhasebe/cari',     label:'Cari Hesaplar',Icon:Users2,      mod:['muhasebe','muhasebe_cari'] },
     { href:'/admin/dashboard/muhasebe/kasa-banka',label:'Kasa/Banka',  Icon:Landmark,    mod:['muhasebe'] },
+    { href:'/admin/dashboard/muhasebe/banka-ekstresi',label:'Banka Ekstresi', Icon:Landmark, mod:['muhasebe'] },
     { href:'/admin/dashboard/muhasebe/cek-senet', label:'Çek/Senet',   Icon:FileSignature,mod:['muhasebe'] },
+    { href:'/admin/dashboard/muhasebe/fiyat-listeleri', label:'Fiyat Listeleri', Icon:Tag, mod:['muhasebe','satis'] },
     { href:'/admin/dashboard/muhasebe/raporlar', label:'Raporlar',     Icon:PieChart,    mod:['muhasebe'] },
   ]},
   { g:'Stok / Depo', mod:['stok'], items:[
     { href:'/admin/dashboard/stok/depo',       label:'Depolar',           Icon:Warehouse,     mod:['stok'] },
     { href:'/admin/dashboard/stok/hammadde',   label:'Hammadde',          Icon:Boxes,         mod:['stok'] },
     { href:'/admin/dashboard/stok/hareketler', label:'Stok Hareketleri',  Icon:ArrowLeftRight,mod:['stok'] },
+    { href:'/admin/dashboard/stok/barkod',     label:'Barkod ile İşlem',  Icon:ScanLine,      mod:['stok'] },
   ]},
   { g:'Üretim', mod:['uretim'], items:[
     { href:'/admin/dashboard/uretim/makine',  label:'Makineler',        Icon:Cog,          mod:['uretim'] },
