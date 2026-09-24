@@ -54,16 +54,20 @@ export default function AdminBildirimlerPage() {
 
   async function save(e: React.FormEvent) {
     e.preventDefault(); setSaving(true)
-    await Promise.all(EVENTS.map(ev =>
+    // event kolonu UNIQUE: onConflict verilmezse upsert id üzerinden INSERT dener ve sessizce hata verir
+    const results = await Promise.all(EVENTS.map(ev =>
       sb.from('notification_settings').upsert({
         event: ev.event,
         email_enabled: settings[ev.event]?.email_enabled||false,
         email_to: settings[ev.event]?.email_to||'',
         whatsapp_enabled: settings[ev.event]?.whatsapp_enabled||false,
         whatsapp_to: settings[ev.event]?.whatsapp_to||'',
-      })
+      }, { onConflict: 'event' })
     ))
-    setSaving(false); setToast('Bildirim ayarları kaydedildi'); setTimeout(()=>setToast(''),3000)
+    setSaving(false)
+    const err = results.find(r => r.error)?.error
+    setToast(err ? `Kaydedilemedi: ${err.message}` : 'Bildirim ayarları kaydedildi')
+    setTimeout(()=>setToast(''),4000)
   }
 
   const upd = (event:string, field:string, val:any) =>

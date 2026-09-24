@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
+import { notify } from '@/lib/notify'
 
 export async function POST(req: NextRequest) {
   const sb = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!)
@@ -17,5 +18,21 @@ export async function POST(req: NextRequest) {
   const payload = await req.json()
   const { error } = await sb.from('contact_submissions').insert(payload)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Yanıtı geciktirmeden bildirim gönder (e-posta / WhatsApp)
+  after(() => notify(
+    'new_contact',
+    `Yeni başvuru: ${payload.name ?? ''}`,
+    [
+      'Alya Plastik sitesinden yeni iletişim formu geldi.',
+      `Ad: ${payload.name ?? '-'}`,
+      `Firma: ${payload.company ?? '-'}`,
+      `E-posta: ${payload.email ?? '-'}`,
+      `Telefon: ${payload.phone ?? '-'}`,
+      `Konu: ${payload.subject ?? '-'}`,
+      `Mesaj: ${payload.message ?? '-'}`,
+    ].join('\n'),
+    { name: payload.name, email: payload.email, phone: payload.phone },
+  ))
   return NextResponse.json({ ok: true })
 }
