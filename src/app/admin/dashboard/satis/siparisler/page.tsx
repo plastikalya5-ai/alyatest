@@ -1,233 +1,264 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
+import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import AdminTopBar from '@/components/admin/TopBar'
 import { erp } from '@/lib/erp-client'
 import { muh } from '@/lib/muhasebe-client'
-import { Plus, X, ClipboardList, Search } from 'lucide-react'
+import { fmt, fmtK, fmtN, fmtInt, fmtDate, todayISO, daysBetween } from '@/lib/fmt'
+import { useUretim, byId, sevkEdilen, rezerve, SIPARIS_ACIK } from '@/lib/uretim-utils'
+import { sum } from '@/lib/muh-utils'
+import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, InfoRow, Divider, Empty, useToast } from '@/components/admin/erp/ui'
+import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
+import { Plus, ClipboardList, Truck, Factory, Receipt, Ban, CheckCircle2, Pencil, Trash2, Timer, AlertTriangle, Coins, Package, X, Copy } from 'lucide-react'
 
-const DURUM_CONF: Record<string,{l:string;c:string;bg:string}> = {
-  beklemede:     {l:'Beklemede',      c:'var(--adm-tx3)',   bg:'var(--adm-s3)'},
-  uretimde:      {l:'Üretimde',       c:'var(--adm-blue)',  bg:'var(--adm-blue2)'},
-  kismen_hazir:  {l:'Kısmen Hazır',   c:'var(--adm-amber)', bg:'var(--adm-amber)18'},
-  hazir:         {l:'Hazır',          c:'var(--adm-green)', bg:'var(--adm-green2)'},
-  sevk_edildi:   {l:'Sevk Edildi',    c:'var(--adm-blue)',  bg:'var(--adm-blue2)'},
-  tamamlandi:    {l:'Tamamlandı',     c:'var(--adm-green)', bg:'var(--adm-green2)'},
-  iptal:         {l:'İptal',          c:'var(--adm-red)',   bg:'var(--adm-red2)'},
-}
+const DURUM: Record<string, { l: string; tone: any }> = { beklemede: { l: 'Beklemede', tone: 'muted' }, uretimde: { l: 'Üretimde', tone: 'blue' }, kismen_hazir: { l: 'Kısmen Hazır', tone: 'amber' }, hazir: { l: 'Hazır', tone: 'green' }, sevk_edildi: { l: 'Sevk Edildi', tone: 'ac' }, tamamlandi: { l: 'Tamamlandı', tone: 'green' }, iptal: { l: 'İptal', tone: 'red' } }
+type Kalem = { variant_id: string; urun_adi: string; miktar: number; birim_fiyat: number; not?: string }
+const bosKalem = (): Kalem => ({ variant_id: '', urun_adi: '', miktar: 1, birim_fiyat: 0 })
 
 export default function SatisSiparisleriPage() {
-  const [list, setList] = useState<any[]>([])
-  const [cariList, setCariList] = useState<any[]>([])
-  const [variantlar, setVariantlar] = useState<any[]>([])
-  const [kalemler, setKalemler] = useState<any[]>([])
-  const [fiyatKalemleri, setFiyatKalemleri] = useState<any[]>([])
-  const [iskontoKademeleri, setIskontoKademeleri] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [modal, setModal] = useState(false)
+  const toast = useToast()
+  const { d, loading, reload } = useUretim(['siparisler', 'siparisKalemleri', 'cariTam', 'variants', 'products', 'fiyatListeleri', 'fiyatKalemleri', 'iskontolar', 'stokHareketleri', 'sevkiyatlar', 'emirler', 'receteler'])
+  const [tab, setTab] = useState('acik')
   const [detay, setDetay] = useState<any>(null)
-  const [search, setSearch] = useState('')
-  const [toast, setToast] = useState('')
-  const [siparisKalemleri, setSiparisKalemleri] = useState([{variant_id:'',urun_adi:'',miktar:1,birim_fiyat:0}])
-  const [form, setForm] = useState({ no:`SS-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`, cari_id:'', tarih:new Date().toISOString().split('T')[0], teslim_tarihi:'', notlar:'' })
+  const [modal, setModal] = useState(false)
+  const [editing, setEditing] = useState<any>(null)
+  const [form, setForm] = useState<any>({})
+  const [kalemler, setKalemler] = useState<Kalem[]>([bosKalem()])
+  const [busy, setBusy] = useState(false)
 
-  const showToast = (m:string) => { setToast(m); setTimeout(()=>setToast(''),3000) }
+  const cari = useMemo(() => byId(d.cariTam), [d.cariTam])
+  const urun = useMemo(() => byId(d.products), [d.products])
+  const varyant = useMemo(() => byId(d.variants), [d.variants])
+  const etiket = (v: any) => [urun[v.product_id]?.name, v.name, v.color, v.size].filter(Boolean).filter((a: any, i: number, arr: any[]) => arr.indexOf(a) === i).join(' · ') || v.name
+  const vList = useMemo(() => d.variants.map((v: any) => ({ ...v, label: etiket(v) })), [d.variants, urun]) // eslint-disable-line
 
-  const load = useCallback(async () => {
-    const [{data:s},{data:c},{data:v},{data:k},{data:fk},{data:ik}] = await Promise.all([
-      erp.from('satis_siparisleri').select('*').order('created_at',{ascending:false}),
-      muh.from('cari_hesaplar').select('id,ad,fiyat_listesi_id').order('ad',{ascending:true}),
-      muh.from('product_variants').select('id,name,product_id,stock').order('name',{ascending:true}),
-      erp.from('satis_siparisi_kalemleri').select('*'),
-      erp.from('fiyat_listesi_kalemleri').select('*'),
-      erp.from('iskonto_kademeleri').select('*').eq('aktif',true).order('min_miktar',{ascending:false}),
-    ])
-    setList(s||[]); setCariList(c||[]); setVariantlar(v||[]); setKalemler(k||[]); setFiyatKalemleri(fk||[]); setIskontoKademeleri(ik||[]); setLoading(false)
-  },[])
-  useEffect(()=>{ load() },[load])
-
-  // Cari'nin fiyat listesi + miktar kademeli iskontoya göre net birim fiyat hesapla
-  function fiyatHesapla(variantId:string, miktar:number, cariId:string): number | null {
-    if (!variantId) return null
-    const cari = cariList.find((c:any)=>c.id===cariId)
-    let taban = 0
-    if (cari?.fiyat_listesi_id) {
-      const fk = fiyatKalemleri.find((x:any)=>x.fiyat_listesi_id===cari.fiyat_listesi_id && x.variant_id===variantId)
-      if (fk) taban = fk.fiyat
-    }
-    if (!taban) return null
-    const kademe = iskontoKademeleri.find((k:any)=>miktar>=k.min_miktar)
-    return kademe ? +(taban*(1-kademe.iskonto_yuzdesi/100)).toFixed(2) : taban
-  }
-
-  function otomatikFiyatUygula(index:number, y:typeof siparisKalemleri) {
-    const hesap = fiyatHesapla(y[index].variant_id, y[index].miktar, form.cari_id)
-    if (hesap!==null) y[index] = {...y[index], birim_fiyat: hesap}
-    return y
-  }
-
-  function openNew() {
-    setForm({no:`SS-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`,cari_id:'',tarih:new Date().toISOString().split('T')[0],teslim_tarihi:'',notlar:''})
-    setSiparisKalemleri([{variant_id:'',urun_adi:'',miktar:1,birim_fiyat:0}])
-    setModal(true)
-  }
-
-  async function save(e:React.FormEvent) {
-
-    e.preventDefault()
-    const payload:any = {...form, cari_id:form.cari_id||null, teslim_tarihi:form.teslim_tarihi||null}
-    const { data } = await erp.from('satis_siparisleri').insert(payload)
-    const siparisId = (data as any)?.[0]?.id
-    if (siparisId) {
-      const gecerli = siparisKalemleri.filter(k=>k.urun_adi && k.miktar>0)
-      await Promise.all(gecerli.map(k=>erp.from('satis_siparisi_kalemleri').insert({...k, variant_id:k.variant_id||null, siparis_id:siparisId})))
-    }
-    setModal(false); showToast('Sipariş oluşturuldu'); load()
-  }
-
-  async function durumGuncelle(id:string, durum:string) {
-    await erp.from('satis_siparisleri').update({durum}).eq('id',id)
-    showToast('Durum güncellendi'); load()
-    if (detay?.id===id) setDetay((d:any)=>({...d,durum}))
-  }
-
-  async function uretimEmriOlustur(kalem:any) {
-    const variant = variantlar.find((v:any)=>v.id===kalem.variant_id)
-    if (!variant) { showToast('Bu kalem bir varyanta bağlı değil, üretim emri oluşturulamıyor'); return }
-    await erp.from('uretim_emirleri').insert({
-      no: `UE-${detay.no}-${kalem.urun_adi.slice(0,6).toUpperCase()}`,
-      urun_id: variant.product_id,
-      siparis_id: detay.id,
-      planlanan_miktar: kalem.uretim_gereken_miktar,
-      durum: 'planlandi',
-      notlar: `${detay.no} siparişindeki eksik miktar için otomatik oluşturuldu`,
+  const S = useMemo(() => {
+    const o: Record<string, any> = {}
+    d.siparisler.forEach((s: any) => {
+      const ks = d.siparisKalemleri.filter((k: any) => k.siparis_id === s.id)
+      const sevk = sevkEdilen(s.id, d.sevkiyatlar, d.stokHareketleri)
+      const toplamMiktar = sum(ks, (k: any) => k.miktar), sevkMiktar = sum(ks, (k: any) => Math.min(sevk[k.variant_id] || 0, +k.miktar))
+      const tutar = sum(ks, (k: any) => (+k.miktar || 0) * (+k.birim_fiyat || 0))
+      const kalanTutar = sum(ks, (k: any) => Math.max((+k.miktar || 0) - (sevk[k.variant_id] || 0), 0) * (+k.birim_fiyat || 0))
+      o[s.id] = { ks, sevk, tutar, kalanTutar, toplamMiktar, sevkOran: toplamMiktar ? (sevkMiktar / toplamMiktar) * 100 : 0, gereken: sum(ks, (k: any) => k.uretim_gereken_miktar) }
     })
-    showToast('Üretim emri oluşturuldu')
+    return o
+  }, [d])
+
+  const acik = (s: any) => SIPARIS_ACIK.includes(s.durum)
+  const gec = (s: any) => acik(s) && s.teslim_tarihi && s.teslim_tarihi < todayISO()
+  const cnt = (f: (s: any) => boolean) => d.siparisler.filter(f).length
+  const ay = todayISO().slice(0, 7)
+  const liste = d.siparisler.filter((s: any) => tab === 'hepsi' ? true : tab === 'acik' ? acik(s) : tab === 'geciken' ? gec(s) : s.durum === tab)
+
+  /* ── Form ── */
+  const sonrakiNo = () => { const y = new Date().getFullYear(), p = `SS-${y}-`; return p + String(Math.max(0, ...d.siparisler.filter((s: any) => s.no?.startsWith(p)).map((s: any) => +s.no.slice(p.length) || 0)) + 1).padStart(4, '0') }
+  const openNew = () => { setEditing(null); setForm({ no: sonrakiNo(), cari_id: '', tarih: todayISO(), teslim_tarihi: '', notlar: '' }); setKalemler([bosKalem()]); setModal(true) }
+  const openEdit = (s: any) => {
+    setEditing(s); setForm({ no: s.no, cari_id: s.cari_id || '', tarih: s.tarih, teslim_tarihi: s.teslim_tarihi || '', notlar: s.notlar || '' })
+    setKalemler(S[s.id].ks.map((k: any) => ({ variant_id: k.variant_id || '', urun_adi: k.urun_adi, miktar: +k.miktar, birim_fiyat: +k.birim_fiyat || 0 }))); setModal(true)
+  }
+  const openKopya = (s: any) => { setEditing(null); setForm({ no: sonrakiNo(), cari_id: s.cari_id || '', tarih: todayISO(), teslim_tarihi: '', notlar: s.notlar || '' }); setKalemler(S[s.id].ks.map((k: any) => ({ variant_id: k.variant_id || '', urun_adi: k.urun_adi, miktar: +k.miktar, birim_fiyat: +k.birim_fiyat || 0 }))); setDetay(null); setModal(true) }
+
+  const varsayilanListe = d.fiyatListeleri.find((l: any) => l.varsayilan)?.id
+  function fiyatBul(variantId: string, cariId: string, miktar: number) {
+    const lid = cari[cariId]?.fiyat_listesi_id || varsayilanListe
+    const it = d.fiyatKalemleri.find((k: any) => k.fiyat_listesi_id === lid && k.variant_id === variantId)
+    if (!it) return { fiyat: 0, isk: 0 }
+    const isk = Math.max(0, ...d.iskontolar.filter((k: any) => k.aktif !== false && +k.min_miktar <= miktar).map((k: any) => +k.iskonto_yuzdesi))
+    return { fiyat: +(+it.fiyat * (1 - isk / 100)).toFixed(4), isk }
+  }
+  const setK = (i: number, p: Partial<Kalem>) => setKalemler(ks => ks.map((k, j) => j === i ? { ...k, ...p } : k))
+  function urunSec(i: number, text: string) {
+    const v = vList.find((x: any) => x.label === text)
+    if (!v) return setK(i, { urun_adi: text, variant_id: '' })
+    const { fiyat, isk } = fiyatBul(v.id, form.cari_id, kalemler[i].miktar)
+    setK(i, { variant_id: v.id, urun_adi: v.label, birim_fiyat: fiyat || kalemler[i].birim_fiyat, not: isk ? `Kademe iskontosu %${isk}` : undefined })
+  }
+  function miktarDegis(i: number, m: number) {
+    const k = kalemler[i]
+    if (k.variant_id) { const { fiyat, isk } = fiyatBul(k.variant_id, form.cari_id, m); if (fiyat) return setK(i, { miktar: m, birim_fiyat: fiyat, not: isk ? `Kademe iskontosu %${isk}` : undefined }) }
+    setK(i, { miktar: m })
+  }
+  const rez = useMemo(() => rezerve(d.siparisler, d.siparisKalemleri, d.sevkiyatlar, d.stokHareketleri, editing?.id), [d, editing])
+  const serbest = (vid: string) => (+varyant[vid]?.stock || 0) - (rez[vid] || 0)
+  const formTutar = sum(kalemler, k => k.miktar * k.birim_fiyat)
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault(); if (busy) return
+    const gecerli = kalemler.filter(k => k.urun_adi && k.miktar > 0)
+    if (!gecerli.length) return toast.show('En az bir kalem gir', true)
+    if (d.siparisler.some((s: any) => s.no === form.no && s.id !== editing?.id)) return toast.show('Bu sipariş numarası zaten var', true)
+    setBusy(true)
+    try {
+      const payload: any = { no: form.no, cari_id: form.cari_id || null, tarih: form.tarih, teslim_tarihi: form.teslim_tarihi || null, notlar: form.notlar || null }
+      let id = editing?.id
+      if (editing) {
+        const u: any = await erp.from('satis_siparisleri').update(payload).eq('id', id); if (u?.error) throw new Error(u.error)
+        for (const k of S[id].ks) await erp.from('satis_siparisi_kalemleri').delete().eq('id', k.id)
+      } else {
+        const r: any = await erp.from('satis_siparisleri').insert({ ...payload, durum: 'beklemede' }); if (r?.error) throw new Error(r.error); id = r.data?.[0]?.id
+      }
+      // stoktan karşılanan / üretilmesi gereken miktar (serbest stok = fiziksel − açık siparişlerde rezerve)
+      const tuk: Record<string, number> = {}
+      const rows = gecerli.map(k => {
+        const kalanServ = k.variant_id ? Math.max(serbest(k.variant_id) - (tuk[k.variant_id] || 0), 0) : 0
+        const karsilanan = Math.min(k.miktar, kalanServ); if (k.variant_id) tuk[k.variant_id] = (tuk[k.variant_id] || 0) + karsilanan
+        return { siparis_id: id, variant_id: k.variant_id || null, urun_adi: k.urun_adi, miktar: k.miktar, birim_fiyat: k.birim_fiyat, karsilanan_miktar: karsilanan, uretim_gereken_miktar: k.miktar - karsilanan }
+      })
+      const kk: any = await erp.from('satis_siparisi_kalemleri').insert(rows); if (kk?.error) throw new Error(kk.error)
+      toast.show(editing ? 'Sipariş güncellendi' : 'Sipariş oluşturuldu'); setModal(false); await reload()
+      if (detay?.id === id) setDetay((x: any) => ({ ...x, ...payload }))
+    } catch (err: any) { toast.show(err.message, true) }
+    setBusy(false)
   }
 
-  const filtered = list.filter(s=>!search || s.no?.toLowerCase().includes(search.toLowerCase()))
-  const detayKalemleri = detay ? kalemler.filter(k=>k.siparis_id===detay.id) : []
+  async function durum(s: any, yeni: string) {
+    if (yeni === 'iptal' && !confirm(`${s.no} iptal edilsin mi?${sum(Object.values(S[s.id].sevk), (x: any) => x) ? '\n\nSevk edilmiş kalemler var; sevkiyat kayıtları ayrıca iptal edilmelidir.' : ''}`)) return
+    const r: any = await erp.from('satis_siparisleri').update({ durum: yeni }).eq('id', s.id)
+    if (r?.error) return toast.show(r.error, true)
+    toast.show(`${s.no}: ${DURUM[yeni].l}`); await reload(); setDetay((x: any) => x?.id === s.id ? { ...x, durum: yeni } : x)
+  }
+  async function sil(s: any) {
+    if (!['beklemede', 'iptal'].includes(s.durum)) return toast.show('Sadece beklemedeki veya iptal siparişler silinebilir', true)
+    if (d.sevkiyatlar.some((x: any) => x.siparis_id === s.id)) return toast.show('Bu siparişe bağlı sevkiyat var — silinemez', true)
+    if (!confirm(`${s.no} silinsin mi?`)) return
+    const r: any = await erp.from('satis_siparisleri').delete().eq('id', s.id)
+    if (r?.error) return toast.show(r.error, true)
+    toast.show('Sipariş silindi'); setDetay(null); reload()
+  }
+
+  // Eksik miktarlar için üretim emri aç
+  async function uretimEmirleri(s: any) {
+    setBusy(true)
+    try {
+      const yil = new Date().getFullYear(), pre = `UE-${yil}-`
+      let no = Math.max(0, ...d.emirler.filter((e: any) => e.no?.startsWith(pre)).map((e: any) => +e.no.slice(pre.length) || 0))
+      const gruplar: Record<string, number> = {}
+      S[s.id].ks.forEach((k: any) => { const v = varyant[k.variant_id]; if (v && +k.uretim_gereken_miktar > 0) gruplar[v.product_id] = (gruplar[v.product_id] || 0) + +k.uretim_gereken_miktar })
+      let n = 0
+      for (const [pid, miktar] of Object.entries(gruplar)) {
+        const varOlan = d.emirler.find((e: any) => e.siparis_id === s.id && e.urun_id === pid && e.durum !== 'iptal')
+        if (varOlan) continue
+        const rec = d.receteler.find((r: any) => r.urun_id === pid && r.aktif)
+        const r: any = await erp.from('uretim_emirleri').insert({ no: pre + String(++no).padStart(4, '0'), urun_id: pid, siparis_id: s.id, recete_id: rec?.id || null, kalip_id: rec?.kalip_id || null, hedef_cevrim: rec?.hedef_cevrim_suresi || null, planlanan_miktar: miktar, uretilen_miktar: 0, fire_miktar: 0, durum: 'planlandi', notlar: `${s.no} siparişi için otomatik oluşturuldu` })
+        if (r?.error) throw new Error(r.error); n++
+      }
+      if (!n) { toast.show(Object.keys(gruplar).length ? 'Bu sipariş için zaten üretim emri var' : 'Üretilecek eksik miktar yok — stok yeterli', !Object.keys(gruplar).length ? false : true); setBusy(false); return }
+      if (s.durum === 'beklemede') await erp.from('satis_siparisleri').update({ durum: 'uretimde' }).eq('id', s.id)
+      toast.show(`${n} üretim emri oluşturuldu`); await reload(); setDetay((x: any) => x?.id === s.id ? { ...x, durum: x.durum === 'beklemede' ? 'uretimde' : x.durum } : x)
+    } catch (err: any) { toast.show(err.message, true) }
+    setBusy(false)
+  }
+
+  // Sevk edilmemiş kalemler için taslak satış faturası (stok sevkiyatta düşer; faturada variant bağlanmaz → çift düşüm olmaz)
+  async function faturaOlustur(s: any) {
+    const ks = S[s.id].ks; if (!ks.length) return
+    if (!confirm(`${s.no} için taslak satış faturası oluşturulsun mu?\n\nNot: Stok sevkiyatta düşüldüğü için faturaya ürün varyantı bağlanmaz.`)) return
+    setBusy(true)
+    try {
+      const faturalar = await muh.all('faturalar', 'no')
+      const y = new Date().getFullYear(), pre = `F-${y}-`
+      const no = pre + String(Math.max(0, ...faturalar.filter((f: any) => f.no?.startsWith(pre)).map((f: any) => +f.no.slice(pre.length) || 0)) + 1).padStart(4, '0')
+      const ara = S[s.id].tutar, kdv = ara * 0.2
+      const r: any = await muh.from('faturalar').insert({ tip: 'satis', no, cari_id: s.cari_id || null, tarih: todayISO(), vade: null, notlar: `${s.no} siparişinden oluşturuldu`, para_birimi: 'TRY', kur: 1, kdv_orani: 20, ara_toplam: ara, kdv_tutari: kdv, toplam: ara + kdv, durum: 'taslak' })
+      if (r?.error) throw new Error(r.error)
+      const k: any = await muh.from('fatura_kalemleri').insert(ks.map((x: any) => ({ fatura_id: r.data[0].id, urun_adi: x.urun_adi, variant_id: null, miktar: x.miktar, birim: 'adet', birim_fiyat: x.birim_fiyat, kdv_orani: 20, toplam: x.miktar * x.birim_fiyat * 1.2 })))
+      if (k?.error) throw new Error(k.error)
+      toast.show(`${no} taslak faturası oluşturuldu (Muhasebe → Faturalar)`)
+    } catch (err: any) { toast.show(err.message, true) }
+    setBusy(false)
+  }
+
+  const cols: Col<any>[] = [
+    { key: 'no', label: 'Sipariş', sort: s => s.no, render: s => <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><div style={{ width: 32, height: 32, borderRadius: 9, background: 'var(--adm-ac2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ClipboardList size={15} style={{ color: 'var(--adm-ac)' }} /></div><div><b style={{ fontFamily: 'JetBrains Mono,monospace', fontSize: 12.5 }}>{s.no}</b><div style={{ fontSize: 11, color: 'var(--adm-tx3)' }}>{cari[s.cari_id]?.ad || 'Müşteri yok'}</div></div></div> },
+    { key: 'tarih', label: 'Tarih', width: 96, sort: s => s.tarih, render: s => fmtDate(s.tarih), hideSm: true },
+    { key: 'termin', label: 'Termin', sort: s => s.teslim_tarihi || '9999', render: s => s.teslim_tarihi ? <div>{fmtDate(s.teslim_tarihi)}{gec(s) && <div style={{ fontSize: 10.5, color: 'var(--adm-red)', fontWeight: 700 }}>{daysBetween(s.teslim_tarihi)} gün gecikti</div>}</div> : <span style={{ color: 'var(--adm-tx3)' }}>—</span> },
+    { key: 'kalem', label: 'Kalem', align: 'right', width: 70, sort: s => S[s.id]?.ks.length, render: s => S[s.id]?.ks.length, hideSm: true },
+    { key: 'sevk', label: 'Sevk', width: 130, sort: s => S[s.id]?.sevkOran, render: s => <div><div style={{ height: 5, borderRadius: 3, background: 'var(--adm-s2)', overflow: 'hidden' }}><div style={{ width: `${S[s.id]?.sevkOran}%`, height: '100%', background: 'var(--adm-green)' }} /></div><div style={{ fontSize: 10.5, color: 'var(--adm-tx3)', marginTop: 3 }}>%{fmtN(S[s.id]?.sevkOran, 0)} sevk edildi</div></div>, hideSm: true },
+    { key: 'tutar', label: 'Tutar (KDV hariç)', align: 'right', sort: s => S[s.id]?.tutar, render: s => <Money v={S[s.id]?.tutar} />, total: rs => <Money v={sum(rs.filter((s: any) => s.durum !== 'iptal'), (s: any) => S[s.id]?.tutar)} />, csv: s => S[s.id]?.tutar },
+    { key: 'durum', label: 'Durum', width: 120, sort: s => s.durum, render: s => gec(s) ? <Badge tone="red">Gecikmiş</Badge> : <Badge tone={DURUM[s.durum]?.tone}>{DURUM[s.durum]?.l}</Badge> },
+  ]
+
+  const dS = detay ? d.siparisler.find((s: any) => s.id === detay.id) || detay : null
+  const dd = dS ? S[dS.id] : null
 
   return (
-    <div style={{flex:1,overflow:'auto'}}>
-      <AdminTopBar title="Satış Siparişleri"/>
-      <div style={{padding:24}}>
-        <div style={{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap'}}>
-          <div style={{position:'relative',flex:1,minWidth:180,maxWidth:280}}>
-            <Search size={13} style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'var(--adm-tx3)'}}/>
-            <input className="adm-inp" placeholder="Sipariş no ara..." value={search} onChange={e=>setSearch(e.target.value)} style={{paddingLeft:30}}/>
-          </div>
-          <div style={{flex:1}}/>
-          <button className="adm-btn" onClick={openNew}><Plus size={14}/>Yeni Sipariş</button>
-        </div>
+    <div style={{ flex: 1, overflow: 'auto' }}>
+      <AdminTopBar title="Satış Siparişleri" />
+      <Page>
+        <PageHead title="Satış Siparişleri" sub="Sipariş → stok karşılama → üretim → sevkiyat → fatura akışı" actions={<button className="adm-btn" onClick={openNew}><Plus size={14} />Yeni Sipariş</button>} />
+        <KpiGrid min={180}>
+          <Kpi label="Açık Sipariş" value={cnt(acik)} Icon={ClipboardList} color="var(--adm-ac)" sub={fmtK(sum(d.siparisler.filter(acik), (s: any) => S[s.id]?.tutar)) + ' toplam'} onClick={() => setTab('acik')} />
+          <Kpi label="Sevk Bekleyen Tutar" value={fmtK(sum(d.siparisler.filter(acik), (s: any) => S[s.id]?.kalanTutar))} Icon={Truck} color="var(--adm-blue)" sub="KDV hariç" />
+          <Kpi label="Üretim Gereken" value={fmtInt(sum(d.siparisler.filter(acik), (s: any) => S[s.id]?.gereken))} Icon={Factory} color="var(--adm-amber)" sub="stoktan karşılanamayan adet" />
+          <Kpi label="Termini Geçen" value={cnt(gec)} Icon={AlertTriangle} color={cnt(gec) ? 'var(--adm-red)' : 'var(--adm-green)'} sub={cnt(gec) ? 'teslim tarihi geçmiş' : 'Gecikme yok'} onClick={() => setTab('geciken')} />
+          <Kpi label="Bu Ay Sipariş" value={fmtK(sum(d.siparisler.filter((s: any) => (s.tarih || '').startsWith(ay) && s.durum !== 'iptal'), (s: any) => S[s.id]?.tutar))} Icon={Coins} color="var(--adm-green)" sub={`${cnt((s: any) => (s.tarih || '').startsWith(ay))} sipariş`} />
+        </KpiGrid>
+        <div style={{ marginBottom: 12 }}><Tabs value={tab} onChange={setTab} tabs={[{ v: 'acik', l: 'Açık', n: cnt(acik) }, { v: 'beklemede', l: 'Beklemede', n: cnt(s => s.durum === 'beklemede') }, { v: 'uretimde', l: 'Üretimde', n: cnt(s => s.durum === 'uretimde') }, { v: 'hazir', l: 'Hazır', n: cnt(s => s.durum === 'hazir') }, { v: 'geciken', l: 'Geciken', n: cnt(gec) }, { v: 'sevk_edildi', l: 'Sevk edildi', n: cnt(s => s.durum === 'sevk_edildi') }, { v: 'tamamlandi', l: 'Tamamlanan', n: cnt(s => s.durum === 'tamamlandi') }, { v: 'iptal', l: 'İptal', n: cnt(s => s.durum === 'iptal') }, { v: 'hepsi', l: 'Tümü', n: d.siparisler.length }]} /></div>
 
-        <div className={`adm-detail-grid ${detay?"has-detail":""}`}>
-          <div className="adm-card">
-            <div className="adm-card-h">Siparişler ({filtered.length})</div>
-            {loading ? <p style={{padding:40,textAlign:'center',color:'var(--adm-tx3)'}}>Yükleniyor...</p>
-            : filtered.length===0 ? <p style={{padding:40,textAlign:'center',color:'var(--adm-tx3)',fontSize:13}}>Sipariş bulunamadı</p>
-            : filtered.map(s=>{
-              const d = DURUM_CONF[s.durum]||DURUM_CONF.beklemede
-              const cari = cariList.find((c:any)=>c.id===s.cari_id)
-              return (
-                <div key={s.id} className="adm-row" style={{cursor:'pointer',background:detay?.id===s.id?'var(--adm-ac3)':''}} onClick={()=>setDetay(s)}>
-                  <div style={{width:36,height:36,borderRadius:9,background:'var(--adm-ac2)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                    <ClipboardList size={15} style={{color:'var(--adm-ac)'}}/>
-                  </div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <p style={{fontSize:13,fontWeight:700,color:'var(--adm-tx)',fontFamily:'JetBrains Mono,monospace'}}>{s.no}</p>
-                    <p style={{fontSize:11.5,color:'var(--adm-tx3)'}}>{cari?.ad||'—'} · {muh.date(s.tarih)}</p>
-                  </div>
-                  <span className="adm-badge" style={{background:d.bg,color:d.c}}>{d.l}</span>
-                </div>
-              )
-            })}
-          </div>
+        <DataGrid rows={liste} cols={cols} rowKey={s => s.id} loading={loading} csvName="satis-siparisleri" storageKey="satis" onRowClick={setDetay} activeKey={detay?.id}
+          searchText={s => `${s.no} ${cari[s.cari_id]?.ad || ''}`} searchPlaceholder="Sipariş no, müşteri..." emptyTitle="Sipariş bulunamadı" emptySub="Yeni Sipariş ile başla" />
+      </Page>
 
-          {detay && (
-            <div className="adm-card" style={{height:'fit-content',position:'sticky',top:0}}>
-              <div className="adm-card-h">
-                <span style={{fontFamily:'JetBrains Mono,monospace',fontSize:13}}>{detay.no}</span>
-                <button onClick={()=>setDetay(null)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--adm-tx3)'}}><X size={16}/></button>
-              </div>
-              <div style={{padding:20}}>
-                <p style={{fontSize:12,fontWeight:600,color:'var(--adm-tx3)',marginBottom:8}}>Kalemler (Stok Karşılama)</p>
-                {detayKalemleri.map((k:any)=>(
-                  <div key={k.id} style={{padding:'8px 0',borderBottom:'1px solid var(--adm-bdr)'}}>
-                    <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
-                      <span style={{fontSize:12.5,fontWeight:600,color:'var(--adm-tx)'}}>{k.urun_adi}</span>
-                      <span style={{fontSize:12,color:'var(--adm-tx3)'}}>{k.miktar} adet</span>
-                    </div>
-                    <div style={{display:'flex',gap:10,fontSize:11,alignItems:'center'}}>
-                      <span style={{color:'var(--adm-green)'}}>Stoktan: {k.karsilanan_miktar}</span>
-                      {k.uretim_gereken_miktar>0 && <>
-                        <span style={{color:'var(--adm-amber)'}}>Üretim Gerekli: {k.uretim_gereken_miktar}</span>
-                        <button className="adm-btn-ghost" style={{fontSize:10,padding:'2px 8px'}} onClick={()=>uretimEmriOlustur(k)}>Üretim Emri Oluştur</button>
-                      </>}
-                    </div>
-                  </div>
-                ))}
-                <p style={{fontSize:12,color:'var(--adm-tx3)',marginTop:14,marginBottom:8}}>Durum Değiştir:</p>
-                <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-                  {Object.entries(DURUM_CONF).map(([k,v])=>(
-                    <button key={k} onClick={()=>durumGuncelle(detay.id,k)} className={detay.durum===k?'adm-btn':'adm-btn-ghost'} style={{fontSize:11,padding:'4px 10px'}}>{v.l}</button>
-                  ))}
-                </div>
-              </div>
+      <Drawer open={!!dS} onClose={() => setDetay(null)} width={680}
+        title={dS && <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}><span style={{ fontFamily: 'JetBrains Mono,monospace' }}>{dS.no}</span>{gec(dS) ? <Badge tone="red">Gecikmiş</Badge> : <Badge tone={DURUM[dS.durum]?.tone}>{DURUM[dS.durum]?.l}</Badge>}</span>}
+        sub={dS && `${cari[dS.cari_id]?.ad || 'Müşteri yok'} · ${fmtDate(dS.tarih)}${dS.teslim_tarihi ? ` · termin ${fmtDate(dS.teslim_tarihi)}` : ''}`}
+        footer={dS && dd && <>
+          <button className="adm-btn-ghost" onClick={() => openKopya(dS)}><Copy size={13} /></button>
+          {['beklemede', 'iptal'].includes(dS.durum) && <button className="adm-btn-danger" onClick={() => sil(dS)}><Trash2 size={13} /></button>}
+          {!['sevk_edildi', 'tamamlandi', 'iptal'].includes(dS.durum) && <button className="adm-btn-ghost" onClick={() => openEdit(dS)}><Pencil size={13} />Düzenle</button>}
+          <button className="adm-btn-ghost" disabled={busy} onClick={() => faturaOlustur(dS)}><Receipt size={13} />Fatura</button>
+          {dd.gereken > 0 && acik(dS) && <button className="adm-btn-ghost" disabled={busy} onClick={() => uretimEmirleri(dS)}><Factory size={13} />Üretim Emri Aç</button>}
+          {acik(dS) && <Link href={`/admin/dashboard/sevkiyat?siparis=${dS.id}`} className="adm-btn" style={{ textDecoration: 'none' }}><Truck size={14} />Sevkiyat Oluştur</Link>}
+        </>}>
+        {dS && dd && (
+          <div style={{ padding: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: 14 }}>
+              <div style={{ padding: 12, borderRadius: 10, background: 'var(--adm-s2)' }}><div className="adm-kpi-label" style={{ marginBottom: 3 }}>Tutar</div><Money v={dd.tutar} size={16} /><div style={{ fontSize: 10.5, color: 'var(--adm-tx3)' }}>KDV dahil {fmt(dd.tutar * 1.2)}</div></div>
+              <div style={{ padding: 12, borderRadius: 10, background: 'var(--adm-s2)' }}><div className="adm-kpi-label" style={{ marginBottom: 3 }}>Sevk</div><b style={{ fontSize: 17, fontFamily: 'JetBrains Mono,monospace' }}>%{fmtN(dd.sevkOran, 0)}</b></div>
+              <div style={{ padding: 12, borderRadius: 10, background: dd.gereken ? 'var(--adm-amber2)' : 'var(--adm-green2)' }}><div className="adm-kpi-label" style={{ marginBottom: 3 }}>Üretim gereken</div><b style={{ fontSize: 17, fontFamily: 'JetBrains Mono,monospace' }}>{fmtInt(dd.gereken)}</b></div>
             </div>
-          )}
-        </div>
-      </div>
-
-      {modal && (
-        <div className="adm-modal-bg" onClick={e=>{if(e.target===e.currentTarget)setModal(false)}}>
-          <div className="adm-modal" style={{maxWidth:640}}>
-            <div className="adm-modal-h">Yeni Satış Siparişi<button onClick={()=>setModal(false)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--adm-tx3)'}}><X size={18}/></button></div>
-            <form onSubmit={save}>
-              <div className="adm-modal-b" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
-                <div><label className="adm-label">Sipariş No *</label><input className="adm-inp" required value={form.no} onChange={e=>setForm(f=>({...f,no:e.target.value}))}/></div>
-                <div><label className="adm-label">Cari</label>
-                  <select className="adm-inp" value={form.cari_id} onChange={e=>setForm(f=>({...f,cari_id:e.target.value}))}>
-                    <option value="">Seçin</option>
-                    {cariList.map((c:any)=><option key={c.id} value={c.id}>{c.ad}</option>)}
-                  </select>
-                </div>
-                <div><label className="adm-label">Tarih</label><input type="date" className="adm-inp" value={form.tarih} onChange={e=>setForm(f=>({...f,tarih:e.target.value}))}/></div>
-                <div><label className="adm-label">Teslim Tarihi</label><input type="date" className="adm-inp" value={form.teslim_tarihi} onChange={e=>setForm(f=>({...f,teslim_tarihi:e.target.value}))}/></div>
-
-                <div style={{gridColumn:'1/-1'}}>
-                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
-                    <label className="adm-label" style={{margin:0}}>Kalemler</label>
-                    <button type="button" className="adm-btn-ghost" style={{fontSize:11,padding:'3px 10px'}} onClick={()=>setSiparisKalemleri(k=>[...k,{variant_id:'',urun_adi:'',miktar:1,birim_fiyat:0}])}>+ Kalem Ekle</button>
-                  </div>
-                  {siparisKalemleri.map((k,i)=>(
-                    <div key={i} style={{display:'grid',gridTemplateColumns:'2fr 1fr 0.7fr 1fr auto',gap:6,marginBottom:8}}>
-                      <select className="adm-inp" style={{fontSize:12}} value={k.variant_id} onChange={e=>{
-                        const v = variantlar.find((x:any)=>x.id===e.target.value)
-                        let y=[...siparisKalemleri]; y[i]={...y[i],variant_id:e.target.value,urun_adi:v?.name||y[i].urun_adi}
-                        y = otomatikFiyatUygula(i,y); setSiparisKalemleri(y)
-                      }}>
-                        <option value="">Varyant seç (opsiyonel)</option>
-                        {variantlar.map((v:any)=><option key={v.id} value={v.id}>{v.name} (stok: {v.stock})</option>)}
-                      </select>
-                      <input className="adm-inp" placeholder="Ürün adı" style={{fontSize:12}} value={k.urun_adi} onChange={e=>{const y=[...siparisKalemleri];y[i]={...y[i],urun_adi:e.target.value};setSiparisKalemleri(y)}}/>
-                      <input type="number" className="adm-inp" placeholder="Miktar" style={{fontSize:12}} value={k.miktar} onChange={e=>{
-                        let y=[...siparisKalemleri]; y[i]={...y[i],miktar:+e.target.value}
-                        y = otomatikFiyatUygula(i,y); setSiparisKalemleri(y)
-                      }}/>
-                      <input type="number" step="0.01" className="adm-inp" placeholder="Birim ₺" style={{fontSize:12}} value={k.birim_fiyat} onChange={e=>{const y=[...siparisKalemleri];y[i]={...y[i],birim_fiyat:+e.target.value};setSiparisKalemleri(y)}}/>
-                      <button type="button" onClick={()=>setSiparisKalemleri(k=>k.filter((_,j)=>j!==i))} style={{background:'none',border:'none',cursor:'pointer',color:'var(--adm-red)'}} disabled={siparisKalemleri.length===1}><X size={14}/></button>
-                    </div>
-                  ))}
-                  <p style={{fontSize:10.5,color:'var(--adm-tx3)',marginTop:-2}}>Cari&apos;nin fiyat listesi ve miktar kademeli iskonto varsa birim fiyat otomatik dolar, elle de değiştirilebilir.</p>
-                </div>
-                <div style={{gridColumn:'1/-1'}}><label className="adm-label">Notlar</label><textarea className="adm-inp" rows={2} value={form.notlar} onChange={e=>setForm(f=>({...f,notlar:e.target.value}))}/></div>
-              </div>
-              <div className="adm-modal-f"><button type="button" className="adm-btn-ghost" onClick={()=>setModal(false)}>İptal</button><button type="submit" className="adm-btn">Sipariş Oluştur</button></div>
-            </form>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+              {Object.entries(DURUM).filter(([k]) => k !== dS.durum).map(([k, v]) => <button key={k} className="adm-btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px' }} onClick={() => durum(dS, k)}>{k === 'iptal' ? <Ban size={11} /> : <CheckCircle2 size={11} />} {v.l}</button>)}
+            </div>
+            <Divider label="Kalemler" />
+            <table className="adm-tbl compact"><thead><tr><th>Ürün</th><th style={{ textAlign: 'right' }}>Miktar</th><th style={{ textAlign: 'right' }}>Sevk</th><th style={{ textAlign: 'right' }}>Stok</th><th style={{ textAlign: 'right' }}>Üretim</th><th style={{ textAlign: 'right' }}>Tutar</th></tr></thead>
+              <tbody>{dd.ks.map((k: any) => { const sv = dd.sevk[k.variant_id] || 0, st = +varyant[k.variant_id]?.stock || 0; return (
+                <tr key={k.id}><td>{k.urun_adi}{!k.variant_id && <Badge tone="amber" style={{ marginLeft: 6, fontSize: 9.5 }}>varyantsız</Badge>}</td><td style={{ textAlign: 'right' }}>{fmtInt(k.miktar)}</td>
+                  <td style={{ textAlign: 'right', color: sv >= +k.miktar ? 'var(--adm-green)' : undefined, fontWeight: sv ? 700 : 400 }}>{fmtInt(sv)}</td><td style={{ textAlign: 'right', color: st < +k.miktar - sv ? 'var(--adm-red)' : undefined }}>{k.variant_id ? fmtInt(st) : '—'}</td>
+                  <td style={{ textAlign: 'right' }}>{+k.uretim_gereken_miktar > 0 ? <Badge tone="amber">{fmtInt(k.uretim_gereken_miktar)}</Badge> : '—'}</td><td style={{ textAlign: 'right' }}>{fmt((+k.miktar || 0) * (+k.birim_fiyat || 0))}</td></tr>) })}</tbody></table>
+            {(() => { const ems = d.emirler.filter((e: any) => e.siparis_id === dS.id); return ems.length > 0 && <><Divider label="Bağlı üretim emirleri" />{ems.map((e: any) => <div key={e.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 12.5, borderBottom: '1px dashed var(--adm-bdr)' }}><b style={{ fontFamily: 'JetBrains Mono,monospace' }}>{e.no}</b><span style={{ color: 'var(--adm-tx3)' }}>{urun[e.urun_id]?.name} · {fmtInt(e.uretilen_miktar)}/{fmtInt(e.planlanan_miktar)}</span><Badge tone={e.durum === 'tamamlandi' ? 'green' : e.durum === 'uretimde' ? 'blue' : 'muted'}>{e.durum}</Badge></div>)}</> })()}
+            {(() => { const sv = d.sevkiyatlar.filter((x: any) => x.siparis_id === dS.id); return sv.length > 0 && <><Divider label="Sevkiyatlar" />{sv.map((x: any) => <div key={x.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 12.5, borderBottom: '1px dashed var(--adm-bdr)' }}><b style={{ fontFamily: 'JetBrains Mono,monospace' }}>{x.no}</b><span style={{ color: 'var(--adm-tx3)' }}>{fmtDate(x.tarih)} · {fmtInt(x.toplam_urun_adedi)} adet</span><Badge tone={x.durum === 'teslim_edildi' ? 'green' : x.durum === 'iptal' ? 'red' : 'blue'}>{x.durum.replace('_', ' ')}</Badge></div>)}</> })()}
+            {dS.notlar && <><Divider label="Not" /><p style={{ fontSize: 12.5, color: 'var(--adm-tx2)', margin: 0, whiteSpace: 'pre-wrap' }}>{dS.notlar}</p></>}
           </div>
-        </div>
-      )}
-      {toast && <div className="adm-toast">✓ {toast}</div>}
+        )}
+      </Drawer>
+
+      <Modal open={modal} onClose={() => setModal(false)} width={900} title={editing ? `${editing.no} — Düzenle` : 'Yeni Satış Siparişi'}
+        footer={<><span style={{ marginRight: 'auto', fontSize: 13 }}>Tutar {fmt(formTutar)} · KDV dahil <b style={{ color: 'var(--adm-green)', fontSize: 15 }}>{fmt(formTutar * 1.2)}</b></span><button type="button" className="adm-btn-ghost" onClick={() => setModal(false)}>İptal</button><button type="button" className="adm-btn" disabled={busy} onClick={save as any}>{busy ? 'Kaydediliyor...' : 'Kaydet'}</button></>}>
+        <FormGrid cols={4}>
+          <Field label="Sipariş No"><input className="adm-inp" value={form.no || ''} onChange={e => setForm((f: any) => ({ ...f, no: e.target.value }))} /></Field>
+          <Field label="Müşteri" span={2} hint={form.cari_id && +cari[form.cari_id]?.bakiye > 0 ? `Cari bakiye: ${fmt(cari[form.cari_id].bakiye)} (bize borçlu)` : undefined}><select className="adm-inp" value={form.cari_id || ''} onChange={e => setForm((f: any) => ({ ...f, cari_id: e.target.value }))}><option value="">— Seçin —</option>{d.cariTam.filter((c: any) => c.tip !== 'tedarikci').map((c: any) => <option key={c.id} value={c.id}>{c.ad}</option>)}</select></Field>
+          <Field label="Tarih"><input type="date" className="adm-inp" value={form.tarih || ''} onChange={e => setForm((f: any) => ({ ...f, tarih: e.target.value }))} /></Field>
+          <Field label="Teslim (termin)"><input type="date" className="adm-inp" value={form.teslim_tarihi || ''} onChange={e => setForm((f: any) => ({ ...f, teslim_tarihi: e.target.value }))} /></Field>
+        </FormGrid>
+        <Divider label="Kalemler" />
+        <datalist id="sip-urun">{vList.map((v: any) => <option key={v.id} value={v.label} />)}</datalist>
+        <table className="adm-tbl compact"><thead><tr><th style={{ minWidth: 240 }}>Ürün</th><th style={{ width: 100 }}>Miktar</th><th style={{ width: 120 }}>Birim fiyat</th><th style={{ width: 120, textAlign: 'right' }}>Tutar</th><th style={{ width: 30 }} /></tr></thead>
+          <tbody>{kalemler.map((k, i) => { const sb = k.variant_id ? serbest(k.variant_id) : null; const eksik = sb != null ? Math.max(k.miktar - Math.max(sb, 0), 0) : 0
+            return <tr key={i}>
+              <td><input className="adm-inp" list="sip-urun" placeholder="Ürün seç veya yaz" value={k.urun_adi} onChange={e => urunSec(i, e.target.value)} style={{ fontSize: 12.5, padding: '6px 9px' }} />
+                {sb != null && <div style={{ fontSize: 10.5, marginTop: 3, color: eksik ? 'var(--adm-amber)' : 'var(--adm-green)' }}>Satılabilir stok: {fmtInt(sb)}{eksik ? ` → ${fmtInt(eksik)} adet üretilmeli` : ' ✓'}{k.not ? ` · ${k.not}` : ''}</div>}</td>
+              <td><input type="number" min="0" step="1" className="adm-inp" value={k.miktar} onChange={e => miktarDegis(i, +e.target.value)} style={{ fontSize: 12.5, padding: '6px 9px' }} /></td>
+              <td><input type="number" min="0" step="0.01" className="adm-inp" value={k.birim_fiyat} onChange={e => setK(i, { birim_fiyat: +e.target.value })} style={{ fontSize: 12.5, padding: '6px 9px' }} /></td>
+              <td style={{ textAlign: 'right' }}><Money v={k.miktar * k.birim_fiyat} bold={false} /></td>
+              <td><button type="button" disabled={kalemler.length === 1} onClick={() => setKalemler(ks => ks.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: 'var(--adm-red)' }}><X size={14} /></button></td></tr> })}</tbody></table>
+        <button type="button" className="adm-btn-ghost" style={{ marginTop: 10, fontSize: 12 }} onClick={() => setKalemler(ks => [...ks, bosKalem()])}><Plus size={12} />Kalem Ekle</button>
+        <div style={{ marginTop: 14 }}><Field label="Notlar"><textarea className="adm-inp" rows={2} value={form.notlar || ''} onChange={e => setForm((f: any) => ({ ...f, notlar: e.target.value }))} /></Field></div>
+        <p style={{ fontSize: 11.5, color: 'var(--adm-tx3)', margin: '10px 0 0' }}>Fiyat, müşterinin fiyat listesinden (yoksa varsayılan listeden) ve miktar kademesine göre gelir. Stoktan karşılanan ve üretilmesi gereken miktar kayıt anında hesaplanır.</p>
+      </Modal>
+      {toast.node}
     </div>
   )
 }

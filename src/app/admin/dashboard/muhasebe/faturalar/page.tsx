@@ -347,7 +347,7 @@ export default function FaturalarPage() {
         </div>
         <button type="button" className="adm-btn-ghost" style={{ marginTop: 10, fontSize: 12 }} onClick={() => setKalemler(ks => [...ks, bosKalem(ks[ks.length - 1]?.kdv_orani ?? 20)])}><Plus size={12} />Kalem Ekle</button>
         <div style={{ marginTop: 14 }}><Field label="Notlar"><textarea className="adm-inp" rows={2} value={form.notlar || ''} onChange={e => setForm((f: any) => ({ ...f, notlar: e.target.value }))} /></Field></div>
-        <p style={{ fontSize: 11.5, color: 'var(--adm-tx3)', margin: '10px 0 0' }}>Stoklu ürün seçersen fiyat listesinden birim fiyat ve miktar kademesine göre iskonto otomatik gelir; fatura onaylanınca stok ve cari bakiye otomatik işlenir.</p>
+        <p style={{ fontSize: 11.5, color: 'var(--adm-tx3)', margin: '10px 0 0' }}>Stoklu ürün seçersen fiyat listesinden birim fiyat ve miktar kademesine göre iskonto otomatik gelir; fatura onaylanınca stok ve cari bakiye otomatik işlenir. DİKKAT: Sevkiyatı yapılmış siparişler için stoklu ürün seçme — stok sevkiyatta zaten düşüyor (siparişten oluşturulan faturalar bu yüzden stoksuz kesilir).</p>
       </Modal>
 
       {/* Ödeme */}

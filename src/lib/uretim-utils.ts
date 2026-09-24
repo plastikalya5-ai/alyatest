@@ -20,7 +20,17 @@ const FETCH = {
   kalite:          () => erp.all('kalite_kontrol_kayitlari', '*', q => q.order('tarih', { ascending: false })),
   fire:            () => erp.all('fire_kayitlari', '*', q => q.order('tarih', { ascending: false })),
   cariler:         () => muh.all('cari_hesaplar', 'id,ad,tip'),
-  depolar:         () => erp.all('depolar'),
+  depolar:         () => erp.all('depolar', '*', q => q.order('ad', { ascending: true })),
+  stokHareketleri: () => erp.all('stok_hareketleri', '*', q => q.order('tarih', { ascending: false })),
+  lotlar:          () => erp.all('hammadde_lotlari', '*', q => q.order('giris_tarihi', { ascending: false })),
+  satinalma:       () => erp.all('satinalma_siparisleri', '*', q => q.order('created_at', { ascending: false })),
+  satinalmaKalemleri: () => erp.all('satinalma_siparisi_kalemleri'),
+  sevkiyatlar:     () => erp.all('sevkiyatlar', '*', q => q.order('created_at', { ascending: false })),
+  ihracat:         () => erp.all('ihracat_detaylari'),
+  fiyatListeleri:  () => erp.all('fiyat_listeleri'),
+  fiyatKalemleri:  () => erp.all('fiyat_listesi_kalemleri'),
+  iskontolar:      () => erp.all('iskonto_kademeleri'),
+  cariTam:         () => muh.all('cari_hesaplar', '*', q => q.order('ad', { ascending: true })),
 }
 export type UKey = keyof typeof FETCH
 
@@ -92,3 +102,39 @@ export function emirIhtiyac(e: any, kalemler: any[], hammaddeler: any[], adet?: 
 
 export const varyantEtiket = (v: any, products: Record<string, any>) =>
   [products[v.product_id]?.name, v.name, v.color, v.size].filter(Boolean).filter((a, i, arr) => arr.indexOf(a) === i).join(' · ') || v.name
+
+/* ───── Stok / sipariş yardımcıları ───── */
+export const SIPARIS_ACIK = ['beklemede', 'uretimde', 'kismen_hazir', 'hazir']
+
+// Sevkiyat kayıtlarından (stok defteri) siparişe göre sevk edilen miktar: { [variant_id]: adet }
+export function sevkEdilen(siparisId: string, sevkiyatlar: any[], hareketler: any[]) {
+  const ids = new Set(sevkiyatlar.filter(s => s.siparis_id === siparisId && s.durum !== 'iptal').map(s => s.id))
+  const out: Record<string, number> = {}
+  hareketler.filter(h => h.kaynak_tablo === 'sevkiyatlar' && ids.has(h.kaynak_id) && h.variant_id).forEach(h => {
+    out[h.variant_id] = (out[h.variant_id] || 0) + (h.yon === 'cikis' ? 1 : -1) * (+h.miktar || 0)
+  })
+  return out
+}
+
+// Açık siparişlerde henüz sevk edilmemiş (rezerve) miktar: { [variant_id]: adet }
+export function rezerve(siparisler: any[], kalemler: any[], sevkiyatlar: any[], hareketler: any[], haric?: string) {
+  const out: Record<string, number> = {}
+  siparisler.filter(s => SIPARIS_ACIK.includes(s.durum) && s.id !== haric).forEach(s => {
+    const sevk = sevkEdilen(s.id, sevkiyatlar, hareketler)
+    kalemler.filter(k => k.siparis_id === s.id && k.variant_id).forEach(k => {
+      out[k.variant_id] = (out[k.variant_id] || 0) + Math.max((+k.miktar || 0) - (sevk[k.variant_id] || 0), 0)
+    })
+  })
+  return out
+}
+
+// Son N günde bir hammaddenin günlük ortalama tüketimi (üretim çıkışı + fire)
+export function gunlukTuketim(hammaddeId: string, hareketler: any[], gun = 30) {
+  const lim = Date.now() - gun * 86400000
+  const t = hareketler.filter(h => h.hammadde_id === hammaddeId && h.yon === 'cikis' && ['uretim_cikis', 'fire'].includes(h.tip) && +new Date(h.tarih) >= lim).reduce((s, h) => s + (+h.miktar || 0), 0)
+  return t / gun
+}
+
+export const HAREKET_TIP: Record<string, string> = {
+  uretim_giris: 'Üretim Girişi', uretim_cikis: 'Üretim Çıkışı', satis: 'Satış', satinalma: 'Satınalma', sevkiyat: 'Sevkiyat', fire: 'Fire', sayim: 'Sayım', manuel_duzeltme: 'Manuel Düzeltme', iade: 'İade',
+}
