@@ -1,89 +1,49 @@
 'use client'
-import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useEffect, useMemo, useState } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
-import { Eye, Globe, Clock, Smartphone, Monitor } from 'lucide-react'
+import { webAll, cihaz, kaynakAd } from '@/lib/web-data'
+import { fmtInt, fmtDateTime, todayISO } from '@/lib/fmt'
+import { Page, PageHead, Kpi, KpiGrid, Tabs, Badge } from '@/components/admin/erp/ui'
+import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
+import { Eye, Calendar, Globe, Smartphone } from 'lucide-react'
 
-const sb = createClient()
-
-export default function AdminZiyaretcilerPage() {
-  const [visits, setVisits] = useState<any[]>([])
-  const [total, setTotal] = useState(0)
-  const [today, setToday] = useState(0)
-  const [thisWeek, setThisWeek] = useState(0)
+export default function ZiyaretcilerPage() {
+  const [rows, setRows] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState('all')
+  const [donem, setDonem] = useState('7')
+  const [cihazF, setCihazF] = useState('')
+  useEffect(() => { webAll('site_visits', '*', q => q.order('visited_at', { ascending: false })).then(r => { setRows(r.map(x => ({ ...x, ...cihaz(x.user_agent), kaynak: kaynakAd(x.referrer) }))); setLoading(false) }) }, [])
 
-  useEffect(()=>{
-    async function load() {
-      const todayStr = new Date().toISOString().split('T')[0]
-      const weekAgo = new Date(Date.now()-7*24*60*60*1000).toISOString()
-      const [{data},{count:tc},{count:dc},{count:wc}] = await Promise.all([
-        sb.from('site_visits').select('*').order('visited_at',{ascending:false}).limit(200),
-        sb.from('site_visits').select('*',{count:'exact',head:true}),
-        sb.from('site_visits').select('*',{count:'exact',head:true}).gte('visited_at',todayStr+'T00:00:00'),
-        sb.from('site_visits').select('*',{count:'exact',head:true}).gte('visited_at',weekAgo),
-      ])
-      setVisits(data||[]); setTotal(tc||0); setToday(dc||0); setThisWeek(wc||0)
-      setLoading(false)
-    }
-    load()
-  },[])
+  const bugun = todayISO()
+  const gun = donem === 'bugun' ? 0 : donem === 'tumu' ? null : +donem
+  const liste = useMemo(() => rows.filter(r => (gun == null || (gun === 0 ? (r.visited_at || '').startsWith(bugun) : Date.now() - +new Date(r.visited_at) <= gun * 86400000)) && (!cihazF || r.tip === cihazF)), [rows, donem, cihazF]) // eslint-disable-line
+  const mobil = rows.filter(r => r.tip === 'Mobil').length
 
-  const filtered = visits.filter(v=>{
-    if(filter==='today') return v.visited_at?.startsWith(new Date().toISOString().split('T')[0])
-    return true
-  })
-
-  const isMobile = (ua:string) => /mobile|android|iphone|ipad/i.test(ua||'')
-
+  const cols: Col<any>[] = [
+    { key: 'zaman', label: 'Zaman', width: 150, sort: r => r.visited_at, render: r => <span style={{ whiteSpace: 'nowrap', fontSize: 12 }}>{fmtDateTime(r.visited_at)}</span> },
+    { key: 'sayfa', label: 'Sayfa', sort: r => r.page || '/', render: r => <span style={{ fontFamily: 'JetBrains Mono,monospace', fontSize: 12 }}>{r.page || '/'}</span> },
+    { key: 'kaynak', label: 'Kaynak', sort: r => r.kaynak, render: r => r.kaynak === 'Doğrudan' ? <Badge tone="muted">Doğrudan</Badge> : r.kaynak, hideSm: true },
+    { key: 'ulke', label: 'Ülke', sort: r => r.country || '', render: r => r.country || '—', hideSm: true },
+    { key: 'cihaz', label: 'Cihaz', sort: r => r.tip, render: r => <Badge tone={r.tip === 'Mobil' ? 'blue' : 'muted'}>{r.tip}</Badge> },
+    { key: 'tarayici', label: 'Tarayıcı', sort: r => r.tarayici, render: r => r.tarayici, hideSm: true },
+  ]
   return (
-    <div style={{flex:1,overflow:'auto'}}>
-      <AdminTopBar title="Ziyaretçiler"/>
-      <div style={{padding:24}}>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:12,marginBottom:24}}>
-          {[
-            {label:'Toplam Ziyaret',  value:total,    Icon:Eye,   color:'var(--adm-ac)'},
-            {label:'Bugün',           value:today,    Icon:Clock, color:'var(--adm-green)'},
-            {label:'Bu Hafta',        value:thisWeek, Icon:Globe, color:'var(--adm-blue)'},
-          ].map(s=>(
-            <div key={s.label} className="adm-kpi" style={{borderLeft:`2.5px solid ${s.color}`}}>
-              <div style={{width:32,height:32,borderRadius:8,background:s.color+'18',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:10}}>
-                <s.Icon size={14} style={{color:s.color}}/>
-              </div>
-              <p className="adm-kpi-label">{s.label}</p>
-              <p className="adm-kpi-value" style={{fontSize:24}}>{s.value}</p>
-            </div>
-          ))}
+    <div style={{ flex: 1, overflow: 'auto' }}>
+      <AdminTopBar title="Ziyaretçiler" />
+      <Page>
+        <PageHead title="Ziyaret Kayıtları" sub="Ham ziyaret günlüğü — filtrele, ara, dışa aktar" />
+        <KpiGrid min={180}>
+          <Kpi label="Bugün" value={fmtInt(rows.filter(r => (r.visited_at || '').startsWith(bugun)).length)} Icon={Calendar} color="var(--adm-ac)" />
+          <Kpi label="Son 7 Gün" value={fmtInt(rows.filter(r => Date.now() - +new Date(r.visited_at) <= 7 * 86400000).length)} Icon={Eye} color="var(--adm-blue)" />
+          <Kpi label="Toplam" value={fmtInt(rows.length)} Icon={Globe} color="var(--adm-green)" sub="tüm zamanlar" />
+          <Kpi label="Mobil Oranı" value={rows.length ? `%${Math.round((mobil / rows.length) * 100)}` : '—'} Icon={Smartphone} color="#8b5cf6" sub={`${fmtInt(mobil)} mobil ziyaret`} />
+        </KpiGrid>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
+          <Tabs value={donem} onChange={setDonem} tabs={[{ v: 'bugun', l: 'Bugün' }, { v: '7', l: '7 gün' }, { v: '30', l: '30 gün' }, { v: 'tumu', l: 'Tümü' }]} />
+          <Tabs value={cihazF} onChange={setCihazF} tabs={[{ v: '', l: 'Tüm cihazlar' }, { v: 'Masaüstü', l: 'Masaüstü' }, { v: 'Mobil', l: 'Mobil' }, { v: 'Tablet', l: 'Tablet' }]} />
         </div>
-
-        <div style={{display:'flex',gap:8,marginBottom:16}}>
-          {[['all','Tümü'],['today','Bugün']].map(([v,l])=>(
-            <button key={v} onClick={()=>setFilter(v)} className={filter===v?'adm-btn':'adm-btn-ghost'} style={{fontSize:12,padding:'5px 14px'}}>{l}</button>
-          ))}
-        </div>
-
-        <div className="adm-card">
-          <div className="adm-card-h">Son {filtered.length} Ziyaret</div>
-          {loading ? <p style={{padding:40,textAlign:'center',color:'var(--adm-tx3)'}}>Yükleniyor...</p>
-          : filtered.length===0 ? <p style={{padding:40,textAlign:'center',color:'var(--adm-tx3)'}}>Henüz ziyaret kaydı yok</p>
-          : filtered.map(v=>(
-            <div key={v.id} className="adm-row">
-              <div style={{width:32,height:32,borderRadius:8,background:'var(--adm-s3)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                {isMobile(v.user_agent) ? <Smartphone size={13} style={{color:'var(--adm-tx3)'}}/> : <Monitor size={13} style={{color:'var(--adm-tx3)'}}/>}
-              </div>
-              <div style={{flex:1,minWidth:0}}>
-                <p style={{fontSize:12.5,fontWeight:600,color:'var(--adm-tx)',fontFamily:'JetBrains Mono,monospace'}}>{v.page||'/'}</p>
-                <p style={{fontSize:11,color:'var(--adm-tx3)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{v.referrer||'Direkt erişim'}</p>
-              </div>
-              <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:3,flexShrink:0}}>
-                {v.country && <span className="adm-badge adm-badge-muted">{v.country}</span>}
-                <span style={{fontSize:10.5,color:'var(--adm-tx3)'}}>{new Date(v.visited_at).toLocaleString('tr')}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+        <DataGrid rows={liste} cols={cols} rowKey={r => r.id} loading={loading} csvName="ziyaretler" storageKey="ziyaret" pageSizes={[50, 100, 250, 500]} searchText={r => `${r.page || ''} ${r.kaynak} ${r.country || ''} ${r.tarayici}`} searchPlaceholder="Sayfa, kaynak, ülke..." emptyTitle="Ziyaret kaydı yok" emptySub="Ziyaret takibi yeni aktif edildi; veriler siteye gelen ziyaretlerle dolacak." />
+      </Page>
     </div>
   )
 }

@@ -119,7 +119,7 @@ export default function AdminSidebar({ onClose }: { onClose?: () => void } = {})
         ))}
         <div>
           <p className="adm-sb-group">Site</p>
-          <a href="https://alyatest-alyis.vercel.app" target="_blank" rel="noopener noreferrer nofollow" className="adm-sb-item">
+          <a href="/" target="_blank" rel="noopener noreferrer nofollow" className="adm-sb-item">
             <span style={{ width:20,display:'flex',justifyContent:'center' }}><ExternalLink size={14} strokeWidth={1.8}/></span>
             <span style={{ flex:1 }}>Siteyi Gör</span>
           </a>

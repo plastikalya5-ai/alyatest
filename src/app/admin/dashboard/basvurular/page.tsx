@@ -1,166 +1,104 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
-import { MessageSquare, Mail, Phone, X, Archive, CheckCheck, Eye } from 'lucide-react'
+import { web, webAll } from '@/lib/web-data'
+import { muh } from '@/lib/muhasebe-client'
+import { fmtDateTime, daysBetween, fmtInt } from '@/lib/fmt'
+import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Drawer, InfoRow, Divider, useToast } from '@/components/admin/erp/ui'
+import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
+import { MessageSquare, Mail, Phone, MessageCircle, Archive, CheckCheck, Eye, Trash2, UserPlus, Clock, Inbox, Reply } from 'lucide-react'
 
-const sb = createClient()
-const ST: Record<string,{l:string;c:string;bg:string}> = {
-  new:      {l:'Yeni',        c:'var(--adm-ac)',    bg:'var(--adm-ac2)'},
-  read:     {l:'Okundu',      c:'var(--adm-blue)',  bg:'var(--adm-blue2)'},
-  replied:  {l:'Yanıtlandı',  c:'var(--adm-green)', bg:'var(--adm-green2)'},
-  archived: {l:'Arşiv',       c:'var(--adm-tx3)',   bg:'var(--adm-s3)'},
-}
+const ST: Record<string, { l: string; tone: any }> = { new: { l: 'Yeni', tone: 'ac' }, read: { l: 'Okundu', tone: 'blue' }, replied: { l: 'Yanıtlandı', tone: 'green' }, archived: { l: 'Arşiv', tone: 'muted' } }
+const wa = (t: string) => { const d = (t || '').replace(/\D/g, ''); return d.startsWith('90') ? d : d.startsWith('0') ? '9' + d : d.length === 10 ? '90' + d : d }
 
 export default function BasvurularPage() {
+  const toast = useToast()
   const [items, setItems] = useState<any[]>([])
-  const [sel, setSel] = useState<any>(null)
+  const [cariler, setCariler] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState('all')
+  const [tab, setTab] = useState('bekleyen')
+  const [sel, setSel] = useState<any>(null)
   const [notes, setNotes] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [toast, setToast] = useState('')
-
-  const showToast = (msg: string) => { setToast(msg); setTimeout(()=>setToast(''),3000) }
 
   const load = useCallback(async () => {
-    setLoading(true)
-    let q = sb.from('contact_submissions').select('*').order('created_at',{ascending:false})
-    if (filter !== 'all') q = q.eq('status', filter)
-    const { data } = await q
-    setItems(data||[])
-    setLoading(false)
-  }, [filter])
-
+    const [b, c] = await Promise.all([webAll('contact_submissions', '*', q => q.order('created_at', { ascending: false })), muh.all('cari_hesaplar', 'id,ad,email,telefon').catch(() => [])])
+    setItems(b); setCariler(c); setLoading(false)
+    setSel((s: any) => (s ? b.find((x: any) => x.id === s.id) || null : null))
+  }, [])
   useEffect(() => { load() }, [load])
 
-  async function setStatus(id: string, status: string) {
-    await sb.from('contact_submissions').update({ status, updated_at: new Date().toISOString() }).eq('id',id)
-    if (sel?.id === id) setSel((s:any)=>({...s,status}))
-    showToast('Durum güncellendi')
-    load()
-  }
+  const st = (b: any) => b.status || 'new'
+  const cariMi = (b: any) => cariler.find(c => (c.email && c.email.toLowerCase() === (b.email || '').toLowerCase()) || (c.telefon && b.phone && c.telefon.replace(/\D/g, '') === b.phone.replace(/\D/g, '')))
+  const bekleyen = (b: any) => ['new', 'read'].includes(st(b))
+  const gecikmis = (b: any) => bekleyen(b) && daysBetween(b.created_at) >= 2
+  const cnt = (f: (b: any) => boolean) => items.filter(f).length
+  const ay = new Date().toISOString().slice(0, 7)
+  const yanitSure = useMemo(() => { const r = items.filter(b => st(b) === 'replied' && b.updated_at); return r.length ? r.reduce((s, b) => s + (+new Date(b.updated_at) - +new Date(b.created_at)) / 3600000, 0) / r.length : 0 }, [items])
+  const liste = items.filter(b => tab === 'hepsi' ? true : tab === 'bekleyen' ? bekleyen(b) : st(b) === tab)
 
-  async function saveNotes() {
-    if (!sel) return
-    setSaving(true)
-    await sb.from('contact_submissions').update({ notes, updated_at: new Date().toISOString() }).eq('id',sel.id)
-    setSaving(false); showToast('Not kaydedildi')
+  async function durum(b: any, s: string, sessiz = false) {
+    const { error } = await web.from('contact_submissions').update({ status: s, updated_at: new Date().toISOString() }).eq('id', b.id)
+    if (error) return toast.show(error.message, true)
+    if (!sessiz) toast.show(`Durum: ${ST[s].l}`); load()
   }
-
-  async function markRead(item: any) {
-    if (item.status === 'new') await setStatus(item.id, 'read')
-    setSel(item); setNotes(item.notes||'')
+  async function ac(b: any) { setSel(b); setNotes(b.notes || ''); if (st(b) === 'new') durum(b, 'read', true) }
+  async function notKaydet() { if (!sel) return; const { error } = await web.from('contact_submissions').update({ notes, updated_at: new Date().toISOString() }).eq('id', sel.id); toast.show(error ? error.message : 'Not kaydedildi', !!error) }
+  async function sil(b: any) { if (!confirm(`${b.name} başvurusu kalıcı silinsin mi?`)) return; await web.from('contact_submissions').delete().eq('id', b.id); toast.show('Başvuru silindi'); setSel(null); load() }
+  async function carEkle(b: any) {
+    if (cariMi(b)) return toast.show('Bu kişi zaten cari olarak kayıtlı', true)
+    const r: any = await muh.from('cari_hesaplar').insert({ tip: 'musteri', ad: b.company || b.name, telefon: b.phone || null, email: b.email, notlar: `Web başvurusundan eklendi${b.subject ? ` (${b.subject})` : ''}\n${b.message || ''}`.slice(0, 500) })
+    if (r?.error) return toast.show(r.error, true)
+    toast.show('Müşteri carisi oluşturuldu (Muhasebe → Cari)'); load()
   }
+  async function topluDurum(rows: any[], s: string, clear: () => void) { for (const b of rows) await web.from('contact_submissions').update({ status: s, updated_at: new Date().toISOString() }).eq('id', b.id); toast.show(`${rows.length} başvuru: ${ST[s].l}`); clear(); load() }
 
-  const counts: Record<string,number> = {}
-  items.forEach(i => { counts[i.status||'new'] = (counts[i.status||'new']||0)+1 })
+  const cols: Col<any>[] = [
+    { key: 'tarih', label: 'Tarih', width: 132, sort: b => b.created_at, render: b => <div style={{ fontSize: 12 }}>{fmtDateTime(b.created_at)}{gecikmis(b) && <div style={{ fontSize: 10.5, color: 'var(--adm-red)', fontWeight: 700 }}>{daysBetween(b.created_at)} gündür yanıtsız</div>}</div> },
+    { key: 'kisi', label: 'Kişi / Firma', sort: b => b.name, render: b => <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><div style={{ width: 32, height: 32, borderRadius: 16, background: st(b) === 'new' ? 'var(--adm-ac2)' : 'var(--adm-s2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, color: st(b) === 'new' ? 'var(--adm-ac)' : 'var(--adm-tx3)' }}>{(b.name || '?').slice(0, 1).toUpperCase()}</div><div><div style={{ fontWeight: st(b) === 'new' ? 700 : 600 }}>{b.name}{cariMi(b) && <Badge tone="green" style={{ marginLeft: 6, fontSize: 9.5 }}>Cari</Badge>}</div><div style={{ fontSize: 11, color: 'var(--adm-tx3)' }}>{b.company || b.email}</div></div></div> },
+    { key: 'konu', label: 'Konu / Ürün', sort: b => b.subject || '', render: b => <div><div>{b.subject || '—'}</div>{b.product && <div style={{ fontSize: 11, color: 'var(--adm-tx3)' }}>{b.product}</div>}</div>, hideSm: true },
+    { key: 'mesaj', label: 'Mesaj', render: b => <span style={{ fontSize: 12, color: 'var(--adm-tx3)', display: 'inline-block', maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.message}</span>, hideSm: true },
+    { key: 'durum', label: 'Durum', width: 110, sort: b => st(b), render: b => <Badge tone={ST[st(b)].tone}>{ST[st(b)].l}</Badge> },
+  ]
+  const yanit = (b: any) => `mailto:${b.email}?subject=${encodeURIComponent('Re: ' + (b.subject || 'Alya Plastik bilgi talebi'))}&body=${encodeURIComponent(`Merhaba ${b.name},\n\nBaşvurunuz için teşekkür ederiz.\n\n\n\nSaygılarımızla,\nAlya Plastik`)}`
 
   return (
-    <div style={{ flex:1,overflow:'auto' }}>
-      <AdminTopBar title="Başvuru Yönetimi"/>
-      <div style={{ padding:24 }}>
+    <div style={{ flex: 1, overflow: 'auto' }}>
+      <AdminTopBar title="Başvuru Yönetimi" />
+      <Page>
+        <PageHead title="Web Başvuruları" sub="İletişim formundan gelen talepler — yanıt süresi takibi ve tek tıkla cariye dönüştürme" />
+        <KpiGrid min={180}>
+          <Kpi label="Yanıt Bekleyen" value={cnt(bekleyen)} Icon={Inbox} color={cnt(bekleyen) ? 'var(--adm-ac)' : 'var(--adm-green)'} sub={`${cnt(b => st(b) === 'new')} yeni · ${cnt(b => st(b) === 'read')} okundu`} onClick={() => setTab('bekleyen')} />
+          <Kpi label="2+ Gün Yanıtsız" value={cnt(gecikmis)} Icon={Clock} color={cnt(gecikmis) ? 'var(--adm-red)' : 'var(--adm-green)'} sub="SLA aşımı" />
+          <Kpi label="Bu Ay" value={cnt(b => (b.created_at || '').startsWith(ay))} Icon={MessageSquare} color="var(--adm-blue)" sub={`toplam ${fmtInt(items.length)}`} />
+          <Kpi label="Ort. Yanıt Süresi" value={yanitSure ? (yanitSure < 48 ? `${yanitSure.toFixed(1)} sa` : `${(yanitSure / 24).toFixed(1)} gün`) : '—'} Icon={Reply} color="var(--adm-green)" sub={`${cnt(b => st(b) === 'replied')} yanıtlanan`} />
+        </KpiGrid>
+        <div style={{ marginBottom: 12 }}><Tabs value={tab} onChange={setTab} tabs={[{ v: 'bekleyen', l: 'Bekleyen', n: cnt(bekleyen) }, { v: 'new', l: 'Yeni', n: cnt(b => st(b) === 'new') }, { v: 'replied', l: 'Yanıtlanan', n: cnt(b => st(b) === 'replied') }, { v: 'archived', l: 'Arşiv', n: cnt(b => st(b) === 'archived') }, { v: 'hepsi', l: 'Tümü', n: items.length }]} /></div>
+        <DataGrid rows={liste} cols={cols} rowKey={b => b.id} loading={loading} csvName="basvurular" storageKey="basvurular" onRowClick={ac} activeKey={sel?.id} defaultSort={{ key: 'tarih', dir: 'desc' }} selectable
+          searchText={b => `${b.name} ${b.email} ${b.company || ''} ${b.subject || ''} ${b.message || ''} ${b.product || ''}`} searchPlaceholder="Ad, e-posta, firma, mesaj..."
+          bulkActions={(rows, clear) => <><button className="adm-btn-ghost" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => topluDurum(rows, 'read', clear)}><Eye size={12} />Okundu</button><button className="adm-btn-ghost" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => topluDurum(rows, 'replied', clear)}><CheckCheck size={12} />Yanıtlandı</button><button className="adm-btn-ghost" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => topluDurum(rows, 'archived', clear)}><Archive size={12} />Arşivle</button></>}
+          emptyTitle="Başvuru yok" emptySub="Sitedeki iletişim formundan gelen talepler burada görünür" />
+      </Page>
 
-        {/* Filtreler */}
-        <div style={{ display:'flex',gap:8,marginBottom:20,flexWrap:'wrap' }}>
-          {[['all','Tümü'],['new','Yeni'],['read','Okundu'],['replied','Yanıtlandı'],['archived','Arşiv']].map(([v,l])=>(
-            <button key={v} onClick={()=>setFilter(v)} className={filter===v?'btn':'btn-ghost'} style={{ fontSize:12,padding:'5px 14px' }}>
-              {l} {v!=='all' && counts[v]?`(${counts[v]})`:v==='all'?`(${items.length})`:''}
-            </button>
-          ))}
-        </div>
-
-        <div style={{ display:'grid',gridTemplateColumns:sel?'1fr 360px':'1fr',gap:16 }}>
-          {/* Liste */}
-          <div className="adm-card">
-            {loading ? (
-              <p style={{ padding:40,textAlign:'center',color:'var(--adm-tx3)' }}>Yükleniyor...</p>
-            ) : items.length===0 ? (
-              <p style={{ padding:40,textAlign:'center',color:'var(--adm-tx3)' }}>Başvuru bulunamadı</p>
-            ) : items.map(item => (
-              <div key={item.id} className="adm-row" style={{ cursor:'pointer', background:sel?.id===item.id?'var(--ac3)':'' }}
-                onClick={()=>markRead(item)}>
-                <div style={{ width:36,height:36,borderRadius:9,background:'var(--adm-ac2)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
-                  <MessageSquare size={15} style={{ color:'var(--adm-ac)' }}/>
-                </div>
-                <div style={{ flex:1,minWidth:0 }}>
-                  <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:2 }}>
-                    <p style={{ fontSize:13.5,fontWeight:item.status==='new'?700:600,color:'var(--adm-tx)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{item.name}</p>
-                    {item.status==='new' && <div style={{ width:6,height:6,borderRadius:'50%',background:'var(--adm-ac)',flexShrink:0 }}/>}
-                  </div>
-                  <p style={{ fontSize:11.5,color:'var(--adm-tx3)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{item.subject||'Genel'} · {item.email}</p>
-                </div>
-                <div style={{ display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4,flexShrink:0 }}>
-                  <span className="adm-badge" style={{ background:ST[item.status||'new']?.bg,color:ST[item.status||'new']?.c }}>{ST[item.status||'new']?.l}</span>
-                  <span style={{ fontSize:10.5,color:'var(--adm-tx3)' }}>{new Date(item.created_at).toLocaleDateString('tr')}</span>
-                </div>
-              </div>
-            ))}
+      <Drawer open={!!sel} onClose={() => setSel(null)} width={520} title={sel && <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>{sel.name}<Badge tone={ST[st(sel)].tone}>{ST[st(sel)].l}</Badge></span>} sub={sel && `${sel.company ? sel.company + ' · ' : ''}${fmtDateTime(sel.created_at)}`}
+        footer={sel && <><button className="adm-btn-danger" onClick={() => sil(sel)}><Trash2 size={13} /></button><button className="adm-btn-ghost" onClick={() => durum(sel, 'archived')}><Archive size={13} />Arşivle</button>
+          <a className="adm-btn" href={yanit(sel)} onClick={() => durum(sel, 'replied', true)} style={{ textDecoration: 'none' }}><Mail size={14} />E-posta ile Yanıtla</a></>}>
+        {sel && <div style={{ padding: 20 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+            <a className="adm-btn-ghost" href={`mailto:${sel.email}`} style={{ textDecoration: 'none' }}><Mail size={13} />{sel.email}</a>
+            {sel.phone && <a className="adm-btn-ghost" href={`tel:${sel.phone}`} style={{ textDecoration: 'none' }}><Phone size={13} />Ara</a>}
+            {sel.phone && <a className="adm-btn-ghost" target="_blank" rel="noreferrer" href={`https://wa.me/${wa(sel.phone)}?text=${encodeURIComponent(`Merhaba ${sel.name}, Alya Plastik'ten yazıyoruz. Talebiniz hakkında dönüş yapmak istedik.`)}`} style={{ textDecoration: 'none', color: 'var(--adm-green)' }}><MessageCircle size={13} />WhatsApp</a>}
+            {cariMi(sel) ? <Badge tone="green">Cari kayıtlı: {cariMi(sel).ad}</Badge> : <button className="adm-btn-ghost" onClick={() => carEkle(sel)}><UserPlus size={13} />Müşteri carisi oluştur</button>}
           </div>
-
-          {/* Detay */}
-          {sel && (
-            <div className="adm-card" style={{ height:'fit-content',position:'sticky',top:0 }}>
-              <div className="adm-card-h">
-                <span className="adm-card-title">Başvuru Detayı</span>
-                <button onClick={()=>setSel(null)} style={{ background:'none',border:'none',cursor:'pointer',color:'var(--adm-tx3)' }}><X size={16}/></button>
-              </div>
-              <div style={{ padding:20 }}>
-                <h3 style={{ fontSize:16,fontWeight:700,marginBottom:4 }}>{sel.name}</h3>
-                {sel.company && <p style={{ fontSize:12,color:'var(--adm-tx3)',marginBottom:12 }}>{sel.company}</p>}
-                <div style={{ display:'flex',flexDirection:'column',gap:8,marginBottom:16 }}>
-                  <a href={`mailto:${sel.email}`} style={{ display:'flex',alignItems:'center',gap:8,fontSize:13,color:'var(--adm-blue)' }}>
-                    <Mail size={13}/>{sel.email}
-                  </a>
-                  {sel.phone && (
-                    <a href={`tel:${sel.phone}`} style={{ display:'flex',alignItems:'center',gap:8,fontSize:13,color:'var(--adm-green)' }}>
-                      <Phone size={13}/>{sel.phone}
-                    </a>
-                  )}
-                </div>
-                {sel.subject && <div style={{ marginBottom:12 }}><span className="adm-badge badge-muted">{sel.subject}</span></div>}
-                <div style={{ background:'var(--adm-s2)',borderRadius:10,padding:14,marginBottom:16 }}>
-                  <p style={{ fontSize:13,lineHeight:1.7,color:'var(--adm-tx)' }}>{sel.message}</p>
-                </div>
-                <p style={{ fontSize:11,color:'var(--adm-tx3)',marginBottom:16 }}>
-                  {new Date(sel.created_at).toLocaleString('tr')}
-                </p>
-
-                {/* Durum butonları */}
-                <div style={{ display:'flex',gap:6,flexWrap:'wrap',marginBottom:16 }}>
-                  {Object.entries(ST).map(([k,v])=>(
-                    <button key={k} onClick={()=>setStatus(sel.id,k)}
-                      className={sel.status===k?'btn':'btn-ghost'}
-                      style={{ fontSize:11,padding:'4px 10px',background:sel.status===k?v.c:undefined }}>
-                      {v.l}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Notlar */}
-                <label className="adm-label">Dahili Notlar</label>
-                <textarea className="adm-inp" rows={3} value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Not ekle..."/>
-                <button className="adm-btn" style={{ width:'100%',justifyContent:'center',marginTop:10 }} onClick={saveNotes} disabled={saving}>
-                  {saving?'Kaydediliyor...':'Notu Kaydet'}
-                </button>
-
-                {/* Hızlı yanıt */}
-                <a href={`mailto:${sel.email}?subject=Re: ${sel.subject||'Başvurunuz'}`}
-                  className="adm-btn-ghost" style={{ display:'flex',justifyContent:'center',marginTop:8,fontSize:12 }}>
-                  <Mail size={13}/>E-posta ile Yanıtla
-                </a>
-                {sel.phone && (
-                  <a href={`https://wa.me/${sel.phone.replace(/\D/g,'')}`} target="_blank" rel="noopener noreferrer nofollow"
-                    className="adm-btn-ghost" style={{ display:'flex',justifyContent:'center',marginTop:6,fontSize:12,color:'var(--adm-green)',borderColor:'rgba(34,211,160,.3)' }}>
-                    <Phone size={13}/>WhatsApp ile Yaz
-                  </a>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-      {toast && <div className="adm-toast">{toast}</div>}
+          <InfoRow k="Konu" v={sel.subject || '—'} /><InfoRow k="İlgilendiği ürün" v={sel.product || '—'} /><InfoRow k="Telefon" v={sel.phone || '—'} />
+          <Divider label="Mesaj" />
+          <div style={{ padding: 14, borderRadius: 10, background: 'var(--adm-s2)', fontSize: 13.5, lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>{sel.message}</div>
+          <Divider label="Durum" />
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{Object.entries(ST).map(([k, v]) => <button key={k} className={st(sel) === k ? 'adm-btn' : 'adm-btn-ghost'} style={{ fontSize: 12, padding: '5px 12px' }} onClick={() => durum(sel, k)}>{v.l}</button>)}</div>
+          <Divider label="İç not (sadece yöneticiler görür)" />
+          <textarea className="adm-inp" rows={4} value={notes} onChange={e => setNotes(e.target.value)} onBlur={notKaydet} placeholder="Görüşme notu, teklif bilgisi..." />
+        </div>}
+      </Drawer>
+      {toast.node}
     </div>
   )
 }

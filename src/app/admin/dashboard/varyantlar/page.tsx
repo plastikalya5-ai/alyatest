@@ -1,165 +1,172 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useMemo, useState } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
-import { Plus, Trash2, X, Layers } from 'lucide-react'
+import { web } from '@/lib/web-data'
+import { erp } from '@/lib/erp-client'
+import { useUretim, byId, rezerve } from '@/lib/uretim-utils'
+import { fmt, fmtInt } from '@/lib/fmt'
+import { sum } from '@/lib/muh-utils'
+import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Modal, Field, FormGrid, Card, Empty, Divider, useToast } from '@/components/admin/erp/ui'
+import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
+import { Plus, Pencil, Trash2, Layers, Package, ClipboardCheck, Wand2, AlertTriangle, Boxes } from 'lucide-react'
 
-const sb = createClient()
+const RENKLER = [['Beyaz', '#ffffff'], ['Siyah', '#0b0e0b'], ['Kırmızı', '#f25757'], ['Mavi', '#4ea8f0'], ['Yeşil', '#22d3a0'], ['Sarı', '#f0d043'], ['Turuncu', '#e55f28'], ['Gri', '#9090a8'], ['Kahverengi', '#8b5a2b'], ['Antrasit', '#3a3f47'], ['Şeffaf', '#e6f0f5']]
+const bos = { product_id: '', name: '', color: '', size: '', barkod: '', sort_order: '0', acilis: '' }
 
 export default function AdminVaryantlarPage() {
-  const [products, setProducts] = useState<any[]>([])
-  const [variants, setVariants] = useState<any[]>([])
-  const [selProd, setSelProd] = useState<any>(null)
+  const toast = useToast()
+  const { d, loading, reload } = useUretim(['variants', 'products', 'siparisler', 'siparisKalemleri', 'sevkiyatlar', 'stokHareketleri', 'fiyatKalemleri', 'fiyatListeleri', 'hammaddeler'])
+  const [tab, setTab] = useState('hepsi')
+  const [urunF, setUrunF] = useState('')
   const [modal, setModal] = useState(false)
-  const [form, setForm] = useState({ name:'', color:'', size:'', stock:0, sort_order:0, barkod:'' })
-  const [toast, setToast] = useState('')
+  const [editing, setEditing] = useState<any>(null)
+  const [form, setForm] = useState<any>(bos)
+  const [sayim, setSayim] = useState<any>(null)
+  const [uret, setUret] = useState<any>(null)
+  const [busy, setBusy] = useState(false)
 
-  const showToast = (msg:string) => { setToast(msg); setTimeout(()=>setToast(''),3000) }
+  const urun = useMemo(() => byId(d.products), [d.products])
+  const rez = useMemo(() => rezerve(d.siparisler, d.siparisKalemleri, d.sevkiyatlar, d.stokHareketleri), [d])
+  const varsListe = d.fiyatListeleri.find((l: any) => l.varsayilan)?.id
+  const rows = useMemo(() => d.variants.map((v: any) => ({ ...v, urunAd: urun[v.product_id]?.name || '—', urunKod: urun[v.product_id]?.code, rezerve: rez[v.id] || 0, fiyat: d.fiyatKalemleri.find((k: any) => k.variant_id === v.id && k.fiyat_listesi_id === varsListe)?.fiyat })), [d, urun, rez, varsListe])
+  const varyantsiz = d.products.filter((p: any) => !d.variants.some((v: any) => v.product_id === p.id))
+  const liste = rows.filter((v: any) => (!urunF || v.product_id === urunF) && (tab === 'hepsi' || (tab === 'tukenen' ? +v.stock <= 0 : tab === 'barkodsuz' ? !v.barkod : tab === 'acik' ? v.stock - v.rezerve < 0 : true)))
+  const barkodVar = (b: string, haric?: string) => !!b && (d.variants.some((v: any) => v.barkod === b && v.id !== haric) || d.hammaddeler.some((h: any) => h.barkod === b))
 
-  const load = useCallback(async () => {
-    const { data:p } = await sb.from('products').select('id,name,code,image_url').order('sort_order', {ascending:true})
-    setProducts(p||[])
-  }, [])
+  const openNew = (pid = '') => { setEditing(null); setForm({ ...bos, product_id: pid || urunF }); setModal(true) }
+  const openEdit = (v: any) => { setEditing(v); setForm({ product_id: v.product_id, name: v.name, color: v.color || '', size: v.size || '', barkod: v.barkod || '', sort_order: String(v.sort_order || 0), acilis: '' }); setModal(true) }
 
-  const loadVariants = useCallback(async (productId: string) => {
-    const { data:v } = await sb.from('product_variants').select('*').eq('product_id', productId).order('sort_order', {ascending:true})
-    setVariants(v||[])
-  }, [])
-
-  useEffect(() => { load() }, [load])
-
-  async function addVariant(e: React.FormEvent) {
-    e.preventDefault()
-    await sb.from('product_variants').insert({ ...form, product_id: selProd.id })
-    setModal(false); setForm({ name:'', color:'', size:'', stock:0, sort_order:0, barkod:'' })
-    showToast('Varyant eklendi'); loadVariants(selProd.id)
+  async function save(e: React.FormEvent) {
+    e.preventDefault(); if (busy) return
+    if (!form.product_id) return toast.show('Ürün seç', true)
+    if (barkodVar(form.barkod, editing?.id)) return toast.show('Bu barkod başka bir varyant/hammaddede kayıtlı', true)
+    if (d.variants.some((v: any) => v.id !== editing?.id && v.product_id === form.product_id && v.name.toLowerCase() === form.name.trim().toLowerCase() && (v.color || '') === form.color && (v.size || '') === form.size)) return toast.show('Bu ürün için aynı varyant zaten var', true)
+    setBusy(true)
+    try {
+      const p: any = { product_id: form.product_id, name: form.name.trim(), color: form.color || null, size: form.size || null, barkod: form.barkod || null, sort_order: +form.sort_order || 0 }
+      if (editing) { const { error } = await web.from('product_variants').update(p).eq('id', editing.id); if (error) throw new Error(error.message) }
+      else {
+        const { data, error } = await web.from('product_variants').insert({ ...p, stock: 0 }).select(); if (error) throw new Error(error.message)
+        const ac = +form.acilis
+        if (ac > 0 && data?.[0]) await erp.from('stok_hareketleri').insert({ tip: 'manuel_duzeltme', yon: 'giris', variant_id: data[0].id, miktar: ac, kaynak_tablo: 'manuel', aciklama: 'Açılış stoğu' })
+      }
+      setModal(false); toast.show(editing ? 'Varyant güncellendi' : 'Varyant eklendi'); await reload()
+    } catch (err: any) { toast.show(err.message, true) }
+    setBusy(false)
+  }
+  async function sil(v: any) {
+    const kul = d.siparisKalemleri.filter((k: any) => k.variant_id === v.id).length
+    if (+v.stock !== 0) return toast.show(`Stoğu ${fmtInt(v.stock)} — önce sayım ile sıfırla`, true)
+    if (kul && !confirm(`Bu varyant ${kul} sipariş kaleminde geçiyor; silinirse kalemlerde varyant bağı kalkar. Devam?`)) return
+    if (!kul && !confirm(`${v.urunAd} — ${v.name} silinsin mi?`)) return
+    const { error } = await web.from('product_variants').delete().eq('id', v.id)
+    if (error) return toast.show(error.message, true)
+    toast.show('Varyant silindi'); reload()
+  }
+  async function sayimKaydet(e: React.FormEvent) {
+    e.preventDefault(); if (!sayim || busy) return
+    const yeni = +sayim.miktar, fark = yeni - (+sayim.v.stock || 0)
+    if (!fark) return toast.show('Sayım sistem stoğuyla aynı', true)
+    setBusy(true)
+    const r: any = await erp.from('stok_hareketleri').insert({ tip: 'sayim', yon: fark > 0 ? 'giris' : 'cikis', variant_id: sayim.v.id, miktar: Math.abs(fark), kaynak_tablo: 'manuel', aciklama: sayim.not || 'Sayım düzeltmesi' })
+    setBusy(false)
+    if (r?.error) return toast.show(r.error, true)
+    setSayim(null); toast.show('Stok düzeltildi'); reload()
+  }
+  async function standartOlustur(ps: any[]) {
+    setBusy(true)
+    for (const p of ps) await web.from('product_variants').insert({ product_id: p.id, name: 'Standart', stock: 0, sort_order: 0 })
+    setBusy(false); toast.show(`${ps.length} ürüne “Standart” varyant eklendi`); reload()
+  }
+  // Renk × beden matrisi
+  async function matrisOlustur(e: React.FormEvent) {
+    e.preventDefault(); if (!uret?.product_id) return
+    const renkler: string[] = uret.renkler.length ? uret.renkler : ['']
+    const bedenler: string[] = uret.bedenler.split(',').map((s: string) => s.trim()).filter(Boolean); if (!bedenler.length) bedenler.push('')
+    const yeni: any[] = []; let sira = d.variants.filter((v: any) => v.product_id === uret.product_id).length
+    renkler.forEach(r => bedenler.forEach(b => {
+      const ad = [r, b].filter(Boolean).join(' / ') || 'Standart'
+      if (!d.variants.some((v: any) => v.product_id === uret.product_id && (v.color || '') === r && (v.size || '') === b)) yeni.push({ product_id: uret.product_id, name: ad, color: r || null, size: b || null, stock: 0, sort_order: sira++ })
+    }))
+    if (!yeni.length) return toast.show('Tüm kombinasyonlar zaten mevcut', true)
+    setBusy(true); const { error } = await web.from('product_variants').insert(yeni); setBusy(false)
+    if (error) return toast.show(error.message, true)
+    setUret(null); toast.show(`${yeni.length} varyant oluşturuldu`); reload()
   }
 
-  async function delVariant(id: string) {
-    await sb.from('product_variants').delete().eq('id', id)
-    showToast('Silindi'); loadVariants(selProd.id)
-  }
-
-  const COLORS = ['#e55f28','#0b0e0b','#eae6dd','#4ea8f0','#22d3a0','#f25757','#f0a843','#9090a8','#ffffff']
+  const cols: Col<any>[] = [
+    { key: 'urun', label: 'Ürün', sort: v => v.urunAd, render: v => <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>{urun[v.product_id]?.image_url ? <img src={urun[v.product_id].image_url} alt="" style={{ width: 34, height: 34, objectFit: 'contain', borderRadius: 7, background: 'var(--adm-s2)', padding: 2 }} /> : <Package size={16} style={{ color: 'var(--adm-tx3)' }} />}<div><div style={{ fontWeight: 600 }}>{v.urunAd}</div><div style={{ fontSize: 11, color: 'var(--adm-tx3)' }}>{v.urunKod}</div></div></div> },
+    { key: 'ad', label: 'Varyant', sort: v => v.name, render: v => <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{v.color && <i style={{ width: 12, height: 12, borderRadius: 6, border: '1px solid var(--adm-bdr2)', background: (RENKLER.find(r => r[0].toLowerCase() === (v.color || '').toLowerCase()) || [0, '#ccc'])[1] as string, display: 'inline-block' }} />}{v.name}{v.size && <Badge tone="muted">{v.size}</Badge>}</div> },
+    { key: 'barkod', label: 'Barkod', sort: v => v.barkod || '', render: v => v.barkod ? <span style={{ fontFamily: 'JetBrains Mono,monospace', fontSize: 12 }}>{v.barkod}</span> : <span style={{ color: 'var(--adm-tx3)' }}>—</span>, hideSm: true },
+    { key: 'stok', label: 'Stok', align: 'right', sort: v => +v.stock, render: v => <b style={{ fontFamily: 'JetBrains Mono,monospace', color: +v.stock <= 0 ? 'var(--adm-red)' : undefined }}>{fmtInt(v.stock)}</b>, total: rs => fmtInt(sum(rs, (v: any) => v.stock)) },
+    { key: 'rez', label: 'Rezerve', align: 'right', sort: v => v.rezerve, render: v => v.rezerve ? <span style={{ color: 'var(--adm-amber)', fontWeight: 600 }}>{fmtInt(v.rezerve)}</span> : '—', hideSm: true },
+    { key: 'serbest', label: 'Satılabilir', align: 'right', sort: v => v.stock - v.rezerve, render: v => <b style={{ fontFamily: 'JetBrains Mono,monospace', color: v.stock - v.rezerve < 0 ? 'var(--adm-red)' : 'var(--adm-green)' }}>{fmtInt(v.stock - v.rezerve)}</b>, hideSm: true },
+    { key: 'fiyat', label: 'Fiyat', align: 'right', sort: v => +v.fiyat || 0, render: v => v.fiyat != null ? fmt(v.fiyat) : <span style={{ color: 'var(--adm-tx3)' }}>—</span>, hideSm: true },
+    { key: 'act', label: '', width: 118, align: 'right', render: v => <span style={{ display: 'inline-flex', gap: 4 }}>
+      <button className="adm-btn-ghost" style={{ padding: '4px 8px' }} title="Sayım / stok düzelt" onClick={() => setSayim({ v, miktar: String(v.stock), not: '' })}><ClipboardCheck size={12} /></button>
+      <button className="adm-btn-ghost" style={{ padding: '4px 8px' }} onClick={() => openEdit(v)}><Pencil size={12} /></button><button className="adm-btn-danger" style={{ padding: '4px 8px' }} onClick={() => sil(v)}><Trash2 size={12} /></button></span> },
+  ]
 
   return (
-    <div style={{ flex:1, overflow:'auto' }}>
-      <AdminTopBar title="Ürün Varyantları"/>
-      <div style={{ padding:24 }}>
-        <div style={{ display:'grid', gridTemplateColumns:'280px 1fr', gap:16 }}>
+    <div style={{ flex: 1, overflow: 'auto' }}>
+      <AdminTopBar title="Ürün Varyantları" />
+      <Page>
+        <PageHead title="Stok Varyantları" sub="Renk / beden / model bazlı mamul stoğu — stok hareketleri defter üzerinden yönetilir" actions={<><button className="adm-btn-ghost" onClick={() => setUret({ product_id: urunF, renkler: [], bedenler: '' })}><Wand2 size={14} />Renk × Beden Üret</button><button className="adm-btn" onClick={() => openNew()}><Plus size={14} />Varyant Ekle</button></>} />
+        <KpiGrid min={180}>
+          <Kpi label="Varyant" value={d.variants.length} Icon={Layers} color="var(--adm-ac)" sub={`${d.products.length - varyantsiz.length}/${d.products.length} ürün kapsanıyor`} />
+          <Kpi label="Toplam Stok" value={fmtInt(sum(d.variants, (v: any) => v.stock))} Icon={Boxes} color="var(--adm-green)" sub="mamul (adet)" />
+          <Kpi label="Tükenen" value={d.variants.filter((v: any) => +v.stock <= 0).length} Icon={AlertTriangle} color="var(--adm-red)" sub="stok ≤ 0" onClick={() => setTab('tukenen')} />
+          <Kpi label="Varyantsız Ürün" value={varyantsiz.length} Icon={Package} color={varyantsiz.length ? 'var(--adm-amber)' : 'var(--adm-green)'} sub="stok takip edilemiyor" />
+          <Kpi label="Barkodsuz" value={d.variants.filter((v: any) => !v.barkod).length} Icon={Layers} color="var(--adm-blue)" sub="barkod terminali için gerekli" onClick={() => setTab('barkodsuz')} />
+        </KpiGrid>
 
-          {/* Ürün listesi */}
-          <div className="adm-card" style={{ height:'fit-content' }}>
-            <div className="adm-card-h">Ürün Seç</div>
-            {products.map(p => (
-              <div key={p.id} className="adm-row" style={{ cursor:'pointer', background: selProd?.id===p.id ? 'var(--adm-ac3)' : '' }}
-                onClick={() => { setSelProd(p); loadVariants(p.id) }}>
-                {p.image_url ? (
-                  <img src={p.image_url} alt={p.name} style={{ width:36, height:36, objectFit:'contain', borderRadius:6, background:'var(--adm-s3)', padding:4, flexShrink:0 }}/>
-                ) : (
-                  <div style={{ width:36, height:36, borderRadius:6, background:'var(--adm-s3)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                    <Layers size={14} style={{ color:'var(--adm-tx3)' }}/>
-                  </div>
-                )}
-                <div style={{ flex:1, minWidth:0 }}>
-                  <p style={{ fontSize:12.5, fontWeight:600, color:'var(--adm-tx)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</p>
-                  <p style={{ fontSize:11, color:'var(--adm-tx3)' }}>{p.code}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+        {varyantsiz.length > 0 && (
+          <Card title={<><AlertTriangle size={14} style={{ color: 'var(--adm-amber)' }} />Varyantı olmayan ürünler ({varyantsiz.length})</>} right={<button className="adm-btn" style={{ padding: '4px 12px', fontSize: 12 }} disabled={busy} onClick={() => standartOlustur(varyantsiz)}><Wand2 size={12} />Hepsine “Standart” varyant ekle</button>} style={{ marginBottom: 16 }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: 14 }}>{varyantsiz.map((p: any) => <button key={p.id} className="adm-chip" onClick={() => openNew(p.id)}>{p.name}<Plus size={11} /></button>)}</div>
+          </Card>
+        )}
 
-          {/* Varyantlar */}
-          <div>
-            {!selProd ? (
-              <div className="adm-card" style={{ padding:60, textAlign:'center' }}>
-                <Layers size={32} style={{ color:'var(--adm-tx3)', marginBottom:12 }}/>
-                <p style={{ color:'var(--adm-tx3)', fontSize:13 }}>Sol taraftan bir ürün seçin</p>
-              </div>
-            ) : (
-              <div className="adm-card">
-                <div className="adm-card-h">
-                  <span>{selProd.name} — Varyantlar ({variants.length})</span>
-                  <button className="adm-btn" style={{ fontSize:12 }} onClick={() => setModal(true)}>
-                    <Plus size={13}/>Varyant Ekle
-                  </button>
-                </div>
-                {variants.length===0 ? (
-                  <p style={{ padding:40, textAlign:'center', color:'var(--adm-tx3)', fontSize:13 }}>Henüz varyant yok</p>
-                ) : variants.map(v => (
-                  <div key={v.id} className="adm-row">
-                    {v.color && (
-                      <div style={{ width:22, height:22, borderRadius:6, background:v.color, border:'1px solid var(--adm-bdr)', flexShrink:0 }}/>
-                    )}
-                    <div style={{ flex:1 }}>
-                      <p style={{ fontSize:13, fontWeight:600, color:'var(--adm-tx)' }}>{v.name}</p>
-                      <p style={{ fontSize:11.5, color:'var(--adm-tx3)' }}>
-                        {v.size && `Boyut: ${v.size}`}{v.size && v.stock!==null && ' · '}
-                        {v.stock!==null && `Stok: ${v.stock}`}
-                      </p>
-                    </div>
-                    <span style={{ fontSize:11, color:'var(--adm-tx3)', fontFamily:'JetBrains Mono,monospace' }}>#{v.sort_order}</span>
-                    <button className="adm-btn-danger" style={{ padding:'5px 10px' }} onClick={() => delVariant(v.id)}>
-                      <Trash2 size={12}/>
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' }}>
+          <Tabs value={tab} onChange={setTab} tabs={[{ v: 'hepsi', l: 'Tümü', n: d.variants.length }, { v: 'tukenen', l: 'Tükenen', n: d.variants.filter((v: any) => +v.stock <= 0).length }, { v: 'acik', l: 'Karşılanamayan', n: rows.filter((v: any) => v.stock - v.rezerve < 0).length }, { v: 'barkodsuz', l: 'Barkodsuz', n: d.variants.filter((v: any) => !v.barkod).length }]} />
+          <select className="adm-sel" value={urunF} onChange={e => setUrunF(e.target.value)}><option value="">Tüm ürünler</option>{d.products.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
         </div>
-      </div>
+        <DataGrid rows={liste} cols={cols} rowKey={v => v.id} loading={loading} csvName="varyantlar" storageKey="varyantlar" searchText={v => `${v.urunAd} ${v.urunKod || ''} ${v.name} ${v.barkod || ''}`} searchPlaceholder="Ürün, varyant, barkod..." emptyTitle="Varyant bulunamadı" footerNote={<span>· Stok değişikliği için sayım (✓) düğmesini kullan; hareket defterine yazılır</span>} />
+      </Page>
 
-      {modal && (
-        <div className="adm-modal-bg" onClick={e=>{ if(e.target===e.currentTarget) setModal(false) }}>
-          <div className="adm-modal">
-            <div className="adm-modal-h">
-              Varyant Ekle — {selProd?.name}
-              <button onClick={() => setModal(false)} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--adm-tx3)' }}><X size={18}/></button>
-            </div>
-            <form onSubmit={addVariant}>
-              <div className="adm-modal-b" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
-                <div style={{ gridColumn:'1/-1' }}>
-                  <label className="adm-label">Varyant Adı *</label>
-                  <input className="adm-inp" required value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="Turuncu / S Boy"/>
-                </div>
-                <div>
-                  <label className="adm-label">Renk (hex)</label>
-                  <input className="adm-inp" value={form.color} onChange={e=>setForm(f=>({...f,color:e.target.value}))} placeholder="#e55f28"/>
-                  <div style={{ display:'flex', gap:6, marginTop:8, flexWrap:'wrap' }}>
-                    {COLORS.map(c=>(
-                      <button key={c} type="button" onClick={()=>setForm(f=>({...f,color:c}))}
-                        style={{ width:22, height:22, borderRadius:5, background:c, border:`2px solid ${form.color===c?'var(--adm-ac)':'var(--adm-bdr)'}`, cursor:'pointer' }}/>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label className="adm-label">Boyut</label>
-                  <input className="adm-inp" value={form.size} onChange={e=>setForm(f=>({...f,size:e.target.value}))} placeholder="Küçük / Orta / Büyük"/>
-                </div>
-                <div>
-                  <label className="adm-label">Stok Adedi</label>
-                  <input type="number" className="adm-inp" value={form.stock} onChange={e=>setForm(f=>({...f,stock:+e.target.value}))}/>
-                </div>
-                <div>
-                  <label className="adm-label">Sıra</label>
-                  <input type="number" className="adm-inp" value={form.sort_order} onChange={e=>setForm(f=>({...f,sort_order:+e.target.value}))}/>
-                </div>
-                <div style={{gridColumn:'1/-1'}}>
-                  <label className="adm-label">Barkod</label>
-                  <input className="adm-inp" value={form.barkod} onChange={e=>setForm(f=>({...f,barkod:e.target.value}))} placeholder="8690000000000"/>
-                </div>
-              </div>
-              <div className="adm-modal-f">
-                <button type="button" className="adm-btn-ghost" onClick={()=>setModal(false)}>İptal</button>
-                <button type="submit" className="adm-btn">Ekle</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <Modal open={modal} onClose={() => setModal(false)} onSubmit={save} width={560} title={editing ? 'Varyantı Düzenle' : 'Yeni Varyant'}
+        footer={<><button type="button" className="adm-btn-ghost" onClick={() => setModal(false)}>İptal</button><button type="submit" className="adm-btn" disabled={busy}>Kaydet</button></>}>
+        <FormGrid>
+          <Field label="Ürün *" span={2}><select className="adm-inp" required disabled={!!editing} value={form.product_id} onChange={e => setForm((f: any) => ({ ...f, product_id: e.target.value }))}><option value="">Seçin</option>{d.products.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
+          <Field label="Varyant adı *"><input className="adm-inp" required value={form.name} onChange={e => setForm((f: any) => ({ ...f, name: e.target.value }))} placeholder="Standart / Beyaz / 5 lt" /></Field>
+          <Field label="Beden / boyut"><input className="adm-inp" value={form.size} onChange={e => setForm((f: any) => ({ ...f, size: e.target.value }))} /></Field>
+          <Field label="Renk" span={2}>
+            <input className="adm-inp" value={form.color} onChange={e => setForm((f: any) => ({ ...f, color: e.target.value }))} placeholder="Seç veya yaz" />
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>{RENKLER.map(([ad, hex]) => <button type="button" key={ad} onClick={() => setForm((f: any) => ({ ...f, color: ad }))} title={ad} style={{ width: 22, height: 22, borderRadius: 11, background: hex, border: form.color === ad ? '2px solid var(--adm-ac)' : '1px solid var(--adm-bdr2)' }} />)}</div>
+          </Field>
+          <Field label="Barkod" hint={barkodVar(form.barkod, editing?.id) ? 'Bu barkod kullanımda' : undefined}><input className="adm-inp" value={form.barkod} onChange={e => setForm((f: any) => ({ ...f, barkod: e.target.value }))} style={barkodVar(form.barkod, editing?.id) ? { borderColor: 'var(--adm-red)' } : undefined} /></Field>
+          <Field label="Sıra"><input type="number" className="adm-inp" value={form.sort_order} onChange={e => setForm((f: any) => ({ ...f, sort_order: e.target.value }))} /></Field>
+          {!editing && <Field label="Açılış stoğu (adet)" span={2} hint="Defterde ‘Açılış stoğu’ hareketi olarak yazılır"><input type="number" min="0" className="adm-inp" value={form.acilis} onChange={e => setForm((f: any) => ({ ...f, acilis: e.target.value }))} /></Field>}
+        </FormGrid>
+      </Modal>
 
-      {toast && <div className="adm-toast">✓ {toast}</div>}
+      <Modal open={!!sayim} onClose={() => setSayim(null)} onSubmit={sayimKaydet} width={440} title={sayim && `${sayim.v.urunAd} — ${sayim.v.name}: Sayım`}
+        footer={<><button type="button" className="adm-btn-ghost" onClick={() => setSayim(null)}>İptal</button><button type="submit" className="adm-btn" disabled={busy}>Stoğu Düzelt</button></>}>
+        {sayim && <FormGrid cols={1}>
+          <Field label="Sayılan adet" hint={`Sistem: ${fmtInt(sayim.v.stock)} → fark ${fmtInt((+sayim.miktar || 0) - (+sayim.v.stock || 0))}`}><input type="number" min="0" required autoFocus className="adm-inp" value={sayim.miktar} onChange={e => setSayim((s: any) => ({ ...s, miktar: e.target.value }))} style={{ fontSize: 17, fontWeight: 700 }} /></Field>
+          <Field label="Not"><input className="adm-inp" value={sayim.not} onChange={e => setSayim((s: any) => ({ ...s, not: e.target.value }))} placeholder="Sayım tarihi, sebep..." /></Field>
+        </FormGrid>}
+      </Modal>
+
+      <Modal open={!!uret} onClose={() => setUret(null)} onSubmit={matrisOlustur} width={520} title="Renk × Beden Varyant Üretici"
+        footer={<><button type="button" className="adm-btn-ghost" onClick={() => setUret(null)}>İptal</button><button type="submit" className="adm-btn" disabled={busy}><Wand2 size={13} />Oluştur</button></>}>
+        {uret && <FormGrid cols={1}>
+          <Field label="Ürün *"><select className="adm-inp" required value={uret.product_id} onChange={e => setUret((u: any) => ({ ...u, product_id: e.target.value }))}><option value="">Seçin</option>{d.products.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></Field>
+          <Field label="Renkler (birden fazla seç)"><div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{RENKLER.map(([ad, hex]) => <button type="button" key={ad} className={`adm-chip ${uret.renkler.includes(ad) ? 'on' : ''}`} onClick={() => setUret((u: any) => ({ ...u, renkler: u.renkler.includes(ad) ? u.renkler.filter((x: string) => x !== ad) : [...u.renkler, ad] }))}><i style={{ width: 10, height: 10, borderRadius: 5, background: hex as string, border: '1px solid var(--adm-bdr2)', display: 'inline-block' }} />{ad}</button>)}</div></Field>
+          <Field label="Bedenler / boyutlar" hint="Virgülle ayır: 3 lt, 5 lt, 10 lt"><input className="adm-inp" value={uret.bedenler} onChange={e => setUret((u: any) => ({ ...u, bedenler: e.target.value }))} /></Field>
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--adm-tx3)' }}>{uret.renkler.length || 1} renk × {uret.bedenler.split(',').filter((s: string) => s.trim()).length || 1} beden = <b>{(uret.renkler.length || 1) * (uret.bedenler.split(',').filter((s: string) => s.trim()).length || 1)}</b> varyant (mevcut olanlar atlanır).</p>
+        </FormGrid>}
+      </Modal>
+      {toast.node}
     </div>
   )
 }

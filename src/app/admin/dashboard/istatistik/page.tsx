@@ -1,144 +1,65 @@
 'use client'
-import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import AdminTopBar from '@/components/admin/TopBar'
-import { Package, MessageSquare, Eye, Tag, Star, Sparkles, Inbox, CheckCheck, TrendingUp, BarChart2 } from 'lucide-react'
+import { webAll } from '@/lib/web-data'
+import { useUretim } from '@/lib/uretim-utils'
+import { fmtInt, fmtN } from '@/lib/fmt'
+import { sum, CHART_COLORS } from '@/lib/muh-utils'
+import { Page, PageHead, Kpi, KpiGrid, Card, Empty } from '@/components/admin/erp/ui'
+import { Donut, BarList } from '@/components/admin/erp/charts'
+import { Package, FolderTree, Star, Sparkles, ImageOff, FileText, ScanLine, Layers, FlaskConical, CheckCircle2, Circle } from 'lucide-react'
 
-const sb = createClient()
+export default function IstatistikPage() {
+  const { d } = useUretim(['variants', 'receteler'])
+  const [products, setProducts] = useState<any[]>([])
+  const [cats, setCats] = useState<any[]>([])
+  const [ok, setOk] = useState(false)
+  useEffect(() => { Promise.all([webAll('products', '*'), webAll('categories', '*', q => q.order('sort_order'))]).then(([p, c]) => { setProducts(p); setCats(c); setOk(true) }) }, [])
 
-export default function AdminIstatistikPage() {
-  const [data, setData] = useState<Record<string,number>>({})
-  const [catData, setCatData] = useState<{name:string;count:number}[]>([])
-  const [loading, setLoading] = useState(true)
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-    async function load() {
-      const [
-        {count:p},{count:pFeat},{count:pNew},
-        {count:cat},{count:c},{count:cNew},
-        {count:cRep},{count:cRead},{count:v}
-      ] = await Promise.all([
-        sb.from('products').select('*',{count:'exact',head:true}),
-        sb.from('products').select('*',{count:'exact',head:true}).eq('is_featured',true),
-        sb.from('products').select('*',{count:'exact',head:true}).eq('is_new',true),
-        sb.from('categories').select('*',{count:'exact',head:true}),
-        sb.from('contact_submissions').select('*',{count:'exact',head:true}),
-        sb.from('contact_submissions').select('*',{count:'exact',head:true}).eq('status','new'),
-        sb.from('contact_submissions').select('*',{count:'exact',head:true}).eq('status','replied'),
-        sb.from('contact_submissions').select('*',{count:'exact',head:true}).eq('status','read'),
-        sb.from('site_visits').select('*',{count:'exact',head:true}),
-      ])
-      setData({p:p||0,pFeat:pFeat||0,pNew:pNew||0,cat:cat||0,c:c||0,cNew:cNew||0,cRep:cRep||0,cRead:cRead||0,v:v||0})
-
-      // Kategoriye göre ürün
-      const {data:cats} = await sb.from('categories').select('slug,name').order('sort_order')
-      const counts = await Promise.all((cats||[]).map(async cat => {
-        const {count} = await sb.from('products').select('*',{count:'exact',head:true}).eq('category',cat.slug)
-        return {name:cat.name, count:count||0}
-      }))
-      setCatData(counts)
-      setLoading(false)
-    }
-    load()
-  },[])
-
-  const maxCat = Math.max(...catData.map(c=>c.count),1)
-
-  const KPIS = [
-    {label:'Toplam Ürün',    value:data.p,     Icon:Package,       color:'var(--adm-ac)',    bg:'var(--adm-ac2)'},
-    {label:'Öne Çıkan',     value:data.pFeat, Icon:Star,          color:'var(--adm-amber)', bg:'var(--adm-amber2)'},
-    {label:'Yeni Ürün',     value:data.pNew,  Icon:Sparkles,      color:'var(--adm-green)', bg:'var(--adm-green2)'},
-    {label:'Kategori',      value:data.cat,   Icon:Tag,           color:'var(--adm-blue)',  bg:'var(--adm-blue2)'},
-    {label:'Toplam Başvuru',value:data.c,     Icon:MessageSquare, color:'var(--adm-ac)',    bg:'var(--adm-ac2)'},
-    {label:'Yeni Başvuru',  value:data.cNew,  Icon:Inbox,         color:'var(--adm-red)',   bg:'var(--adm-red2)'},
-    {label:'Okundu',        value:data.cRead, Icon:Eye,           color:'var(--adm-blue)',  bg:'var(--adm-blue2)'},
-    {label:'Yanıtlandı',    value:data.cRep,  Icon:CheckCheck,    color:'var(--adm-green)', bg:'var(--adm-green2)'},
-    {label:'Site Ziyareti', value:data.v,     Icon:TrendingUp,    color:'var(--adm-blue)',  bg:'var(--adm-blue2)'},
+  const katSay = useMemo(() => cats.map(c => ({ c, urun: products.filter(p => p.category === c.slug) })), [cats, products])
+  const stokKat = useMemo(() => katSay.map(({ c, urun }) => ({ label: c.name, value: sum(d.variants.filter((v: any) => urun.some((p: any) => p.id === v.product_id)), (v: any) => v.stock) })).filter(x => x.value > 0), [katSay, d.variants])
+  const kriter = [
+    { l: 'Ana görseli var', i: ImageOff, f: (p: any) => !!p.image_url },
+    { l: 'Açıklaması var', i: FileText, f: (p: any) => !!(p.description || '').trim() },
+    { l: 'Barkodu var', i: ScanLine, f: (p: any) => !!p.barkod },
+    { l: 'Stok varyantı var', i: Layers, f: (p: any) => d.variants.some((v: any) => v.product_id === p.id) },
+    { l: 'Aktif reçetesi var', i: FlaskConical, f: (p: any) => d.receteler.some((r: any) => r.urun_id === p.id && r.aktif) },
+    { l: 'Teknik özellik girilmiş', i: FileText, f: (p: any) => Object.keys(p.specs || {}).length > 0 },
   ]
+  const skor = products.length ? kriter.reduce((s, k) => s + products.filter(k.f).length, 0) / (kriter.length * products.length) * 100 : 0
+  const eksikler = products.map(p => ({ p, eksik: kriter.filter(k => !k.f(p)).map(k => k.l.replace(' var', '').replace(' girilmiş', '')) })).filter(x => x.eksik.length >= 3).slice(0, 8)
 
   return (
-    <div style={{flex:1,overflow:'auto'}}>
-      <AdminTopBar title="İstatistikler"/>
-      <div style={{padding:24}}>
-        {loading ? <p style={{textAlign:'center',color:'var(--adm-tx3)',padding:60}}>Yükleniyor...</p> : (
-          <>
-            {/* KPI Grid */}
-            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:12,marginBottom:24}}>
-              {KPIS.map(k=>(
-                <div key={k.label} className="adm-kpi" style={{borderLeft:`2.5px solid ${k.color}`}}>
-                  <div style={{position:'absolute',top:0,right:0,width:70,height:70,background:`radial-gradient(circle at top right,${k.color}18,transparent 70%)`,pointerEvents:'none'}}/>
-                  <div style={{width:32,height:32,borderRadius:8,background:k.bg,display:'flex',alignItems:'center',justifyContent:'center',marginBottom:10}}>
-                    <k.Icon size={14} style={{color:k.color}} strokeWidth={1.9}/>
-                  </div>
-                  <p className="adm-kpi-label">{k.label}</p>
-                  <p className="adm-kpi-value" style={{fontSize:24}}>{k.value}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Kategori dağılımı */}
-            <div className="adm-card">
-              <div className="adm-card-h"><span style={{display:'flex',alignItems:'center',gap:8}}><BarChart2 size={15} style={{color:'var(--adm-ac)'}}/>Kategoriye Göre Ürün</span></div>
-              <div style={{padding:20}}>
-                {catData.length===0 ? <p style={{color:'var(--adm-tx3)',fontSize:13}}>Veri yok</p> : catData.map((c,i)=>(
-                  <div key={i} style={{marginBottom:16}}>
-                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
-                      <span style={{fontSize:13,fontWeight:500,color:'var(--adm-tx)'}}>{c.name}</span>
-                      <div style={{display:'flex',alignItems:'center',gap:8}}>
-                        <span style={{fontSize:12,color:'var(--adm-tx3)'}}>{c.count} ürün</span>
-                        <span style={{fontSize:12,fontWeight:700,color:'var(--adm-ac)',fontFamily:'JetBrains Mono,monospace',width:32,textAlign:'right'}}>{data.p?Math.round(c.count/data.p*100):0}%</span>
-                      </div>
-                    </div>
-                    <div style={{height:8,background:'var(--adm-s4)',borderRadius:4}}>
-                      <div style={{height:'100%',width:mounted?`${(c.count/maxCat)*100}%`:'0%',background:`linear-gradient(90deg,var(--adm-ac),rgba(229,95,40,.5))`,borderRadius:4,transition:`width .7s ease ${i*80}ms`}}/>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Başvuru özeti */}
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginTop:16}}>
-              <div className="adm-card">
-                <div className="adm-card-h">Başvuru Durumu</div>
-                <div style={{padding:20}}>
-                  {[
-                    {label:'Yeni',       value:data.cNew,  color:'var(--adm-ac)'},
-                    {label:'Okundu',     value:data.cRead, color:'var(--adm-blue)'},
-                    {label:'Yanıtlandı', value:data.cRep,  color:'var(--adm-green)'},
-                    {label:'Toplam',     value:data.c,     color:'var(--adm-tx2)'},
-                  ].map((r,i)=>(
-                    <div key={i} className="adm-row" style={{padding:'10px 0',borderColor:'var(--adm-bdr)'}}>
-                      <div style={{width:8,height:8,borderRadius:'50%',background:r.color,flexShrink:0}}/>
-                      <span style={{flex:1,fontSize:13,color:'var(--adm-tx)'}}>{r.label}</span>
-                      <span style={{fontSize:16,fontWeight:700,fontFamily:'JetBrains Mono,monospace',color:r.color}}>{r.value}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="adm-card">
-                <div className="adm-card-h">Ürün Durumu</div>
-                <div style={{padding:20}}>
-                  {[
-                    {label:'Toplam Ürün',    value:data.p,     color:'var(--adm-ac)'},
-                    {label:'Öne Çıkan',      value:data.pFeat, color:'var(--adm-amber)'},
-                    {label:'Yeni Etiketli',  value:data.pNew,  color:'var(--adm-green)'},
-                    {label:'Kategori Sayısı',value:data.cat,   color:'var(--adm-blue)'},
-                  ].map((r,i)=>(
-                    <div key={i} className="adm-row" style={{padding:'10px 0',borderColor:'var(--adm-bdr)'}}>
-                      <div style={{width:8,height:8,borderRadius:'50%',background:r.color,flexShrink:0}}/>
-                      <span style={{flex:1,fontSize:13,color:'var(--adm-tx)'}}>{r.label}</span>
-                      <span style={{fontSize:16,fontWeight:700,fontFamily:'JetBrains Mono,monospace',color:r.color}}>{r.value}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
+    <div style={{ flex: 1, overflow: 'auto' }}>
+      <AdminTopBar title="İstatistikler" />
+      <Page>
+        <PageHead title="Katalog İstatistikleri" sub="Ürün kataloğunun doluluk, dağılım ve veri kalitesi durumu" />
+        <KpiGrid min={180}>
+          <Kpi label="Ürün" value={products.length} Icon={Package} color="var(--adm-ac)" sub={`${cats.length} kategori`} />
+          <Kpi label="Öne Çıkan" value={products.filter(p => p.is_featured).length} Icon={Star} color="var(--adm-amber)" />
+          <Kpi label="Yeni" value={products.filter(p => p.is_new).length} Icon={Sparkles} color="var(--adm-green)" />
+          <Kpi label="Katalog Sağlığı" value={`%${fmtN(skor, 0)}`} Icon={CheckCircle2} color={skor >= 80 ? 'var(--adm-green)' : skor >= 50 ? 'var(--adm-amber)' : 'var(--adm-red)'} sub="veri doluluk skoru" />
+          <Kpi label="Toplam Mamul Stok" value={fmtInt(sum(d.variants, (v: any) => v.stock))} Icon={Layers} color="var(--adm-blue)" sub={`${d.variants.length} varyant`} />
+        </KpiGrid>
+        {!ok ? null : products.length === 0 ? <Card><Empty icon={<Package size={32} />} title="Henüz ürün yok" /></Card> : <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,400px),1fr))', gap: 16, marginBottom: 16 }}>
+            <Card title="Kategoriye Göre Ürün Sayısı" pad={18}><BarList items={katSay.map(({ c, urun }, i) => ({ label: `${c.icon || ''} ${c.name}`, value: urun.length, color: CHART_COLORS[i % 10] }))} format={v => `${v} ürün`} /></Card>
+            <Card title="Kategoriye Göre Mamul Stok" pad={18}>{stokKat.length === 0 ? <Empty title="Stok verisi yok" sub="Varyant stokları girildiğinde görünür" /> : <Donut size={160} data={stokKat.map((x, i) => ({ ...x, color: CHART_COLORS[i % 10] }))} center={{ top: 'Toplam', bottom: fmtInt(sum(stokKat, x => x.value)) }} />}</Card>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,400px),1fr))', gap: 16 }}>
+            <Card title="Veri Kalitesi Kontrolü" pad={0}>
+              {kriter.map(k => { const n = products.filter(k.f).length, p = (n / products.length) * 100; return (
+                <div key={k.l} className="adm-row" style={{ padding: '11px 18px' }}><k.i size={15} style={{ color: p === 100 ? 'var(--adm-green)' : 'var(--adm-tx3)' }} /><span style={{ flex: 1, fontSize: 13 }}>{k.l}</span>
+                  <div style={{ width: 110, height: 6, borderRadius: 4, background: 'var(--adm-s2)', overflow: 'hidden' }}><div style={{ width: `${p}%`, height: '100%', background: p === 100 ? 'var(--adm-green)' : p >= 50 ? 'var(--adm-amber)' : 'var(--adm-red)' }} /></div><b style={{ fontSize: 12, width: 64, textAlign: 'right' }}>{n}/{products.length}</b></div>) })}
+            </Card>
+            <Card title="Eksiği Çok Olan Ürünler" right={<Link href="/admin/dashboard/urunler" style={{ fontSize: 12, color: 'var(--adm-ac)' }}>Ürünler →</Link>}>
+              {eksikler.length === 0 ? <Empty icon={<CheckCircle2 size={28} style={{ color: 'var(--adm-green)' }} />} title="Tüm ürünlerin verisi büyük ölçüde tam" /> : eksikler.map(({ p, eksik }) => (
+                <div key={p.id} className="adm-row" style={{ padding: '10px 18px' }}><Circle size={8} style={{ color: 'var(--adm-red)' }} /><div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 600 }}>{p.name}</div><div style={{ fontSize: 11, color: 'var(--adm-tx3)' }}>Eksik: {eksik.join(', ')}</div></div></div>))}
+            </Card>
+          </div>
+        </>}
+      </Page>
     </div>
   )
 }
