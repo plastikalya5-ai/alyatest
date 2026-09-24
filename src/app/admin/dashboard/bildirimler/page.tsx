@@ -19,6 +19,24 @@ export default function AdminBildirimlerPage() {
   const [toast, setToast] = useState('')
   const [uyarilar, setUyarilar] = useState<any[]>([])
   const [uyariYuklendi, setUyariYuklendi] = useState(false)
+  const [durum, setDurum] = useState<{email:{ok:boolean;missing:string[]};whatsapp:{ok:boolean;missing:string[]}}|null>(null)
+  const [testing, setTesting] = useState('')
+
+  useEffect(() => {
+    fetch('/api/admin/notify').then(r => r.ok ? r.json() : null).then(setDurum).catch(()=>{})
+  }, [])
+
+  async function test(channel:'email'|'whatsapp', event:string) {
+    const to = channel==='email' ? settings[event]?.email_to : settings[event]?.whatsapp_to
+    if (!to) { setToast('Önce adres/numara gir'); setTimeout(()=>setToast(''),3000); return }
+    setTesting(`${event}:${channel}`)
+    try {
+      const r = await fetch('/api/admin/notify', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({channel, to}) })
+      const j = await r.json()
+      setToast(r.ok ? 'Test bildirimi gönderildi' : `Test başarısız: ${j.error}`)
+    } catch { setToast('Test başarısız: bağlantı hatası') }
+    setTesting(''); setTimeout(()=>setToast(''),5000)
+  }
 
   useEffect(() => {
     sb.from('notification_settings').select('*').order('event', {ascending:true}).then(({data}:any) => {
@@ -103,9 +121,12 @@ export default function AdminBildirimlerPage() {
           <div style={{ width:36, height:36, borderRadius:9, background:'var(--adm-blue2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
             <Info size={16} style={{ color:'var(--adm-blue)' }}/>
           </div>
-          <p style={{ fontSize:12.5, color:'var(--adm-tx3)', lineHeight:1.6 }}>
-            E-posta bildirimleri için SMTP ayarları gereklidir. WhatsApp bildirimleri için n8n webhook entegrasyonu kurulmalıdır.
-          </p>
+          <div style={{ fontSize:12.5, color:'var(--adm-tx3)', lineHeight:1.7 }}>
+            {!durum ? 'Kanal durumu kontrol ediliyor...' : <>
+              <div>E-posta (SMTP): {durum.email.ok ? <b style={{color:'var(--adm-green)'}}>hazır ✓</b> : <b style={{color:'var(--adm-red)'}}>kurulmamış — Vercel env: {durum.email.missing.join(', ')}</b>}</div>
+              <div>WhatsApp (n8n): {durum.whatsapp.ok ? <b style={{color:'var(--adm-green)'}}>hazır ✓</b> : <b style={{color:'var(--adm-red)'}}>kurulmamış — Vercel env: {durum.whatsapp.missing.join(', ')}</b>}</div>
+            </>}
+          </div>
         </div>
 
         <form onSubmit={save}>
@@ -136,6 +157,11 @@ export default function AdminBildirimlerPage() {
                     value={settings[ev.event]?.email_to||''}
                     onChange={e => upd(ev.event,'email_to',e.target.value)}
                     disabled={!settings[ev.event]?.email_enabled}/>
+                  <button type="button" className="adm-btn" onClick={()=>test('email', ev.event)}
+                    disabled={!settings[ev.event]?.email_to || testing===`${ev.event}:email`}
+                    style={{ marginTop:10, fontSize:12, padding:'6px 12px' }}>
+                    {testing===`${ev.event}:email` ? 'Gönderiliyor...' : 'Test Gönder'}
+                  </button>
                 </div>
 
                 {/* WhatsApp */}
@@ -156,6 +182,11 @@ export default function AdminBildirimlerPage() {
                     value={settings[ev.event]?.whatsapp_to||''}
                     onChange={e => upd(ev.event,'whatsapp_to',e.target.value)}
                     disabled={!settings[ev.event]?.whatsapp_enabled}/>
+                  <button type="button" className="adm-btn" onClick={()=>test('whatsapp', ev.event)}
+                    disabled={!settings[ev.event]?.whatsapp_to || testing===`${ev.event}:whatsapp`}
+                    style={{ marginTop:10, fontSize:12, padding:'6px 12px' }}>
+                    {testing===`${ev.event}:whatsapp` ? 'Gönderiliyor...' : 'Test Gönder'}
+                  </button>
                 </div>
               </div>
             </div>

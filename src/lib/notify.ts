@@ -18,12 +18,17 @@ function admin() {
 
 export { admin as supabaseAdmin }
 
-async function sendEmail(to: string, subject: string, text: string) {
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM } = process.env
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
-    console.warn('[notify] SMTP ayarı yok, e-posta atlandı')
-    return
+export function channelStatus() {
+  const missingEmail = ['SMTP_HOST', 'SMTP_USER', 'SMTP_PASS'].filter(k => !process.env[k])
+  return {
+    email: { ok: missingEmail.length === 0, missing: missingEmail },
+    whatsapp: { ok: !!process.env.N8N_WHATSAPP_WEBHOOK_URL, missing: process.env.N8N_WHATSAPP_WEBHOOK_URL ? [] : ['N8N_WHATSAPP_WEBHOOK_URL'] },
   }
+}
+
+export async function sendEmail(to: string, subject: string, text: string) {
+  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM } = process.env
+  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) throw new Error('SMTP ayarı tanımlı değil (SMTP_HOST, SMTP_USER, SMTP_PASS)')
   const port = Number(SMTP_PORT || 465)
   const transporter = nodemailer.createTransport({
     host: SMTP_HOST,
@@ -34,12 +39,9 @@ async function sendEmail(to: string, subject: string, text: string) {
   await transporter.sendMail({ from: SMTP_FROM || SMTP_USER, to, subject, text })
 }
 
-async function sendWhatsApp(event: NotifyEvent, to: string, message: string, data: unknown) {
+export async function sendWhatsApp(event: NotifyEvent | 'test', to: string, message: string, data: unknown) {
   const url = process.env.N8N_WHATSAPP_WEBHOOK_URL
-  if (!url) {
-    console.warn('[notify] N8N_WHATSAPP_WEBHOOK_URL yok, WhatsApp atlandı')
-    return
-  }
+  if (!url) throw new Error('N8N_WHATSAPP_WEBHOOK_URL tanımlı değil')
   const res = await fetch(url, {
     method: 'POST',
     headers: {
