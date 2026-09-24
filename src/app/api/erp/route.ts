@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase/server'
-import { applyQuery } from '@/lib/proxy-query'
+import { applyQuery, withCreatedBy, withUpdatedBy } from '@/lib/proxy-query'
 
 // ERP modülüne ait tablolar — sadece bunlara erişilebilir (arbitrary table proxy DEĞİL).
 const TABLES = new Set([
@@ -55,15 +55,13 @@ export async function POST(req: NextRequest) {
 
   let r: any
   if (op === 'insert') {
-    const payload = Array.isArray(data) ? data.map(d=>({...d, created_by:user.id})) : { ...data, created_by: user.id }
-    r = await sb.from(table).insert(payload).select()
+    r = await sb.from(table).insert(withCreatedBy(table, data, user.id)).select()
   } else if (op === 'update') {
-    r = await sb.from(table).update({ ...data, updated_by: user.id }).eq('id', id).select()
+    r = await sb.from(table).update(withUpdatedBy(table, data, user.id)).eq('id', id).select()
   } else if (op === 'delete') {
     r = await sb.from(table).delete().eq('id', id)
   } else if (op === 'upsert') {
-    const payload = Array.isArray(data) ? data.map(d=>({...d, created_by:user.id})) : { ...data, created_by: user.id }
-    r = await sb.from(table).upsert(payload).select()
+    r = await sb.from(table).upsert(withCreatedBy(table, data, user.id)).select()
   } else {
     return NextResponse.json({ error: 'Geçersiz işlem' }, { status: 400 })
   }

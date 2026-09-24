@@ -34,3 +34,15 @@ export function applyQuery(q: any, sp: URLSearchParams) {
   else if (limit) q = q.limit(limit)
   return q
 }
+
+// created_by / updated_by kolonu OLMAYAN tablolar — proxy bu alanları eklerse PostgREST "column not found" hatası verir.
+const NO_CREATED_BY = new Set([
+  'depolar', 'hammadde_lotlari', 'ihracat_detaylari', 'kalip_bakim_kayitlari', 'kalite_kontrol_kayitlari', 'recete_kalemleri',
+  'satinalma_siparisi_kalemleri', 'satis_siparisi_kalemleri', 'uretim_hareketleri', 'roller', 'fiyat_listesi_kalemleri', 'iskonto_kademeleri',
+])
+const NO_UPDATED_BY = new Set([...NO_CREATED_BY, 'banka_ekstre_kayitlari', 'fire_kayitlari', 'stok_hareketleri'])
+
+export const withCreatedBy = (table: string, d: any, uid: string) =>
+  NO_CREATED_BY.has(table) ? d : Array.isArray(d) ? d.map(x => ({ ...x, created_by: uid })) : { ...d, created_by: uid }
+export const withUpdatedBy = (table: string, d: any, uid: string) =>
+  NO_UPDATED_BY.has(table) ? d : { ...d, updated_by: uid }
