@@ -11,7 +11,7 @@ const TABLES = new Set([
 ])
 
 // Salt-okunur görünümler — sadece GET (yetki alttaki tabloların RLS'inden gelir)
-const READONLY_VIEWS = new Set(['v_cari_ozet','v_islemler_liste','v_kasa_hareket'])
+const READONLY_VIEWS = new Set(['v_cari_ozet','v_islemler_liste','v_kasa_hareket','v_faturalar_liste'])
 
 // Alan-seviyesi şifrelenecek hassas kimlik alanları (tablo -> kolonlar)
 const ENCRYPTED_FIELDS: Record<string,string[]> = {

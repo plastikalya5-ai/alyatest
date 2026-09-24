@@ -66,16 +66,25 @@ export default function BankaEkstresiPage() {
   const [busy, setBusy] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
+  // Ekstre ve eşleşme adayları yalnızca seçili banka hesabı için (ve eşleştirmeye konu olabilecek son 400 gün için) çekilir
   const load = useCallback(async () => {
-    const [k, e, i, kt, c] = await Promise.all([
+    const [k, kt, c] = await Promise.all([
       muh.all('kasa_banka_hesaplari', '*', q => q.eq('tip', 'banka').order('ad', { ascending: true })),
-      erp.all('banka_ekstre_kayitlari', '*', q => q.order('tarih', { ascending: false })),
-      muh.all('islemler', '*', q => q.order('tarih', { ascending: false })),
       muh.from('muhasebe_kategoriler').select('*'), muh.all('cari_hesaplar', 'id,ad'),
     ])
-    setKasalar(k); setKayitlar(e); setIslemler(i); setKategoriler(kt.data || []); setCariler(c); setLoading(false)
-    setKasa(s => s || k[0]?.id || '')
-  }, [])
+    setKasalar(k); setKategoriler(kt.data || []); setCariler(c)
+    const aktif = kasa || k[0]?.id || ''
+    if (!kasa) setKasa(aktif)
+    if (aktif) {
+      const bas = new Date(Date.now() - 400 * 86400000).toISOString().slice(0, 10)
+      const [e, i] = await Promise.all([
+        erp.all('banka_ekstre_kayitlari', '*', q => q.eq('kasa_hesap_id', aktif).order('tarih', { ascending: false })),
+        muh.all('islemler', '*', q => q.eq('kasa_hesap_id', aktif).gte('tarih', bas).order('tarih', { ascending: false })),
+      ])
+      setKayitlar(e); setIslemler(i)
+    } else { setKayitlar([]); setIslemler([]) }
+    setLoading(false)
+  }, [kasa])
   useEffect(() => { load() }, [load])
 
   const hesap = kasalar.find(k => k.id === kasa)

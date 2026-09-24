@@ -6,7 +6,7 @@ import { erp } from '@/lib/erp-client'
 import { fmt, fmtK, fmtDate, todayISO, daysBetween } from '@/lib/fmt'
 import { sum, kalanTutar, DONEMLER, donemAralik, inRange, type Donem } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, InfoRow, Divider, Empty, useToast } from '@/components/admin/erp/ui'
-import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
+import { DataGrid, type Col, type ServerMode } from '@/components/admin/erp/DataGrid'
 import { Plus, Receipt, HandCoins, AlertTriangle, FileText, Printer, CheckCircle2, Ban, Copy, Trash2, X, Coins, Wallet } from 'lucide-react'
 
 const DURUM: Record<string, { l: string; tone: any }> = { taslak: { l: 'Taslak', tone: 'muted' }, onaylandi: { l: 'Açık', tone: 'blue' }, odendi: { l: 'Ödendi', tone: 'green' }, iptal: { l: 'İptal', tone: 'red' } }
@@ -16,7 +16,6 @@ const bosKalem = (kdv = 20): Kalem => ({ urun_adi: '', variant_id: null, miktar:
 
 export default function FaturalarPage() {
   const toast = useToast()
-  const [rows, setRows] = useState<any[]>([])
   const [cariler, setCariler] = useState<any[]>([])
   const [kasalar, setKasalar] = useState<any[]>([])
   const [variants, setVariants] = useState<any[]>([])
@@ -24,7 +23,6 @@ export default function FaturalarPage() {
   const [listeKalem, setListeKalem] = useState<any[]>([])
   const [kademeler, setKademeler] = useState<any[]>([])
   const [odemeler, setOdemeler] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
 
   const [tab, setTab] = useState('hepsi')
   const [tipF, setTipF] = useState('')
@@ -39,42 +37,48 @@ export default function FaturalarPage() {
   const [form, setForm] = useState<any>({})
   const [kalemler, setKalemler] = useState<Kalem[]>([bosKalem()])
 
-  const load = useCallback(async () => {
-    const [f, c, k, v, pr, fl, fk, ik, io] = await Promise.all([
-      muh.all('faturalar', '*', q => q.order('tarih', { ascending: false }).order('created_at', { ascending: false })),
+  const [ozet, setOzet] = useState<any>(null)
+  const [surum, setSurum] = useState(0)
+
+  // Referans tabloları (küçük): cari, kasa, varyant, fiyat listeleri
+  useEffect(() => {
+    Promise.all([
       muh.all('cari_hesaplar', 'id,ad,tip,fiyat_listesi_id'), muh.all('kasa_banka_hesaplari', 'id,ad,tip,aktif'),
       muh.all('product_variants', 'id,product_id,name,color,size,stock'), muh.all('products', 'id,name,code'),
       erp.from('fiyat_listeleri').select('*'), erp.from('fiyat_listesi_kalemleri').select('*'), erp.from('iskonto_kademeleri').select('*'),
-      muh.all('islemler', 'id,fatura_id,tutar,tip,tarih,kategori,kasa_hesap_id,odeme_yontemi'),
-    ])
-    const pm: Record<string, any> = {}; pr.forEach((p: any) => pm[p.id] = p)
-    setRows(f); setCariler(c); setKasalar(k.filter((x: any) => x.aktif !== false))
-    setVariants(v.map((x: any) => ({ ...x, label: [pm[x.product_id]?.name, x.name, x.color, x.size].filter(Boolean).filter((a, i, arr) => arr.indexOf(a) === i).join(' · ') || x.name })))
-    setListeler(fl.data || []); setListeKalem(fk.data || []); setKademeler((ik.data || []).filter((x: any) => x.aktif !== false))
-    setOdemeler((io || []).filter((x: any) => x.fatura_id))
-    setLoading(false)
-    setDetay((d: any) => (d ? f.find((x: any) => x.id === d.id) || null : null))
+    ]).then(([c, k, v, pr, fl, fk, ik]) => {
+      const pm: Record<string, any> = {}; pr.forEach((p: any) => pm[p.id] = p)
+      setCariler(c); setKasalar(k.filter((x: any) => x.aktif !== false))
+      setVariants(v.map((x: any) => ({ ...x, label: [pm[x.product_id]?.name, x.name, x.color, x.size].filter(Boolean).filter((a, i, arr) => arr.indexOf(a) === i).join(' · ') || x.name })))
+      setListeler(fl.data || []); setListeKalem(fk.data || []); setKademeler((ik.data || []).filter((x: any) => x.aktif !== false))
+    })
   }, [])
-  useEffect(() => { load() }, [load])
+  // Değişiklikten sonra: listeyi ve özeti yenile, açık detayı tazele
+  const load = useCallback(async () => {
+    setSurum(v => v + 1)
+    setDetay((d: any) => { if (d) muh.from('v_faturalar_liste').select('*').eq('id', d.id).then((r: any) => { if (r.data?.[0]) setDetay(r.data[0]) }); return d })
+  }, [])
 
   const bugun = todayISO()
   const cariAd = useMemo(() => Object.fromEntries(cariler.map(c => [c.id, c.ad])), [cariler])
   const R = donemAralik(donem)
 
   const gecikmis = (f: any) => f.durum === 'onaylandi' && f.tip !== 'iade' && !!f.vade && f.vade < bugun
-  const filtered = rows.filter(f => {
-    if (tipF && f.tip !== tipF) return false
-    if (R.from && !inRange(f.tarih, R.from, R.to)) return false
-    if (tab === 'gecikmis') return gecikmis(f)
-    if (tab !== 'hepsi') return f.durum === tab
-    return true
-  })
-  const sayi = (fn: (f: any) => boolean) => rows.filter(fn).length
-
-  const acik = rows.filter(f => f.durum === 'onaylandi')
-  const acikAlacak = sum(acik.filter(f => f.tip === 'satis'), kalanTutar), acikBorc = sum(acik.filter(f => f.tip === 'alis'), kalanTutar)
-  const donemSatis = sum(rows.filter(f => f.tip === 'satis' && ['onaylandi', 'odendi'].includes(f.durum) && (!R.from || inRange(f.tarih, R.from, R.to))), f => f.toplam)
-  const gecik = rows.filter(gecikmis)
+  const filtre = useCallback((q: any) => {
+    if (tipF) q = q.eq('tip', tipF)
+    if (R.from) q = q.gte('tarih', R.from)
+    if (R.to) q = q.lte('tarih', R.to)
+    if (tab === 'gecikmis') q = q.eq('durum', 'onaylandi').neq('tip', 'iade').lt('vade', bugun)
+    else if (tab !== 'hepsi') q = q.eq('durum', tab)
+    return q
+  }, [tipF, R.from, R.to, tab, bugun])
+  useEffect(() => { setOzet(null); muh.rpc('rpc_fatura_ozet', { p_from: R.from, p_to: R.to }).then(setOzet).catch(() => setOzet({})) }, [R.from, R.to, surum]) // eslint-disable-line
+  const server: ServerMode<any> = {
+    deps: [tab, tipF, donem, surum],
+    fetch: ({ page, size, q, sort }) => muh.page('v_faturalar_liste', '*', { build: filtre, search: q, searchIn: ['no', 'cari_ad'], sort: sort || { key: 'tarih', dir: 'desc' }, tieBreak: 'created_at', page, size }),
+  }
+  const oz = ozet || {}
+  const acikAlacak = +oz.acik_alacak || 0, acikBorc = +oz.acik_borc || 0, donemSatis = +oz.satis_donem || 0
 
   /* ── Yardımcılar ── */
   const varsayilanListe = listeler.find(l => l.varsayilan)?.id
@@ -86,12 +90,14 @@ export default function FaturalarPage() {
     const isk = tip === 'satis' ? Math.max(0, ...kademeler.filter(k => +k.min_miktar <= miktar).map(k => +k.iskonto_yuzdesi)) : 0
     return { fiyat: +(+item.fiyat * (1 - isk / 100)).toFixed(4), iskonto: isk }
   }
-  const sonrakiNo = () => {
+  // Sıradaki fatura no: yalnızca bu yılın son numaraları sorgulanır
+  const sonrakiNo = async () => {
     const y = new Date().getFullYear(), pre = `F-${y}-`
-    const max = Math.max(0, ...rows.filter(f => f.no?.startsWith(pre)).map(f => +f.no.slice(pre.length) || 0))
+    const r: any = await muh.from('faturalar').select('no').ilike('no', pre).order('no', { ascending: false }).limit(50)
+    const max = Math.max(0, ...(r.data || []).filter((f: any) => f.no?.startsWith(pre)).map((f: any) => +f.no.slice(pre.length) || 0))
     return `${pre}${String(max + 1).padStart(4, '0')}`
   }
-  const yeniForm = (o: any = {}) => ({ tip: 'satis', no: sonrakiNo(), cari_id: '', tarih: todayISO(), vade: '', notlar: '', para_birimi: 'TRY', kur: '1', ...o })
+  const yeniForm = async (o: any = {}) => ({ tip: 'satis', no: await sonrakiNo(), cari_id: '', tarih: todayISO(), vade: '', notlar: '', para_birimi: 'TRY', kur: '1', ...o })
 
   const araToplam = kalemler.reduce((s, k) => s + k.miktar * k.birim_fiyat, 0)
   const kdvToplam = kalemler.reduce((s, k) => s + (k.miktar * k.birim_fiyat * k.kdv_orani) / 100, 0)
@@ -115,7 +121,8 @@ export default function FaturalarPage() {
     if (busy) return
     if (!form.no) return toast.show('Fatura no gerekli', true)
     if (!kalemler.some(k => k.urun_adi && k.miktar > 0)) return toast.show('En az bir kalem gir', true)
-    if (rows.some(f => f.no === form.no && f.tip === form.tip) && !confirm(`${form.no} numaralı bir ${TIP[form.tip].l.toLowerCase()} faturası zaten var. Yine de kaydedilsin mi?`)) return
+    const dup: any = await muh.from('faturalar').select('id').eq('no', form.no).eq('tip', form.tip).limit(1)
+    if (dup.data?.length && !confirm(`${form.no} numaralı bir ${TIP[form.tip].l.toLowerCase()} faturası zaten var. Yine de kaydedilsin mi?`)) return
     if (onayla && !form.cari_id && !confirm('Cari seçilmedi; cari bakiyesi etkilenmeyecek. Devam edilsin mi?')) return
     setBusy(true)
     try {
@@ -153,7 +160,7 @@ export default function FaturalarPage() {
 
   async function kopyala(f: any) {
     const { data } = await muh.from('fatura_kalemleri').select('*').eq('fatura_id', f.id)
-    setForm(yeniForm({ tip: f.tip, cari_id: f.cari_id || '', para_birimi: f.para_birimi || 'TRY', kur: String(f.kur || 1), notlar: f.notlar || '' }))
+    setForm(await yeniForm({ tip: f.tip, cari_id: f.cari_id || '', para_birimi: f.para_birimi || 'TRY', kur: String(f.kur || 1), notlar: f.notlar || '' }))
     setKalemler((data || []).map((k: any) => ({ urun_adi: k.urun_adi, variant_id: k.variant_id, miktar: +k.miktar, birim: k.birim || 'adet', birim_fiyat: +k.birim_fiyat, kdv_orani: +k.kdv_orani })))
     setDetay(null); setModal(true)
   }
@@ -205,27 +212,30 @@ export default function FaturalarPage() {
     const w = window.open('', '_blank'); if (w) { w.document.write(html); w.document.close(); w.focus(); setTimeout(() => w.print(), 300) }
   }
 
-  async function openDetay(f: any) { setDetay(f); setDKalem([]); const { data } = await muh.from('fatura_kalemleri').select('*').eq('fatura_id', f.id); setDKalem(data || []) }
+  async function openDetay(f: any) {
+    setDetay(f); setDKalem([]); setOdemeler([])
+    const [k, o] = await Promise.all([muh.from('fatura_kalemleri').select('*').eq('fatura_id', f.id), muh.from('islemler').select('id,fatura_id,tutar,tip,tarih,kategori,kasa_hesap_id,odeme_yontemi').eq('fatura_id', f.id)])
+    setDKalem(k.data || []); setOdemeler(o.data || [])
+  }
 
   const cols: Col<any>[] = [
-    { key: 'no', label: 'Fatura', sort: f => f.no, render: f => <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Badge tone={TIP[f.tip]?.tone}>{TIP[f.tip]?.l}</Badge><b style={{ fontFamily: 'JetBrains Mono,monospace', fontSize: 12 }}>{f.no}</b></div> },
-    { key: 'cari', label: 'Cari', sort: f => cariAd[f.cari_id] || '', render: f => cariAd[f.cari_id] || <span style={{ color: 'var(--adm-tx3)' }}>—</span> },
-    { key: 'tarih', label: 'Tarih', width: 96, sort: f => f.tarih, render: f => fmtDate(f.tarih), hideSm: true },
+    { key: 'no', sortKey: 'no', label: 'Fatura', csv: f => f.no, render: f => <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Badge tone={TIP[f.tip]?.tone}>{TIP[f.tip]?.l}</Badge><b style={{ fontFamily: 'JetBrains Mono,monospace', fontSize: 12 }}>{f.no}</b></div> },
+    { key: 'cari', sortKey: 'cari_ad', label: 'Cari', csv: f => f.cari_ad, render: f => f.cari_ad || <span style={{ color: 'var(--adm-tx3)' }}>—</span> },
+    { key: 'tarih', sortKey: 'tarih', label: 'Tarih', width: 96, render: f => fmtDate(f.tarih), hideSm: true },
     {
-      key: 'vade', label: 'Vade', width: 120, sort: f => f.vade || '', hideSm: true,
+      key: 'vade', sortKey: 'vade', label: 'Vade', width: 120, hideSm: true,
       render: f => !f.vade ? <span style={{ color: 'var(--adm-tx3)' }}>—</span> : <div><div>{fmtDate(f.vade)}</div>{gecikmis(f) && <div style={{ fontSize: 10.5, color: 'var(--adm-red)', fontWeight: 700 }}>{daysBetween(f.vade)} gün gecikti</div>}</div>,
     },
-    { key: 'toplam', label: 'Toplam', align: 'right', sort: f => +f.toplam, render: f => <div><Money v={+f.toplam} />{f.para_birimi !== 'TRY' && f.doviz_tutari && <div style={{ fontSize: 10.5, color: 'var(--adm-tx3)' }}>{(+f.doviz_tutari).toFixed(2)} {f.para_birimi}</div>}</div>, total: rs => <Money v={sum(rs.filter(f => f.durum !== 'iptal'), f => f.toplam)} />, csv: f => +f.toplam },
+    { key: 'toplam', sortKey: 'toplam', label: 'Toplam', align: 'right', render: f => <div><Money v={+f.toplam} />{f.para_birimi !== 'TRY' && f.doviz_tutari && <div style={{ fontSize: 10.5, color: 'var(--adm-tx3)' }}>{(+f.doviz_tutari).toFixed(2)} {f.para_birimi}</div>}</div>, csv: f => +f.toplam },
     {
-      key: 'kalan', label: 'Ödeme', width: 130, sort: f => kalanTutar(f),
+      key: 'kalan', label: 'Ödeme', width: 130,
       render: f => {
         if (!['onaylandi', 'odendi'].includes(f.durum)) return <span style={{ color: 'var(--adm-tx3)' }}>—</span>
         const p = Math.min(100, ((+f.odenen_tutar || 0) / (+f.toplam || 1)) * 100)
         return <div><div style={{ height: 5, background: 'var(--adm-s2)', borderRadius: 4, overflow: 'hidden' }}><div style={{ width: `${f.durum === 'odendi' ? 100 : p}%`, height: '100%', background: 'var(--adm-green)' }} /></div><div style={{ fontSize: 10.5, color: 'var(--adm-tx3)', marginTop: 3 }}>{f.durum === 'odendi' ? 'tamamı ödendi' : `kalan ${fmt(kalanTutar(f))}`}</div></div>
       },
-      total: rs => <Money v={sum(rs.filter(f => f.durum === 'onaylandi'), kalanTutar)} tone="red" />,
     },
-    { key: 'durum', label: 'Durum', width: 110, sort: f => f.durum, render: f => gecikmis(f) ? <Badge tone="red">Gecikmiş</Badge> : <Badge tone={DURUM[f.durum]?.tone}>{DURUM[f.durum]?.l}</Badge> },
+    { key: 'durum', sortKey: 'durum', label: 'Durum', width: 110, csv: f => f.durum, render: f => gecikmis(f) ? <Badge tone="red">Gecikmiş</Badge> : <Badge tone={DURUM[f.durum]?.tone}>{DURUM[f.durum]?.l}</Badge> },
   ]
 
   const dOdemeler = detay ? odemeler.filter(o => o.fatura_id === detay.id) : []
@@ -237,27 +247,27 @@ export default function FaturalarPage() {
       <AdminTopBar title="Faturalar" />
       <Page>
         <PageHead title="Fatura Yönetimi" sub="Satış, alış ve iade faturaları · kısmi tahsilat/ödeme · vade takibi"
-          actions={<button className="adm-btn" onClick={() => { setForm(yeniForm()); setKalemler([bosKalem()]); setModal(true) }}><Plus size={14} />Yeni Fatura</button>} />
+          actions={<button className="adm-btn" onClick={async () => { setForm(await yeniForm()); setKalemler([bosKalem()]); setModal(true) }}><Plus size={14} />Yeni Fatura</button>} />
 
         <KpiGrid min={190}>
           <Kpi label="Satış (dönem)" value={fmtK(donemSatis)} Icon={Receipt} color="var(--adm-green)" sub={donem === 'tumu' ? 'Tüm zamanlar' : DONEMLER.find(d => d.v === donem)?.l} />
-          <Kpi label="Açık Alacak" value={fmtK(acikAlacak)} Icon={HandCoins} color="var(--adm-blue)" sub={`${acik.filter(f => f.tip === 'satis').length} açık satış faturası`} />
-          <Kpi label="Ödenecek" value={fmtK(acikBorc)} Icon={Wallet} color="#8b5cf6" sub={`${acik.filter(f => f.tip === 'alis').length} açık alış faturası`} />
-          <Kpi label="Vadesi Geçen" value={fmtK(sum(gecik, kalanTutar))} Icon={AlertTriangle} color={gecik.length ? 'var(--adm-red)' : 'var(--adm-green)'} sub={`${gecik.length} fatura`} onClick={() => setTab('gecikmis')} />
-          <Kpi label="Taslak" value={sayi(f => f.durum === 'taslak')} Icon={FileText} color="var(--adm-amber)" sub="onay bekliyor" onClick={() => setTab('taslak')} />
+          <Kpi label="Açık Alacak" value={fmtK(acikAlacak)} Icon={HandCoins} color="var(--adm-blue)" sub={`${oz.acik_alacak_adet || 0} açık satış faturası`} />
+          <Kpi label="Ödenecek" value={fmtK(acikBorc)} Icon={Wallet} color="#8b5cf6" sub={`${oz.acik_borc_adet || 0} açık alış faturası`} />
+          <Kpi label="Vadesi Geçen" value={fmtK(+oz.gecikmis_tutar || 0)} Icon={AlertTriangle} color={+oz.gecikmis ? 'var(--adm-red)' : 'var(--adm-green)'} sub={`${oz.gecikmis || 0} fatura`} onClick={() => setTab('gecikmis')} />
+          <Kpi label="Taslak" value={oz.taslak || 0} Icon={FileText} color="var(--adm-amber)" sub="onay bekliyor" onClick={() => setTab('taslak')} />
         </KpiGrid>
 
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' }}>
           <Tabs value={tab} onChange={setTab} tabs={[
-            { v: 'hepsi', l: 'Tümü', n: rows.length }, { v: 'taslak', l: 'Taslak', n: sayi(f => f.durum === 'taslak') }, { v: 'onaylandi', l: 'Açık', n: acik.length },
-            { v: 'gecikmis', l: 'Gecikmiş', n: gecik.length }, { v: 'odendi', l: 'Ödendi', n: sayi(f => f.durum === 'odendi') }, { v: 'iptal', l: 'İptal', n: sayi(f => f.durum === 'iptal') },
+            { v: 'hepsi', l: 'Tümü', n: oz.toplam }, { v: 'taslak', l: 'Taslak', n: oz.taslak }, { v: 'onaylandi', l: 'Açık', n: oz.acik },
+            { v: 'gecikmis', l: 'Gecikmiş', n: oz.gecikmis }, { v: 'odendi', l: 'Ödendi', n: oz.odendi }, { v: 'iptal', l: 'İptal', n: oz.iptal },
           ]} />
           <Tabs value={tipF} onChange={setTipF} tabs={[{ v: '', l: 'Tüm türler' }, { v: 'satis', l: 'Satış' }, { v: 'alis', l: 'Alış' }, { v: 'iade', l: 'İade' }]} />
           <select className="adm-sel" value={donem} onChange={e => setDonem(e.target.value as Donem)}>{DONEMLER.map(d => <option key={d.v} value={d.v}>{d.l}</option>)}</select>
         </div>
 
-        <DataGrid rows={filtered} cols={cols} rowKey={f => f.id} loading={loading} csvName="faturalar" storageKey="faturalar" onRowClick={openDetay} activeKey={detay?.id}
-          searchText={f => `${f.no} ${cariAd[f.cari_id] || ''} ${f.toplam}`} searchPlaceholder="Fatura no, cari, tutar..." emptyTitle="Fatura bulunamadı" emptySub="Yeni Fatura ile başla" />
+        <DataGrid rows={[]} server={server} cols={cols} rowKey={f => f.id} csvName="faturalar" storageKey="faturalar-srv" onRowClick={openDetay} activeKey={detay?.id}
+          searchPlaceholder="Fatura no, cari..." emptyTitle="Fatura bulunamadı" emptySub="Yeni Fatura ile başla" />
       </Page>
 
       {/* Detay */}
