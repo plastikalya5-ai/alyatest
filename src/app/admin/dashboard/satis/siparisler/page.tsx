@@ -5,7 +5,7 @@ import AdminTopBar from '@/components/admin/TopBar'
 import { erp } from '@/lib/erp-client'
 import { muh } from '@/lib/muhasebe-client'
 import { fmt, fmtK, fmtN, fmtInt, fmtDate, todayISO, daysBetween } from '@/lib/fmt'
-import { useUretim, byId, sevkEdilen, rezerve, SIPARIS_ACIK } from '@/lib/uretim-utils'
+import { useUretim, byId, sevkEdilen, rezerveMap, SIPARIS_ACIK } from '@/lib/uretim-utils'
 import { sum } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, InfoRow, Divider, Empty, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
@@ -17,7 +17,7 @@ const bosKalem = (): Kalem => ({ variant_id: '', urun_adi: '', miktar: 1, birim_
 
 export default function SatisSiparisleriPage() {
   const toast = useToast()
-  const { d, loading, reload } = useUretim(['siparisler', 'siparisKalemleri', 'cariTam', 'variants', 'products', 'fiyatListeleri', 'fiyatKalemleri', 'iskontolar', 'stokHareketleri', 'sevkiyatlar', 'emirler', 'receteler'])
+  const { d, loading, reload } = useUretim(['siparisler', 'siparisKalemleri', 'cariTam', 'variants', 'products', 'fiyatListeleri', 'fiyatKalemleri', 'iskontolar', 'sevkRows', 'rezerveRows', 'sevkiyatlar', 'emirler', 'receteler'])
   const [tab, setTab] = useState('acik')
   const [detay, setDetay] = useState<any>(null)
   const [modal, setModal] = useState(false)
@@ -36,7 +36,7 @@ export default function SatisSiparisleriPage() {
     const o: Record<string, any> = {}
     d.siparisler.forEach((s: any) => {
       const ks = d.siparisKalemleri.filter((k: any) => k.siparis_id === s.id)
-      const sevk = sevkEdilen(s.id, d.sevkiyatlar, d.stokHareketleri)
+      const sevk = sevkEdilen(s.id, d.sevkRows)
       const toplamMiktar = sum(ks, (k: any) => k.miktar), sevkMiktar = sum(ks, (k: any) => Math.min(sevk[k.variant_id] || 0, +k.miktar))
       const tutar = sum(ks, (k: any) => (+k.miktar || 0) * (+k.birim_fiyat || 0))
       const kalanTutar = sum(ks, (k: any) => Math.max((+k.miktar || 0) - (sevk[k.variant_id] || 0), 0) * (+k.birim_fiyat || 0))
@@ -80,7 +80,15 @@ export default function SatisSiparisleriPage() {
     if (k.variant_id) { const { fiyat, isk } = fiyatBul(k.variant_id, form.cari_id, m); if (fiyat) return setK(i, { miktar: m, birim_fiyat: fiyat, not: isk ? `Kademe iskontosu %${isk}` : undefined }) }
     setK(i, { miktar: m })
   }
-  const rez = useMemo(() => rezerve(d.siparisler, d.siparisKalemleri, d.sevkiyatlar, d.stokHareketleri, editing?.id), [d, editing])
+  // Açık siparişlerde rezerve edilen miktar (veritabanı görünümü); düzenlenen siparişin kendi payı çıkarılır
+  const rez = useMemo(() => {
+    const m = { ...rezerveMap(d.rezerveRows) }
+    if (editing && S[editing.id]) {
+      const sv = sevkEdilen(editing.id, d.sevkRows)
+      S[editing.id].ks.forEach((k: any) => { if (k.variant_id) m[k.variant_id] = (m[k.variant_id] || 0) - Math.max((+k.miktar || 0) - (sv[k.variant_id] || 0), 0) })
+    }
+    return m
+  }, [d.rezerveRows, d.sevkRows, editing, S])
   const serbest = (vid: string) => (+varyant[vid]?.stock || 0) - (rez[vid] || 0)
   const formTutar = sum(kalemler, k => k.miktar * k.birim_fiyat)
 

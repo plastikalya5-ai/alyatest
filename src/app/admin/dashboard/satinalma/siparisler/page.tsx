@@ -1,5 +1,5 @@
 'use client'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
 import { erp } from '@/lib/erp-client'
 import { muh } from '@/lib/muhasebe-client'
@@ -16,7 +16,7 @@ const bosKalem = (): Kalem => ({ hammadde_id: '', miktar: 1, birim_fiyat: 0 })
 
 export default function SatinalmaPage() {
   const toast = useToast()
-  const { d, loading, reload } = useUretim(['satinalma', 'satinalmaKalemleri', 'hammaddeler', 'cariTam', 'depolar', 'stokHareketleri'])
+  const { d, loading, reload } = useUretim(['satinalma', 'satinalmaKalemleri', 'hammaddeler', 'cariTam', 'depolar'])
   const [tab, setTab] = useState('acik')
   const [detay, setDetay] = useState<any>(null)
   const [modal, setModal] = useState(false)
@@ -177,7 +177,13 @@ export default function SatinalmaPage() {
 
   const dS = detay ? d.satinalma.find((s: any) => s.id === detay.id) || detay : null
   const dP = dS ? P[dS.id] : null
-  const dHar = dP ? d.stokHareketleri.filter((m: any) => m.kaynak_tablo === 'satinalma_siparisi_kalemleri' && dP.ks.some((k: any) => k.id === m.kaynak_id)) : []
+  // Teslim alma geçmişi: yalnızca seçili siparişin kalemleri için sunucudan çekilir
+  const [dHar, setDHar] = useState<any[]>([])
+  useEffect(() => {
+    const ids = dP ? dP.ks.map((k: any) => k.id) : []
+    if (!ids.length) { setDHar([]); return }
+    erp.from('stok_hareketleri').select('*').eq('kaynak_tablo', 'satinalma_siparisi_kalemleri').in('kaynak_id', ids).order('tarih', { ascending: false }).then((r: any) => setDHar(r.data || [])).catch(() => setDHar([]))
+  }, [detay?.id, d.satinalmaKalemleri]) // eslint-disable-line
 
   return (
     <div style={{ flex: 1, overflow: 'auto' }}>

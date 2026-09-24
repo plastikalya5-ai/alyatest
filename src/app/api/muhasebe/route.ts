@@ -10,6 +10,9 @@ const TABLES = new Set([
   'kasa_banka_hesaplari','cek_senet','product_variants','products',
 ])
 
+// Salt-okunur görünümler — sadece GET (yetki alttaki tabloların RLS'inden gelir)
+const READONLY_VIEWS = new Set(['v_cari_ozet','v_islemler_liste','v_kasa_hareket'])
+
 // Alan-seviyesi şifrelenecek hassas kimlik alanları (tablo -> kolonlar)
 const ENCRYPTED_FIELDS: Record<string,string[]> = {
   cari_hesaplar: ['vergi_no'],
@@ -45,10 +48,11 @@ export async function GET(req: NextRequest) {
   const table = sp.get('table') || ''
   const select = sp.get('select') || '*'
   const count = sp.get('count')
-  if (!table || !TABLES.has(table))
+  if (!table || !(TABLES.has(table) || READONLY_VIEWS.has(table)))
     return NextResponse.json({ error: 'Geçersiz tablo' }, { status: 400 })
 
-  let q: any = sb.from(table).select(select, count==='true'?{count:'exact',head:true}:undefined)
+  const tot = sp.get('total')
+  let q: any = sb.from(table).select(select, count==='true' ? { count: 'exact', head: true } : tot ? { count: tot === 'estimated' ? 'estimated' : 'exact' } : undefined)
   q = applyQuery(q, sp)
   const { data, error, count:cnt } = await q
   if (error) return NextResponse.json({error:error.message},{status:500})
@@ -60,7 +64,14 @@ export async function POST(req: NextRequest) {
   const { sb, user } = await requireSession()
   if (!user) return NextResponse.json({ error: 'Oturum gerekli' }, { status: 401 })
 
-  const { table, op, data, id } = await req.json()
+  const body = await req.json()
+  if (body.rpc) {
+    if (!/^rpc_[a-z_]+$/.test(body.rpc)) return NextResponse.json({ error: 'Geçersiz fonksiyon' }, { status: 400 })
+    const r = await sb.rpc(body.rpc, body.args || {})
+    if (r.error) return NextResponse.json({ error: r.error.message }, { status: 500 })
+    return NextResponse.json({ data: r.data })
+  }
+  const { table, op, data, id } = body
   if (!table || !TABLES.has(table))
     return NextResponse.json({ error: 'Geçersiz tablo' }, { status: 400 })
 

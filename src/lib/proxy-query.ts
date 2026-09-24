@@ -28,6 +28,11 @@ export function applyQuery(q: any, sp: URLSearchParams) {
     q = q.order(sp.get('order')!, { ascending: sp.get('order_asc') === 'true' })
   }
 
+  // Çok kolonlu arama: search=terim&searchIn=alan1,alan2  → alan ilike %terim% (OR)
+  const term = (sp.get('search') || '').replace(/[,()%*\\:]/g, ' ').trim()
+  const fields = (sp.get('searchIn') || '').split(',').filter(f => FIELD.test(f))
+  if (term && fields.length) q = q.or(fields.map(f => `${f}.ilike.%${term}%`).join(','))
+
   const limit = sp.get('limit') ? Math.min(+sp.get('limit')!, 1000) : null
   const offset = sp.get('offset') ? Math.max(+sp.get('offset')!, 0) : 0
   if (offset && limit) q = q.range(offset, offset + limit - 1)

@@ -23,9 +23,9 @@ const waNumara = (t: string) => { const d = (t || '').replace(/\D/g, ''); return
 export default function CariPage() {
   const toast = useToast()
   const [list, setList] = useState<any[]>([])
-  const [islemler, setIslemler] = useState<any[]>([])
-  const [faturalar, setFaturalar] = useState<any[]>([])
-  const [cekler, setCekler] = useState<any[]>([])
+  const [ozetRows, setOzetRows] = useState<any[]>([])
+  const [dData, setDData] = useState<{ faturalar: any[]; islemler: any[]; cekler: any[] }>({ faturalar: [], islemler: [], cekler: [] })
+  const islemler = dData.islemler, faturalar = dData.faturalar, cekler = dData.cekler
   const [kasalar, setKasalar] = useState<any[]>([])
   const [fiyatListeleri, setFiyatListeleri] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -40,12 +40,13 @@ export default function CariPage() {
   const [busy, setBusy] = useState(false)
 
   const load = useCallback(async () => {
-    const [c, i, f, cs, k, fl] = await Promise.all([
+    // Cari başına fatura/işlem özetleri veritabanı görünümünden (v_cari_ozet); ekstre/fatura/çek detayı yalnızca seçili cari için çekilir.
+    const [c, oz, k, fl] = await Promise.all([
       muh.all('cari_hesaplar', '*', q => q.order('ad', { ascending: true })),
-      muh.all('islemler', '*'), muh.all('faturalar', '*'), muh.all('cek_senet', '*'), muh.all('kasa_banka_hesaplari', 'id,ad,tip,aktif'),
+      muh.all('v_cari_ozet'), muh.all('kasa_banka_hesaplari', 'id,ad,tip,aktif'),
       erp.from('fiyat_listeleri').select('id,ad').order('ad', { ascending: true }),
     ])
-    setList(c); setIslemler(i); setFaturalar(f); setCekler(cs); setKasalar(k); setFiyatListeleri(fl.data || []); setLoading(false)
+    setList(c); setOzetRows(oz); setKasalar(k); setFiyatListeleri(fl.data || []); setLoading(false)
     setDetay((d: any) => (d ? c.find((x: any) => x.id === d.id) || null : null))
   }, [])
   useEffect(() => { load() }, [load])
@@ -55,16 +56,16 @@ export default function CariPage() {
   const M = useMemo(() => {
     const m: Record<string, any> = {}
     list.forEach(c => { m[c.id] = { ciro: 0, acik: 0, gecikmis: 0, fatSay: 0, son: null as string | null } })
-    faturalar.forEach(f => {
-      const x = m[f.cari_id]; if (!x) return
-      x.fatSay++
-      if (['onaylandi', 'odendi'].includes(f.durum) && f.tip === 'satis') x.ciro += +f.toplam || 0
-      if (acikFatura(f) && f.tip !== 'iade') { const k = kalanTutar(f); x.acik += k; if (f.vade && f.vade < bugun) x.gecikmis += k }
-      if (!x.son || f.tarih > x.son) x.son = f.tarih
-    })
-    islemler.forEach(i => { const x = m[i.cari_id]; if (x && (!x.son || i.tarih > x.son)) x.son = i.tarih })
+    ozetRows.forEach(r => { if (m[r.cari_id]) m[r.cari_id] = { ciro: +r.ciro || 0, acik: +r.acik || 0, gecikmis: +r.gecikmis || 0, fatSay: +r.fat_say || 0, son: r.son_tarih || null } })
     return m
-  }, [list, faturalar, islemler, bugun])
+  }, [list, ozetRows])
+  // Seçili carinin hareketleri (yalnızca o cari için sorgulanır)
+  const detayId = detay?.id
+  useEffect(() => {
+    if (!detayId) { setDData({ faturalar: [], islemler: [], cekler: [] }); return }
+    Promise.all([muh.all('faturalar', '*', q => q.eq('cari_id', detayId)), muh.all('islemler', '*', q => q.eq('cari_id', detayId)), muh.all('cek_senet', '*', q => q.eq('cari_id', detayId))])
+      .then(([faturalar, islemler, cekler]) => setDData({ faturalar, islemler, cekler }))
+  }, [detayId, ozetRows])
 
   const alacak = sum(list.filter(c => +c.bakiye > 0), c => c.bakiye)
   const borc = sum(list.filter(c => +c.bakiye < 0), c => -c.bakiye)

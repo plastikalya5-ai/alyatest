@@ -35,9 +35,11 @@ export default function KasaBankaPage() {
   const [busy, setBusy] = useState(false)
 
   const load = useCallback(async () => {
+    const bas = new Date(); bas.setDate(bas.getDate() - 35)
     const [h, i] = await Promise.all([
       muh.all('kasa_banka_hesaplari', '*', q => q.order('created_at', { ascending: true })),
-      muh.all('islemler', '*', q => q.order('tarih', { ascending: false }).order('created_at', { ascending: false })),
+      // Kart özetleri için yalnızca son 35 gün; tüm geçmiş, seçili hesabın sayfalı listesinde
+      muh.all('islemler', 'id,tarih,created_at,tip,tutar,kategori,kasa_hesap_id', q => q.gte('tarih', _iso(bas)).order('tarih', { ascending: false }).order('created_at', { ascending: false })),
     ])
     setHesaplar(h); setIslemler(i.filter((x: any) => x.kasa_hesap_id)); setLoading(false)
   }, [])
@@ -48,17 +50,17 @@ export default function KasaBankaPage() {
   const H = useMemo(() => {
     const out: Record<string, any> = {}
     hesaplar.forEach(h => {
-      const mv = islemler.filter(i => i.kasa_hesap_id === h.id)
+      const mv = islemler.filter(i => i.kasa_hesap_id === h.id)          // tarih azalan (son 35 gün)
       let b = +h.bakiye
       const rows = mv.map(i => { const signed = (i.tip === 'gelir' ? 1 : -1) * +i.tutar; const after = b; b -= signed; return { ...i, signed, after } })
       const seri: number[] = []
       for (let d = 29; d >= 0; d--) {
         const dt = new Date(); dt.setDate(dt.getDate() - d); const key = _iso(dt)
-        const last = rows.find(r => r.tarih <= key)          // rows tarih azalan sıralı
-        seri.push(last ? last.after : (rows.length ? rows[rows.length - 1].after - rows[rows.length - 1].signed : +h.bakiye))
+        const last = rows.find(r => r.tarih <= key)
+        seri.push(last ? last.after : b)                                   // 35 günden eskiyse dönem başı bakiyesi
       }
       out[h.id] = {
-        rows, seri, acilis: b,
+        rows, seri,
         giris: sum(rows.filter(r => r.tarih?.startsWith(ay) && r.signed > 0 && r.kategori !== 'Virman'), r => r.signed),
         cikis: sum(rows.filter(r => r.tarih?.startsWith(ay) && r.signed < 0 && r.kategori !== 'Virman'), r => -r.signed),
       }
@@ -106,7 +108,8 @@ export default function KasaBankaPage() {
     toast.show(h.aktif === false ? 'Hesap aktifleştirildi' : 'Hesap pasife alındı'); load()
   }
   async function del(h: any) {
-    if (H[h.id]?.rows.length) { toast.show('Hareketi olan hesap silinemez — pasife alabilirsin', true); return }
+    const cn: any = await muh.from('islemler').select('id', { count: 'exact', head: true }).eq('kasa_hesap_id', h.id)
+    if (cn?.count) { toast.show('Hareketi olan hesap silinemez — pasife alabilirsin', true); return }
     if (!confirm(`${h.ad} silinsin mi?`)) return
     const r: any = await muh.from('kasa_banka_hesaplari').delete().eq('id', h.id)
     if (r?.error) { toast.show(r.error, true); return }
@@ -142,11 +145,11 @@ export default function KasaBankaPage() {
   }
 
   const cols: Col<any>[] = [
-    { key: 'tarih', label: 'Tarih', width: 96, sort: r => r.tarih, render: r => fmtDate(r.tarih) },
-    { key: 'kat', label: 'Kategori', sort: r => r.kategori, render: r => <span>{r.kategori}{['Virman', 'Bakiye Düzeltme', 'Açılış Bakiyesi'].includes(r.kategori) && <Badge tone="muted" style={{ marginLeft: 6, fontSize: 9.5 }}>iç hareket</Badge>}</span> },
-    { key: 'ac', label: 'Açıklama', sort: r => r.aciklama, render: r => <span style={{ color: 'var(--adm-tx2)' }}>{r.aciklama || '—'}</span>, hideSm: true },
-    { key: 'tutar', label: 'Tutar', align: 'right', sort: r => r.signed, render: r => <Money v={r.signed} tone="auto" sign />, csv: r => r.signed },
-    { key: 'bakiye', label: 'Bakiye', align: 'right', sort: r => r.after, render: r => <Money v={r.after} bold={false} />, hideSm: true },
+    { key: 'tarih', sortKey: 'tarih', label: 'Tarih', width: 96, render: r => fmtDate(r.tarih), csv: r => r.tarih },
+    { key: 'kat', sortKey: 'kategori', label: 'Kategori', csv: r => r.kategori, render: r => <span>{r.kategori}{['Virman', 'Bakiye Düzeltme', 'Açılış Bakiyesi'].includes(r.kategori) && <Badge tone="muted" style={{ marginLeft: 6, fontSize: 9.5 }}>iç hareket</Badge>}</span> },
+    { key: 'ac', sortKey: 'aciklama', label: 'Açıklama', csv: r => r.aciklama, render: r => <span style={{ color: 'var(--adm-tx2)' }}>{r.aciklama || '—'}</span>, hideSm: true },
+    { key: 'tutar', sortKey: 'signed', label: 'Tutar', align: 'right', render: r => <Money v={+r.signed} tone="auto" sign />, csv: r => r.signed },
+    { key: 'bakiye', sortKey: 'bakiye_sonra', label: 'Bakiye', align: 'right', render: r => <Money v={+r.bakiye_sonra} bold={false} />, csv: r => r.bakiye_sonra, hideSm: true },
   ]
 
   return (
@@ -204,10 +207,11 @@ export default function KasaBankaPage() {
         )}
 
         {secili && (
-          <DataGrid rows={H[secili.id]?.rows || []} cols={cols} rowKey={r => r.id} csvName={`hareketler-${secili.ad}`} title={<span>{secili.ad} — Hareketler</span>}
-            searchText={r => `${r.aciklama || ''} ${r.kategori || ''} ${r.tutar}`}
+          <DataGrid rows={[]} cols={cols} rowKey={r => r.id} csvName={`hareketler-${secili.ad}`} title={<span>{secili.ad} — Hareketler</span>} storageKey="kasa-hareket"
+            server={{ deps: [secili.id, islemler.length, secili.bakiye], fetch: ({ page, size, q, sort }) => muh.page('v_kasa_hareket', '*', { build: (x: any) => x.eq('kasa_hesap_id', secili.id), search: q, searchIn: ['aciklama', 'kategori'], sort: sort || { key: 'tarih', dir: 'desc' }, tieBreak: 'created_at', page, size }) }}
+            searchPlaceholder="Açıklama, kategori..."
             actions={<button className="adm-btn-ghost" style={{ fontSize: 12 }} onClick={() => setDuzelt({ hesap: secili, yeni: String(secili.bakiye), not: '' })}><SlidersHorizontal size={13} />Bakiye Düzelt</button>}
-            emptyTitle="Bu hesapta hareket yok" emptySub="Gelir/Gider ekranında bu hesabı seçerek işlem gir" footerNote={<span>· Açılış: {fmt(H[secili.id]?.acilis)}</span>} />
+            emptyTitle="Bu hesapta hareket yok" emptySub="Gelir/Gider ekranında bu hesabı seçerek işlem gir" />
         )}
       </Page>
 

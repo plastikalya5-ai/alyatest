@@ -18,6 +18,7 @@ const TABLES = new Set([
 const READONLY_VIEWS = new Set([
   'v_uretim_emirleri','v_urun_maliyet','v_kalip_bakim_durumu',
   'v_kritik_hammaddeler','v_kritik_urunler','v_uretim_fire_orani',
+  'v_stok_defteri','v_cari_ozet','v_rezerve','v_sevk_edilen','v_hammadde_tuketim','v_kalip_baski','v_depo_ozet',
 ])
 
 async function requireSession() {
@@ -38,7 +39,8 @@ export async function GET(req: NextRequest) {
   if (!table || !(TABLES.has(table) || READONLY_VIEWS.has(table)))
     return NextResponse.json({ error: 'Geçersiz tablo' }, { status: 400 })
 
-  let q: any = sb.from(table).select(select, count==='true'?{count:'exact',head:true}:undefined)
+  const tot = sp.get('total')
+  let q: any = sb.from(table).select(select, count==='true' ? { count: 'exact', head: true } : tot ? { count: tot === 'estimated' ? 'estimated' : 'exact' } : undefined)
   q = applyQuery(q, sp)
   const { data, error, count:cnt } = await q
   if (error) return NextResponse.json({error:error.message},{status:500})
@@ -49,7 +51,15 @@ export async function POST(req: NextRequest) {
   const { sb, user } = await requireSession()
   if (!user) return NextResponse.json({ error: 'Oturum gerekli' }, { status: 401 })
 
-  const { table, op, data, id, match } = await req.json()
+  const body = await req.json()
+  if (body.rpc) {
+    // Yalnızca yetkiyi kendi içinde kontrol eden rpc_* fonksiyonları
+    if (!/^rpc_[a-z_]+$/.test(body.rpc)) return NextResponse.json({ error: 'Geçersiz fonksiyon' }, { status: 400 })
+    const r = await sb.rpc(body.rpc, body.args || {})
+    if (r.error) return NextResponse.json({ error: r.error.message }, { status: 500 })
+    return NextResponse.json({ data: r.data })
+  }
+  const { table, op, data, id } = body
   if (!table || !TABLES.has(table))
     return NextResponse.json({ error: 'Geçersiz tablo' }, { status: 400 })
 

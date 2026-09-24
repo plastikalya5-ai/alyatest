@@ -12,7 +12,7 @@ const bos = { kod: '', ad: '', lokasyon: '', aktif: true }
 
 export default function DepoPage() {
   const toast = useToast()
-  const { d, loading, reload } = useUretim(['depolar', 'hammaddeler', 'stokHareketleri'])
+  const { d, loading, reload } = useUretim(['depolar', 'hammaddeler', 'depoOzet'])
   const [detay, setDetay] = useState<any>(null)
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState<any>(null)
@@ -24,7 +24,7 @@ export default function DepoPage() {
     const o: Record<string, any> = {}
     d.depolar.forEach((x: any) => {
       const items = d.hammaddeler.filter((h: any) => h.depo_id === x.id)
-      o[x.id] = { items, deger: sum(items, (h: any) => (+h.mevcut_stok || 0) * (+h.ortalama_maliyet || 0)), kritik: items.filter((h: any) => (+h.mevcut_stok || 0) <= (+h.min_stok || 0)).length, hareket: d.stokHareketleri.filter((m: any) => m.depo_id === x.id).length, son: d.stokHareketleri.find((m: any) => m.depo_id === x.id)?.tarih }
+      o[x.id] = { items, deger: sum(items, (h: any) => (+h.mevcut_stok || 0) * (+h.ortalama_maliyet || 0)), kritik: items.filter((h: any) => (+h.mevcut_stok || 0) <= (+h.min_stok || 0)).length, hareket: +d.depoOzet.find((r: any) => r.depo_id === x.id)?.hareket_sayisi || 0, son: d.depoOzet.find((r: any) => r.depo_id === x.id)?.son_tarih }
     })
     return o
   }, [d])

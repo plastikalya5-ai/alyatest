@@ -22,7 +22,7 @@ const BAKIM: Record<string, { l: string; tone: any }> = { normal: { l: 'Normal',
 
 export default function KalipPage() {
   const toast = useToast()
-  const { d, loading, reload } = useUretim(['kaliplar', 'products', 'bakimlar', 'emirler', 'hareketler', 'makineler'])
+  const { d, loading, reload } = useUretim(['kaliplar', 'products', 'bakimlar', 'emirler', 'baskiRows', 'makineler'])
   const [tab, setTab] = useState('hepsi')
   const [detay, setDetay] = useState<any>(null)
   const [dTab, setDTab] = useState('bilgi')
@@ -38,7 +38,7 @@ export default function KalipPage() {
     d.kaliplar.forEach((k: any) => {
       const bk = d.bakimlar.filter((b: any) => b.kalip_id === k.id)
       o[k.id] = {
-        baski: kalipBaski(k, d.emirler, d.hareketler), sonrakiBaski: kalipBaski(k, d.emirler, d.hareketler, k.son_bakim), bakimlar: bk,
+        baski: kalipBaski(k.id, d.baskiRows).toplam, sonrakiBaski: kalipBaski(k.id, d.baskiRows).bakimdanBeri, bakimlar: bk,
         maliyet: sum(bk, (b: any) => b.maliyet), bd: bakimDurumu(k), emirler: d.emirler.filter((e: any) => e.kalip_id === k.id),
       }
     })

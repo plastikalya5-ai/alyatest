@@ -1,6 +1,6 @@
 'use client'
-import { useEffect, useMemo, useState, type ReactNode, type CSSProperties } from 'react'
-import { ChevronUp, ChevronDown, ChevronsUpDown, Download, Columns3, Rows3, ChevronLeft, ChevronRight, Inbox } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, type ReactNode, type CSSProperties } from 'react'
+import { ChevronUp, ChevronDown, ChevronsUpDown, Download, Columns3, Rows3, ChevronLeft, ChevronRight, Inbox, AlertTriangle } from 'lucide-react'
 import { SearchBox, Skeleton, Empty } from './ui'
 import { csvDownload } from '@/lib/fmt'
 
@@ -9,19 +9,27 @@ export type Col<T> = {
   label: string
   width?: number | string
   align?: 'left' | 'right' | 'center'
-  sort?: (r: T) => any            // verilirse sütun sıralanabilir
+  sort?: (r: T) => any            // istemci modunda sıralama değeri
+  sortKey?: string                // sunucu modunda sıralanacak kolon adı
   render?: (r: T) => ReactNode
-  total?: (rows: T[]) => ReactNode // alt toplam satırı
-  csv?: (r: T) => any              // CSV çıktısı (yoksa sort/render yok → boş)
+  total?: (rows: T[]) => ReactNode // alt toplam satırı (yalnızca istemci modu)
+  csv?: (r: T) => any              // CSV çıktısı
   hidden?: boolean                 // varsayılan gizli
   hideSm?: boolean                 // mobilde gizle
 }
 
+// Sunucu modu: satırlar/sıralama/arama/sayfalama veritabanında yapılır; tarayıcıya sadece görünen sayfa gelir
+export type ServerMode<T> = {
+  fetch: (p: { page: number; size: number; q: string; sort: { key: string; dir: 'asc' | 'desc' } | null }) => Promise<{ rows: T[]; total: number }>
+  deps?: any[]        // değişince yeniden çeker (filtreler, sürüm)
+  exportMax?: number  // CSV'de en fazla kaç satır (varsayılan 20.000)
+}
+
 export function DataGrid<T>({
-  rows, cols, rowKey, loading, searchText, searchPlaceholder, filters, actions, pageSizes = [25, 50, 100, 250],
-  onRowClick, activeKey, selectable, bulkActions, csvName, emptyTitle = 'Kayıt bulunamadı', emptySub, defaultSort, storageKey, rowStyle, title, footerNote,
+  rows = [], cols, rowKey, loading, searchText, searchPlaceholder, filters, actions, pageSizes = [25, 50, 100, 250],
+  onRowClick, activeKey, selectable, bulkActions, csvName, emptyTitle = 'Kayıt bulunamadı', emptySub, defaultSort, storageKey, rowStyle, title, footerNote, server,
 }: {
-  rows: T[]; cols: Col<T>[]; rowKey: (r: T) => string; loading?: boolean
+  rows?: T[]; cols: Col<T>[]; rowKey: (r: T) => string; loading?: boolean
   searchText?: (r: T) => string; searchPlaceholder?: string
   filters?: ReactNode; actions?: ReactNode
   pageSizes?: number[]; onRowClick?: (r: T) => void; activeKey?: string | null
@@ -29,6 +37,7 @@ export function DataGrid<T>({
   csvName?: string; emptyTitle?: string; emptySub?: string
   defaultSort?: { key: string; dir: 'asc' | 'desc' }; storageKey?: string
   rowStyle?: (r: T) => CSSProperties | undefined; title?: ReactNode; footerNote?: ReactNode
+  server?: ServerMode<T>
 }) {
   const [q, setQ] = useState('')
   const [dq, setDq] = useState('')
@@ -39,8 +48,15 @@ export function DataGrid<T>({
   const [hiddenCols, setHiddenCols] = useState<string[]>(cols.filter(c => c.hidden).map(c => c.key))
   const [colMenu, setColMenu] = useState(false)
   const [sel, setSel] = useState<Set<string>>(new Set())
+  // sunucu modu durumu
+  const [srvRows, setSrvRows] = useState<T[]>([])
+  const [srvTotal, setSrvTotal] = useState(0)
+  const [srvLoading, setSrvLoading] = useState(!!server)
+  const [srvErr, setSrvErr] = useState('')
+  const reqId = useRef(0)
+  const depsKey = JSON.stringify(server?.deps ?? [])
 
-  useEffect(() => { const t = setTimeout(() => setDq(q), 180); return () => clearTimeout(t) }, [q])
+  useEffect(() => { const t = setTimeout(() => setDq(q), server ? 350 : 180); return () => clearTimeout(t) }, [q, server])
   useEffect(() => {
     if (!storageKey) return
     try {
@@ -52,11 +68,23 @@ export function DataGrid<T>({
     if (!storageKey) return
     try { localStorage.setItem('grid:' + storageKey, JSON.stringify({ ps, compact, hiddenCols })) } catch {}
   }, [storageKey, ps, compact, hiddenCols])
-  useEffect(() => { setPage(0) }, [dq, rows.length, ps])
+  useEffect(() => { setPage(0) }, [dq, rows.length, ps, depsKey])
+
+  // Sunucudan sayfa çek
+  useEffect(() => {
+    if (!server) return
+    const id = ++reqId.current
+    setSrvLoading(true); setSrvErr('')
+    server.fetch({ page, size: ps, q: dq, sort }).then(r => {
+      if (id !== reqId.current) return
+      setSrvRows(r.rows); setSrvTotal(r.total); setSrvLoading(false)
+    }).catch(e => { if (id === reqId.current) { setSrvErr(e?.message || 'Veri alınamadı'); setSrvLoading(false) } })
+  }, [server ? page : 0, ps, dq, sort, depsKey]) // eslint-disable-line
 
   const visCols = cols.filter(c => !hiddenCols.includes(c.key))
 
   const filtered = useMemo(() => {
+    if (server) return srvRows
     let r = rows
     if (dq && searchText) { const t = dq.toLocaleLowerCase('tr'); r = r.filter(x => searchText(x).toLocaleLowerCase('tr').includes(t)) }
     if (sort) {
@@ -73,29 +101,41 @@ export function DataGrid<T>({
       }
     }
     return r
-  }, [rows, dq, sort, cols, searchText])
+  }, [rows, dq, sort, cols, searchText, server, srvRows])
 
-  const pages = Math.max(1, Math.ceil(filtered.length / ps))
+  const total = server ? srvTotal : filtered.length
+  const pages = Math.max(1, Math.ceil(total / ps))
   const cur = Math.min(page, pages - 1)
-  const pageRows = filtered.slice(cur * ps, cur * ps + ps)
-  const selRows = filtered.filter(r => sel.has(rowKey(r)))
+  const pageRows = server ? srvRows : filtered.slice(cur * ps, cur * ps + ps)
+  const selRows = pageRows.filter(r => sel.has(rowKey(r)))
   const allOnPage = pageRows.length > 0 && pageRows.every(r => sel.has(rowKey(r)))
-  const hasTotals = visCols.some(c => c.total)
+  const hasTotals = !server && visCols.some(c => c.total)
+  const isLoading = server ? srvLoading : loading
+  const sortable = (c: Col<T>) => (server ? !!c.sortKey : !!c.sort)
 
   const toggleSort = (c: Col<T>) => {
-    if (!c.sort) return
-    setSort(s => !s || s.key !== c.key ? { key: c.key, dir: 'asc' } : s.dir === 'asc' ? { key: c.key, dir: 'desc' } : null)
+    if (!sortable(c)) return
+    const key = server ? c.sortKey! : c.key
+    setSort(s => !s || s.key !== key ? { key, dir: 'asc' } : s.dir === 'asc' ? { key, dir: 'desc' } : null)
   }
+  const sortActive = (c: Col<T>) => sort?.key === (server ? c.sortKey : c.key)
 
-  function exportCsv() {
-    const out = filtered.map(r => Object.fromEntries(visCols.filter(c => c.csv || c.sort).map(c => [c.label, c.csv ? c.csv(r) : c.sort!(r)])))
+  async function exportCsv() {
+    let data: T[] = filtered
+    if (server) {
+      const max = server.exportMax ?? 20000; data = []
+      for (let p = 0; p * 1000 < Math.min(max, srvTotal); p++) {
+        const r = await server.fetch({ page: p, size: 1000, q: dq, sort }); data.push(...r.rows); if (r.rows.length < 1000) break
+      }
+    }
+    const out = data.map(r => Object.fromEntries(visCols.filter(c => c.csv || c.sort).map(c => [c.label, c.csv ? c.csv(r) : c.sort!(r)])))
     csvDownload((csvName || 'liste') + '.csv', out)
   }
 
   const toolbar = (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', padding: '12px 14px', borderBottom: '1px solid var(--adm-bdr)' }}>
       {title && <b style={{ fontSize: 13.5, marginRight: 4 }}>{title}</b>}
-      {searchText && <SearchBox value={q} onChange={setQ} placeholder={searchPlaceholder || 'Ara...'} width={230} />}
+      {(searchText || server) && <SearchBox value={q} onChange={setQ} placeholder={searchPlaceholder || 'Ara...'} width={230} />}
       {filters}
       <div style={{ flex: 1 }} />
       {actions}
@@ -115,7 +155,7 @@ export function DataGrid<T>({
         )}
       </div>
       <button className="adm-btn-ghost" style={{ padding: '6px 9px' }} title="Satır yoğunluğu" onClick={() => setCompact(v => !v)}><Rows3 size={14} /></button>
-      {csvName && <button className="adm-btn-ghost" style={{ padding: '6px 10px', fontSize: 12 }} onClick={exportCsv} disabled={!filtered.length}><Download size={13} />CSV</button>}
+      {csvName && <button className="adm-btn-ghost" style={{ padding: '6px 10px', fontSize: 12 }} onClick={exportCsv} disabled={!total} title={server ? `En fazla ${(server.exportMax ?? 20000).toLocaleString('tr-TR')} satır` : undefined}><Download size={13} />CSV</button>}
     </div>
   )
 
@@ -129,35 +169,36 @@ export function DataGrid<T>({
           <button className="adm-btn-ghost" style={{ padding: '3px 9px', fontSize: 11.5, marginLeft: 'auto' }} onClick={() => setSel(new Set())}>Seçimi temizle</button>
         </div>
       )}
+      {srvErr && <div style={{ padding: '10px 14px', fontSize: 12.5, color: 'var(--adm-red)', background: 'var(--adm-red2)', display: 'flex', gap: 8, alignItems: 'center' }}><AlertTriangle size={14} />{srvErr}</div>}
       <div style={{ overflow: 'auto', maxHeight: 'calc(100vh - 290px)', minHeight: 120 }}>
         <table className={`adm-tbl ${compact ? 'compact' : ''}`}>
           <thead>
             <tr>
               {selectable && <th style={{ width: 36 }}><input type="checkbox" checked={allOnPage} onChange={e => setSel(s => { const n = new Set(s); pageRows.forEach(r => e.target.checked ? n.add(rowKey(r)) : n.delete(rowKey(r))); return n })} /></th>}
               {visCols.map(c => (
-                <th key={c.key} className={`${c.sort ? 'sortable' : ''} ${c.hideSm ? 'adm-hide-sm' : ''}`} style={{ width: c.width, textAlign: c.align || 'left' }} onClick={() => toggleSort(c)}>
+                <th key={c.key} className={`${sortable(c) ? 'sortable' : ''} ${c.hideSm ? 'adm-hide-sm' : ''}`} style={{ width: c.width, textAlign: c.align || 'left' }} onClick={() => toggleSort(c)}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                     {c.label}
-                    {c.sort && (sort?.key === c.key ? (sort.dir === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />) : <ChevronsUpDown size={11} style={{ opacity: .35 }} />)}
+                    {sortable(c) && (sortActive(c) ? (sort!.dir === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />) : <ChevronsUpDown size={11} style={{ opacity: .35 }} />)}
                   </span>
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {loading
+            {isLoading && (!server || srvRows.length === 0)
               ? Array.from({ length: 6 }).map((_, i) => <tr key={i}>{selectable && <td />}{visCols.map(c => <td key={c.key}><Skeleton h={12} w={`${50 + ((i * 13 + c.key.length * 7) % 40)}%`} /></td>)}</tr>)
               : pageRows.map(r => {
                 const k = rowKey(r)
                 return (
-                  <tr key={k} className={`${onRowClick ? 'clickable' : ''} ${activeKey === k ? 'active' : ''}`} style={rowStyle?.(r)} onClick={() => onRowClick?.(r)}>
+                  <tr key={k} className={`${onRowClick ? 'clickable' : ''} ${activeKey === k ? 'active' : ''}`} style={{ ...rowStyle?.(r), ...(server && srvLoading ? { opacity: .55 } : {}) }} onClick={() => onRowClick?.(r)}>
                     {selectable && <td onClick={e => e.stopPropagation()}><input type="checkbox" checked={sel.has(k)} onChange={e => setSel(s => { const n = new Set(s); e.target.checked ? n.add(k) : n.delete(k); return n })} /></td>}
                     {visCols.map(c => <td key={c.key} className={c.hideSm ? 'adm-hide-sm' : ''} style={{ textAlign: c.align || 'left' }}>{c.render ? c.render(r) : String(c.sort?.(r) ?? '')}</td>)}
                   </tr>
                 )
               })}
           </tbody>
-          {hasTotals && !loading && filtered.length > 0 && (
+          {hasTotals && !isLoading && filtered.length > 0 && (
             <tfoot>
               <tr>
                 {selectable && <td />}
@@ -166,15 +207,15 @@ export function DataGrid<T>({
             </tfoot>
           )}
         </table>
-        {!loading && filtered.length === 0 && <Empty icon={<Inbox size={30} />} title={emptyTitle} sub={emptySub ?? (dq ? 'Aramayı değiştirmeyi dene' : undefined)} />}
+        {!isLoading && !srvErr && total === 0 && <Empty icon={<Inbox size={30} />} title={emptyTitle} sub={emptySub ?? (dq ? 'Aramayı değiştirmeyi dene' : undefined)} />}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', borderTop: '1px solid var(--adm-bdr)', fontSize: 12, color: 'var(--adm-tx3)', flexWrap: 'wrap' }}>
-        <span>{filtered.length === rows.length ? `${rows.length} kayıt` : `${filtered.length} / ${rows.length} kayıt`}</span>
+        <span>{server ? `${total.toLocaleString('tr-TR')} kayıt` : filtered.length === rows.length ? `${rows.length} kayıt` : `${filtered.length} / ${rows.length} kayıt`}</span>
         {footerNote}
         <div style={{ flex: 1 }} />
         <select className="adm-sel" value={ps} onChange={e => setPs(+e.target.value)}>{pageSizes.map(n => <option key={n} value={n}>{n} / sayfa</option>)}</select>
         <button className="adm-btn-ghost" style={{ padding: '3px 7px' }} disabled={cur === 0} onClick={() => setPage(cur - 1)}><ChevronLeft size={14} /></button>
-        <span style={{ minWidth: 56, textAlign: 'center' }}>{cur + 1} / {pages}</span>
+        <span style={{ minWidth: 56, textAlign: 'center' }}>{cur + 1} / {pages.toLocaleString('tr-TR')}</span>
         <button className="adm-btn-ghost" style={{ padding: '3px 7px' }} disabled={cur >= pages - 1} onClick={() => setPage(cur + 1)}><ChevronRight size={14} /></button>
       </div>
     </div>

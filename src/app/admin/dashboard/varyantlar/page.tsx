@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
 import { web } from '@/lib/web-data'
 import { erp } from '@/lib/erp-client'
-import { useUretim, byId, rezerve } from '@/lib/uretim-utils'
+import { useUretim, byId, rezerveMap } from '@/lib/uretim-utils'
 import { fmt, fmtInt } from '@/lib/fmt'
 import { sum } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Modal, Field, FormGrid, Card, Empty, Divider, useToast } from '@/components/admin/erp/ui'
@@ -15,7 +15,7 @@ const bos = { product_id: '', name: '', color: '', size: '', barkod: '', sort_or
 
 export default function AdminVaryantlarPage() {
   const toast = useToast()
-  const { d, loading, reload } = useUretim(['variants', 'products', 'siparisler', 'siparisKalemleri', 'sevkiyatlar', 'stokHareketleri', 'fiyatKalemleri', 'fiyatListeleri', 'hammaddeler'])
+  const { d, loading, reload } = useUretim(['variants', 'products', 'rezerveRows', 'fiyatKalemleri', 'fiyatListeleri', 'hammaddeler'])
   const [tab, setTab] = useState('hepsi')
   const [urunF, setUrunF] = useState('')
   const [modal, setModal] = useState(false)
@@ -26,7 +26,7 @@ export default function AdminVaryantlarPage() {
   const [busy, setBusy] = useState(false)
 
   const urun = useMemo(() => byId(d.products), [d.products])
-  const rez = useMemo(() => rezerve(d.siparisler, d.siparisKalemleri, d.sevkiyatlar, d.stokHareketleri), [d])
+  const rez = useMemo(() => rezerveMap(d.rezerveRows), [d.rezerveRows])
   const varsListe = d.fiyatListeleri.find((l: any) => l.varsayilan)?.id
   const rows = useMemo(() => d.variants.map((v: any) => ({ ...v, urunAd: urun[v.product_id]?.name || '—', urunKod: urun[v.product_id]?.code, rezerve: rez[v.id] || 0, fiyat: d.fiyatKalemleri.find((k: any) => k.variant_id === v.id && k.fiyat_listesi_id === varsListe)?.fiyat })), [d, urun, rez, varsListe])
   const varyantsiz = d.products.filter((p: any) => !d.variants.some((v: any) => v.product_id === p.id))
@@ -55,7 +55,8 @@ export default function AdminVaryantlarPage() {
     setBusy(false)
   }
   async function sil(v: any) {
-    const kul = d.siparisKalemleri.filter((k: any) => k.variant_id === v.id).length
+    const kc: any = await erp.from('satis_siparisi_kalemleri').select('id', { count: 'exact', head: true }).eq('variant_id', v.id)
+    const kul = kc?.count || 0
     if (+v.stock !== 0) return toast.show(`Stoğu ${fmtInt(v.stock)} — önce sayım ile sıfırla`, true)
     if (kul && !confirm(`Bu varyant ${kul} sipariş kaleminde geçiyor; silinirse kalemlerde varyant bağı kalkar. Devam?`)) return
     if (!kul && !confirm(`${v.urunAd} — ${v.name} silinsin mi?`)) return

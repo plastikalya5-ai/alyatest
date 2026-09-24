@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./admin.css";
+import TruncationBanner from "@/components/admin/erp/TruncationBanner";
 
 export const metadata: Metadata = {
   title: { default: "Alya Admin", template: "%s | Alya Admin" },
@@ -7,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  return <div className="adm">{children}</div>;
+  return <div className="adm">{children}<TruncationBanner /></div>;
 }

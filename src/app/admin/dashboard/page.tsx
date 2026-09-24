@@ -3,11 +3,12 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import AdminTopBar from '@/components/admin/TopBar'
 import { muh } from '@/lib/muhasebe-client'
-import { webAll } from '@/lib/web-data'
+import { erp } from '@/lib/erp-client'
+import { web } from '@/lib/web-data'
 import { useModuller } from '@/lib/use-moduller'
-import { useUretim, byId, EMIR_DURUM, SIPARIS_ACIK, sevkEdilen } from '@/lib/uretim-utils'
+import { byId, SIPARIS_ACIK } from '@/lib/uretim-utils'
 import { fmt, fmtK, fmtInt, fmtN, fmtDate, todayISO, daysBetween } from '@/lib/fmt'
-import { sum, pctDelta, isPnl, sonAylar, ayAnahtar, kalanTutar, acikFatura, iso } from '@/lib/muh-utils'
+import { sum, pctDelta, sonAylar, iso } from '@/lib/muh-utils'
 import { Page, Kpi, KpiGrid, Card, Badge, Money, Empty, Skeleton } from '@/components/admin/erp/ui'
 import { TrendChart } from '@/components/admin/erp/charts'
 import {
@@ -20,56 +21,73 @@ export default function AdminDashboardPage() {
   const { has, email, ready } = useModuller()
   const A = { fin: has('muhasebe'), stok: has('stok'), uretim: has('uretim'), satis: has('satis'), satin: has('satinalma'), kalite: has('kalite'), sevk: has('sevkiyat'), web: has('dashboard') }
 
-  const keys = useMemo(() => {
-    if (!ready) return [] as any[]
-    const k = new Set<string>(['products', 'variants'])
-    if (A.stok || A.uretim || A.satin || A.kalite) { k.add('hammaddeler'); k.add('stokHareketleri') }
-    if (A.uretim || A.satis || A.kalite) { k.add('emirler'); k.add('hareketler') }
-    if (A.uretim) { k.add('makineler'); k.add('kaliplar'); k.add('receteler') }
-    if (A.satis || A.sevk) { k.add('siparisler'); k.add('siparisKalemleri'); k.add('sevkiyatlar') }
-    if (A.satin) k.add('satinalma')
-    if (A.kalite) k.add('kalite')
-    if (A.fin) k.add('fiyatListeleri')
-    return Array.from(k) as any[]
-  }, [ready]) // eslint-disable-line
-  const { d, loading } = useUretim(keys as any)
-  const g = (k: string): any[] => (d as any)[k] || []
-
+  // Dashboard büyük tabloları asla tümüyle çekmez: finans/ziyaret özetleri veritabanında (rpc) hesaplanır,
+  // operasyon verileri yalnızca açık/güncel kayıtlarla sınırlı sorgulanır.
+  const [d, setD] = useState<Record<string, any[]>>({})
+  const [loading, setLoading] = useState(true)
+  const g = (k: string): any[] => d[k] || []
   const [fin, setFin] = useState<any>(null)
-  const [web, setWeb] = useState<any>(null)
+  const [web_, setWeb] = useState<any>(null)
+  const [cariSayi, setCariSayi] = useState(0)
+
   useEffect(() => {
     if (!ready) return
-    if (A.fin) Promise.all([muh.all('islemler', 'tip,tutar,tarih,kategori'), muh.all('faturalar', 'id,tip,durum,toplam,odenen_tutar,vade,no,cari_id,tarih'), muh.all('kasa_banka_hesaplari', 'id,ad,bakiye,aktif'), muh.all('cari_hesaplar', 'id,ad,tip,bakiye'), muh.all('cek_senet', 'id,durum,vade_tarihi,tutar,yon')])
-      .then(([islemler, faturalar, kasalar, cariler, cekler]) => setFin({ islemler, faturalar, kasalar, cariler, cekler })).catch(() => setFin({ islemler: [], faturalar: [], kasalar: [], cariler: [], cekler: [] }))
-    if (A.web) Promise.all([webAll('contact_submissions', 'id,name,email,status,created_at,subject', q => q.order('created_at', { ascending: false })), webAll('site_visits', 'visited_at', q => q.order('visited_at', { ascending: false }))])
-      .then(([basvurular, ziyaretler]) => setWeb({ basvurular, ziyaretler })).catch(() => setWeb({ basvurular: [], ziyaretler: [] }))
+    const gunOnce = (n: number) => { const t = new Date(); t.setDate(t.getDate() - n); return t.toISOString() }
+    const ilerle = async () => {
+      const ops: Promise<any>[] = []; const keys: string[] = []
+      const add = (k: string, p: Promise<any>) => { keys.push(k); ops.push(p.then(r => (Array.isArray(r) ? r : r?.data || [])).catch(() => [])) }
+      add('products', muh.from('products').select('id,name,code').limit(1000)); add('variants', muh.from('product_variants').select('id,product_id,stock'))
+      if (A.stok || A.uretim || A.satin || A.kalite) add('hammaddeler', erp.from('hammaddeler').select('id,ad,mevcut_stok,min_stok,aktif,ortalama_maliyet').limit(1000))
+      if (A.uretim) { add('makineler', erp.from('makineler').select('*')); add('kaliplar', erp.from('kaliplar').select('*')); add('receteler', erp.from('urun_receteleri').select('id,urun_id,aktif').limit(1000)); add('hareketler', erp.from('uretim_hareketleri').select('tarih,uretilen_adet,fire_adet').gte('tarih', gunOnce(14)).limit(1000)) }
+      if (A.uretim || A.satis || A.kalite) { add('emirler', erp.from('uretim_emirleri').select('*').in('durum', ['planlandi', 'uretimde', 'durduruldu']).limit(1000)); add('emirlerBitmis', erp.from('uretim_emirleri').select('id,no,urun_id,durum,uretilen_miktar,bitis').eq('durum', 'tamamlandi').gte('bitis', gunOnce(90)).limit(1000)) }
+      if (A.satis || A.sevk) { add('siparisler', erp.from('satis_siparisleri').select('*').in('durum', SIPARIS_ACIK).limit(1000)) }
+      if (A.satin) add('satinalma', erp.from('satinalma_siparisleri').select('*').in('durum', ['beklemede', 'onaylandi', 'yolda']).limit(1000))
+      if (A.kalite) add('kalite', erp.from('kalite_kontrol_kayitlari').select('uretim_emri_id,kontrol_tipi').gte('tarih', gunOnce(120)).limit(1000))
+      if (A.fin) add('fiyatListeleri', erp.from('fiyat_listeleri').select('id').limit(50))
+      const res = await Promise.all(ops)
+      const out: Record<string, any[]> = {}; keys.forEach((k, i) => { out[k] = res[i] })
+      // açık siparişlerin kalemleri (yalnızca açık siparişler için)
+      if ((A.satis || A.sevk) && out.siparisler?.length) {
+        const ids = out.siparisler.map((s: any) => s.id); const kal: any[] = []
+        for (let i = 0; i < ids.length; i += 80) { const r: any = await erp.from('satis_siparisi_kalemleri').select('siparis_id,miktar,birim_fiyat').in('siparis_id', ids.slice(i, i + 80)); kal.push(...(r.data || [])) }
+        out.siparisKalemleri = kal
+        const cids = Array.from(new Set(out.siparisler.map((x: any) => x.cari_id).filter(Boolean)))
+        if (cids.length) { const c: any = await muh.from('cari_hesaplar').select('id,ad').in('id', cids.slice(0, 200)); out.cariler = c.data || [] }
+      }
+      setD(out); setLoading(false)
+    }
+    ilerle().catch(() => setLoading(false))
+
+    if (A.fin) {
+      muh.from('cari_hesaplar').select('id', { count: 'exact', head: true }).then((r: any) => setCariSayi(r.count || 0)).catch(() => {})
+      const t = new Date(); const bas = new Date(t.getFullYear(), t.getMonth(), 1), pBas = new Date(t.getFullYear(), t.getMonth() - 1, 1), pSon = new Date(t.getFullYear(), t.getMonth(), 0)
+      muh.rpc('rpc_finans_ozet', { p_from: iso(bas), p_to: iso(t), p_pfrom: iso(pBas), p_pto: iso(pSon) }).then(setFin).catch(() => setFin({}))
+    }
+    if (A.web) {
+      Promise.all([web.rpc('rpc_ziyaret_ozet', { p_days: 14 }), web.from('contact_submissions').select('id,name,email,status,created_at,subject').order('created_at', { ascending: false }).limit(50), web.from('contact_submissions').select('id', { count: 'exact', head: true }).eq('status', 'new')])
+        .then(([z, b, n]: any) => setWeb({ ziyaret: z.data, basvurular: b.data || [], yeni: n.count || 0 })).catch(() => setWeb({ ziyaret: null, basvurular: [], yeni: 0 }))
+    }
   }, [ready]) // eslint-disable-line
 
   const bugun = todayISO(), ay = bugun.slice(0, 7)
   const isim = email.split('@')[0]
   const saatSel = new Date().getHours() < 12 ? 'Günaydın' : new Date().getHours() < 18 ? 'İyi günler' : 'İyi akşamlar'
 
-  /* ── Finans ── */
+  /* ── Finans (rpc_finans_ozet çıktısı) ── */
   const F = useMemo(() => {
-    if (!fin) return null
-    const pnl = fin.islemler.filter(isPnl)
-    const pm = new Date(); pm.setMonth(pm.getMonth() - 1); const onceki = iso(pm).slice(0, 7)
-    const gel = (a: string) => sum(pnl.filter((i: any) => i.tip === 'gelir' && (i.tarih || '').startsWith(a)), (i: any) => i.tutar), gid = (a: string) => sum(pnl.filter((i: any) => i.tip === 'gider' && (i.tarih || '').startsWith(a)), (i: any) => i.tutar)
-    const aylar = sonAylar(12)
-    const acik = fin.faturalar.filter(acikFatura)
+    if (!fin || !fin.donem) return null
+    const aylar = sonAylar(12); const m = new Map<string, any>((fin.aylik || []).map((a: any) => [a.ay, a]))
     return {
-      nakit: sum(fin.kasalar.filter((k: any) => k.aktif !== false), (k: any) => k.bakiye), alacak: sum(fin.cariler.filter((c: any) => +c.bakiye > 0), (c: any) => c.bakiye), borc: sum(fin.cariler.filter((c: any) => +c.bakiye < 0), (c: any) => -c.bakiye),
-      net: gel(ay) - gid(ay), netOnceki: gel(onceki) - gid(onceki), gelir: gel(ay), gider: gid(ay),
-      aylar, gelirSeri: aylar.map(a => gel(a.key)), giderSeri: aylar.map(a => gid(a.key)),
-      gecikmis: acik.filter((f: any) => f.tip !== 'iade' && f.vade && f.vade < bugun), taslak: fin.faturalar.filter((f: any) => f.durum === 'taslak').length,
-      cekGecik: fin.cekler.filter((c: any) => c.durum === 'portfoyde' && c.vade_tarihi < bugun), karsiliksiz: fin.cekler.filter((c: any) => c.durum === 'karsiliksiz'),
-      negatif: fin.kasalar.filter((k: any) => +k.bakiye < 0),
-      vadeler: [...acik.filter((f: any) => f.vade && f.tip !== 'iade').map((f: any) => ({ t: f.no, tarih: f.vade, tutar: kalanTutar(f), giris: f.tip === 'satis', cari: fin.cariler.find((c: any) => c.id === f.cari_id)?.ad })), ...fin.cekler.filter((c: any) => c.durum === 'portfoyde').map((c: any) => ({ t: c.yon === 'alinan' ? 'Alınan çek/senet' : 'Verilen çek/senet', tarih: c.vade_tarihi, tutar: +c.tutar, giris: c.yon === 'alinan' }))].sort((a, b) => a.tarih.localeCompare(b.tarih)).slice(0, 6),
+      nakit: +fin.kasa?.toplam || 0, nakitAdet: fin.kasa?.adet || 0, alacak: +fin.cari?.alacak || 0, borc: +fin.cari?.borc || 0,
+      gelir: +fin.donem.gelir, gider: +fin.donem.gider, net: +fin.donem.gelir - +fin.donem.gider, netOnceki: +fin.onceki.gelir - +fin.onceki.gider,
+      aylar, gelirSeri: aylar.map(a => +(m.get(a.key)?.gelir || 0)), giderSeri: aylar.map(a => +(m.get(a.key)?.gider || 0)),
+      gecikmis: { adet: +fin.fatura?.gecikmis_adet || 0, tutar: +fin.fatura?.gecikmis_tutar || 0 }, taslak: +fin.fatura?.taslak || 0,
+      cekGecik: +fin.cek?.gecmis_adet || 0, karsiliksiz: +fin.cek?.karsiliksiz_adet || 0, negatif: fin.negatif_kasa || [], vadeler: (fin.vadeler || []).slice(0, 6),
     }
-  }, [fin]) // eslint-disable-line
+  }, [fin])
 
   /* ── Operasyon ── */
-  const cari = useMemo(() => byId(fin?.cariler || []), [fin])
+  const cari = useMemo(() => byId(g('cariler')), [d]) // eslint-disable-line
   const urun = useMemo(() => byId(g('products')), [d]) // eslint-disable-line
   const openS = g('siparisler').filter((s: any) => SIPARIS_ACIK.includes(s.durum))
   const sTutar = (s: any) => sum(g('siparisKalemleri').filter((k: any) => k.siparis_id === s.id), (k: any) => (+k.miktar || 0) * (+k.birim_fiyat || 0))
@@ -83,17 +101,17 @@ export default function AdminDashboardPage() {
   const arizaMakine = g('makineler').filter((m: any) => m.durum === 'arizali')
   const gecEmir = g('emirler').filter((e: any) => ['planlandi', 'uretimde', 'durduruldu'].includes(e.durum) && g('siparisler').find((s: any) => s.id === e.siparis_id)?.teslim_tarihi < bugun)
   const gecSatin = g('satinalma').filter((s: any) => ['beklemede', 'onaylandi', 'yolda'].includes(s.durum) && s.beklenen_teslim && s.beklenen_teslim < bugun)
-  const kontrolBekleyen = g('emirler').filter((e: any) => e.durum === 'tamamlandi' && +e.uretilen_miktar > 0 && !g('kalite').some((k: any) => k.uretim_emri_id === e.id && k.kontrol_tipi === 'son_kontrol'))
-  const yeniBasvuru = (web?.basvurular || []).filter((b: any) => (b.status || 'new') === 'new')
-  const bugunZiyaret = (web?.ziyaretler || []).filter((v: any) => (v.visited_at || '').startsWith(bugun)).length
-  const ziyaret14 = useMemo(() => Array.from({ length: 14 }, (_, i) => { const t = new Date(); t.setDate(t.getDate() - (13 - i)); const k = iso(t); return { l: `${k.slice(8)}.${k.slice(5, 7)}`, v: (web?.ziyaretler || []).filter((x: any) => (x.visited_at || '').startsWith(k)).length } }), [web])
+  const kontrolBekleyen = g('emirlerBitmis').filter((e: any) => +e.uretilen_miktar > 0 && !g('kalite').some((k: any) => k.uretim_emri_id === e.id && k.kontrol_tipi === 'son_kontrol'))
+  const yeniSayi = web_?.yeni || 0
+  const bugunZiyaret = +(web_?.ziyaret?.bugun || 0)
+  const ziyaret14 = useMemo(() => { const m = new Map<string, number>(((web_?.ziyaret?.gunluk) || []).map((x: any) => [x.g, +x.v])); return Array.from({ length: 14 }, (_, i) => { const t = new Date(); t.setDate(t.getDate() - (13 - i)); const k = iso(t); return { l: `${k.slice(8)}.${k.slice(5, 7)}`, v: m.get(k) || 0 } }) }, [web_])
   const uretim14 = useMemo(() => Array.from({ length: 14 }, (_, i) => { const t = new Date(); t.setDate(t.getDate() - (13 - i)); const k = iso(t); const h = g('hareketler').filter((x: any) => (x.tarih || '').startsWith(k)); return { l: `${k.slice(8)}.${k.slice(5, 7)}`, u: sum(h, (x: any) => x.uretilen_adet), f: sum(h, (x: any) => x.fire_adet) } }), [d]) // eslint-disable-line
 
   const alerts: Alert[] = []
   if (F) {
-    if (F.gecikmis.length) alerts.push({ tone: 'red', text: `${F.gecikmis.length} faturanın vadesi geçmiş (${fmtK(sum(F.gecikmis, kalanTutar))})`, href: '/admin/dashboard/muhasebe/faturalar', mod: 'muhasebe' })
-    if (F.cekGecik.length) alerts.push({ tone: 'red', text: `${F.cekGecik.length} çek/senetin vadesi geçmiş, portföyde`, href: '/admin/dashboard/muhasebe/cek-senet', mod: 'muhasebe' })
-    if (F.karsiliksiz.length) alerts.push({ tone: 'red', text: `${F.karsiliksiz.length} karşılıksız çek/senet kaydı var`, href: '/admin/dashboard/muhasebe/cek-senet', mod: 'muhasebe' })
+    if (F.gecikmis.adet) alerts.push({ tone: 'red', text: `${F.gecikmis.adet} faturanın vadesi geçmiş (${fmtK(F.gecikmis.tutar)})`, href: '/admin/dashboard/muhasebe/faturalar', mod: 'muhasebe' })
+    if (F.cekGecik) alerts.push({ tone: 'red', text: `${F.cekGecik} çek/senetin vadesi geçmiş, portföyde`, href: '/admin/dashboard/muhasebe/cek-senet', mod: 'muhasebe' })
+    if (F.karsiliksiz) alerts.push({ tone: 'red', text: `${F.karsiliksiz} karşılıksız çek/senet kaydı var`, href: '/admin/dashboard/muhasebe/cek-senet', mod: 'muhasebe' })
     F.negatif.forEach((k: any) => alerts.push({ tone: 'red', text: `${k.ad} hesabı eksi bakiyede (${fmt(k.bakiye)})`, href: '/admin/dashboard/muhasebe/kasa-banka', mod: 'muhasebe' }))
     if (F.taslak) alerts.push({ tone: 'blue', text: `${F.taslak} taslak fatura onay bekliyor`, href: '/admin/dashboard/muhasebe/faturalar', mod: 'muhasebe' })
   }
@@ -105,13 +123,13 @@ export default function AdminDashboardPage() {
   if (A.uretim && gecEmir.length) alerts.push({ tone: 'amber', text: `${gecEmir.length} üretim emri sipariş terminini aşmış durumda`, href: '/admin/dashboard/uretim/emirler', mod: 'uretim' })
   if (A.satin && gecSatin.length) alerts.push({ tone: 'amber', text: `${gecSatin.length} satınalma siparişinin teslimi gecikti`, href: '/admin/dashboard/satinalma/siparisler', mod: 'satinalma' })
   if (A.kalite && kontrolBekleyen.length) alerts.push({ tone: 'amber', text: `${kontrolBekleyen.length} tamamlanan emrin son kalite kontrolü girilmemiş`, href: '/admin/dashboard/kalite/kontrol', mod: 'kalite' })
-  if (A.web && yeniBasvuru.length) alerts.push({ tone: 'blue', text: `${yeniBasvuru.length} yeni başvuru yanıt bekliyor`, href: '/admin/dashboard/basvurular', mod: 'dashboard' })
+  if (A.web && yeniSayi) alerts.push({ tone: 'blue', text: `${yeniSayi} yeni başvuru yanıt bekliyor`, href: '/admin/dashboard/basvurular', mod: 'dashboard' })
   alerts.sort((a, b) => ({ red: 0, amber: 1, blue: 2 }[a.tone] - { red: 0, amber: 1, blue: 2 }[b.tone]))
 
   // Kurulum kontrol listesi
   const adimlar = [
-    { l: 'Kasa / banka hesabı ekle', ok: (fin?.kasalar.length || 0) > 0, href: '/admin/dashboard/muhasebe/kasa-banka', mod: A.fin },
-    { l: 'İlk müşteri / tedarikçi carisini ekle', ok: (fin?.cariler.length || 0) > 0, href: '/admin/dashboard/muhasebe/cari', mod: A.fin },
+    { l: 'Kasa / banka hesabı ekle', ok: (F?.nakitAdet || 0) > 0, href: '/admin/dashboard/muhasebe/kasa-banka', mod: A.fin },
+    { l: 'İlk müşteri / tedarikçi carisini ekle', ok: cariSayi > 0, href: '/admin/dashboard/muhasebe/cari', mod: A.fin },
     { l: 'Ürünlere stok varyantı ekle', ok: g('variants').length > 0, href: '/admin/dashboard/varyantlar', mod: true },
     { l: 'Hammaddeleri stok kartı olarak gir (maliyetiyle)', ok: g('hammaddeler').some((h: any) => +h.ortalama_maliyet > 0), href: '/admin/dashboard/stok/hammadde', mod: A.stok },
     { l: 'Makine ve kalıpları tanımla', ok: g('makineler').length > 0 && g('kaliplar').length > 0, href: '/admin/dashboard/uretim/makine', mod: A.uretim },
@@ -143,14 +161,14 @@ export default function AdminDashboardPage() {
           <>
             <KpiGrid min={210}>
               {A.fin && F && <>
-                <Kpi label="Nakit Pozisyonu" value={fmtK(F.nakit)} Icon={Wallet} color="var(--adm-blue)" sub={`${fin.kasalar.length} hesap`} />
+                <Kpi label="Nakit Pozisyonu" value={fmtK(F.nakit)} Icon={Wallet} color="var(--adm-blue)" sub={`${F.nakitAdet} hesap`} />
                 <Kpi label="Bu Ay Net" value={fmtK(F.net)} Icon={Scale} color={F.net >= 0 ? 'var(--adm-green)' : 'var(--adm-red)'} delta={pctDelta(F.net, F.netOnceki)} sub={`Gelir ${fmtK(F.gelir)}`} spark={F.gelirSeri.map((v: number, i: number) => v - F.giderSeri[i])} />
                 <Kpi label="Alacak / Borç" value={fmtK(F.alacak)} Icon={HandCoins} color="var(--adm-amber)" sub={`Borç ${fmtK(F.borc)}`} />
               </>}
               {A.satis && <Kpi label="Açık Sipariş" value={openS.length} Icon={ClipboardList} color="var(--adm-ac)" sub={fmtK(sum(openS, sTutar)) + ' (KDV hariç)'} />}
               {A.uretim && <Kpi label="Üretimde" value={uretimde.length} Icon={Factory} color="var(--adm-blue)" sub={`bugün ${fmtInt(sum(bugunH, (h: any) => h.uretilen_adet))} adet`} />}
               {A.stok && <Kpi label="Kritik Stok" value={kritik.length} Icon={Boxes} color={kritik.length ? 'var(--adm-red)' : 'var(--adm-green)'} sub={kritik.length ? 'hammadde min. altında' : 'Sorun yok'} />}
-              {A.web && web && <Kpi label="Yeni Başvuru" value={yeniBasvuru.length} Icon={MessageSquare} color="var(--adm-green)" sub={`bugün ${bugunZiyaret} ziyaret`} />}
+              {A.web && web_ && <Kpi label="Yeni Başvuru" value={yeniSayi} Icon={MessageSquare} color="var(--adm-green)" sub={`bugün ${bugunZiyaret} ziyaret`} />}
             </KpiGrid>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,420px),1fr))', gap: 16, marginBottom: 16 }}>
@@ -182,8 +200,8 @@ export default function AdminDashboardPage() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,420px),1fr))', gap: 16, marginBottom: 16 }}>
               {A.fin && F && <Card title="Gelir / Gider — Son 12 Ay" right={<Link href="/admin/dashboard/muhasebe/raporlar" style={{ fontSize: 12, color: 'var(--adm-ac)' }}>Raporlar →</Link>} pad={16}><TrendChart type="bar" height={200} labels={F.aylar.map((a: any) => a.label)} series={[{ name: 'Gelir', color: '#14b088', data: F.gelirSeri }, { name: 'Gider', color: '#e14b4b', data: F.giderSeri }]} /></Card>}
               {A.uretim && <Card title="Üretim — Son 14 Gün" right={<Link href="/admin/dashboard/uretim/emirler" style={{ fontSize: 12, color: 'var(--adm-ac)' }}>Emirler →</Link>} pad={16}><TrendChart type="bar" height={200} labels={uretim14.map(x => x.l)} series={[{ name: 'Üretilen', color: '#2f7dd6', data: uretim14.map(x => x.u) }, { name: 'Fire', color: '#e14b4b', data: uretim14.map(x => x.f) }]} format={n => fmtInt(n)} /></Card>}
-              {A.web && web && <Card title="Site Ziyareti — Son 14 Gün" right={<Link href="/admin/dashboard/analytics" style={{ fontSize: 12, color: 'var(--adm-ac)' }}>Analitik →</Link>} pad={16}>
-                {web.ziyaretler.length === 0 ? <Empty icon={<Eye size={28} />} title="Henüz ziyaret verisi yok" sub="Site ziyaretleri artık otomatik kaydediliyor" /> : <TrendChart type="area" height={200} labels={ziyaret14.map(x => x.l)} series={[{ name: 'Ziyaret', color: '#8b5cf6', data: ziyaret14.map(x => x.v) }]} format={n => fmtInt(n)} />}</Card>}
+              {A.web && web_ && <Card title="Site Ziyareti — Son 14 Gün" right={<Link href="/admin/dashboard/analytics" style={{ fontSize: 12, color: 'var(--adm-ac)' }}>Analitik →</Link>} pad={16}>
+                {!(web_.ziyaret?.toplam > 0) ? <Empty icon={<Eye size={28} />} title="Henüz ziyaret verisi yok" sub="Site ziyaretleri artık otomatik kaydediliyor" /> : <TrendChart type="area" height={200} labels={ziyaret14.map(x => x.l)} series={[{ name: 'Ziyaret', color: '#8b5cf6', data: ziyaret14.map(x => x.v) }]} format={n => fmtInt(n)} />}</Card>}
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,320px),1fr))', gap: 16 }}>
@@ -195,8 +213,8 @@ export default function AdminDashboardPage() {
                 {openS.length === 0 ? <Empty title="Açık sipariş yok" /> : [...openS].sort((a: any, b: any) => (a.teslim_tarihi || '9999').localeCompare(b.teslim_tarihi || '9999')).slice(0, 6).map((s: any) => (
                   <div key={s.id} className="adm-row" style={{ padding: '9px 18px' }}><div style={{ flex: 1, minWidth: 0 }}><b style={{ fontFamily: 'JetBrains Mono,monospace', fontSize: 12.5 }}>{s.no}</b><div style={{ fontSize: 11, color: s.teslim_tarihi && s.teslim_tarihi < bugun ? 'var(--adm-red)' : 'var(--adm-tx3)' }}>{cari[s.cari_id]?.ad || '—'}{s.teslim_tarihi ? ` · ${fmtDate(s.teslim_tarihi)}` : ''}</div></div><Money v={sTutar(s)} size={12.5} /></div>))}
               </Card>}
-              {A.web && web && <Card title="Son Başvurular" right={<Link href="/admin/dashboard/basvurular" style={{ fontSize: 12, color: 'var(--adm-ac)' }}>Tümü →</Link>}>
-                {web.basvurular.length === 0 ? <Empty icon={<MessageSquare size={28} />} title="Başvuru yok" /> : web.basvurular.slice(0, 6).map((b: any) => (
+              {A.web && web_ && <Card title="Son Başvurular" right={<Link href="/admin/dashboard/basvurular" style={{ fontSize: 12, color: 'var(--adm-ac)' }}>Tümü →</Link>}>
+                {web_.basvurular.length === 0 ? <Empty icon={<MessageSquare size={28} />} title="Başvuru yok" /> : web_.basvurular.slice(0, 6).map((b: any) => (
                   <Link key={b.id} href="/admin/dashboard/basvurular" className="adm-row" style={{ textDecoration: 'none', color: 'inherit', padding: '9px 18px' }}><div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 12.5, fontWeight: 600 }}>{b.name}</div><div style={{ fontSize: 11, color: 'var(--adm-tx3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.subject || b.email}</div></div><Badge tone={(b.status || 'new') === 'new' ? 'ac' : (b.status === 'replied' ? 'green' : 'muted')}>{{ new: 'Yeni', read: 'Okundu', replied: 'Yanıtlandı', archived: 'Arşiv' }[(b.status || 'new') as string]}</Badge></Link>))}
               </Card>}
             </div>

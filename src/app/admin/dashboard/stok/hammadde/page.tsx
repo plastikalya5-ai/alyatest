@@ -1,10 +1,10 @@
 'use client'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import AdminTopBar from '@/components/admin/TopBar'
 import { erp } from '@/lib/erp-client'
 import { fmt, fmtK, fmtN, fmtDate, fmtDateTime, todayISO } from '@/lib/fmt'
-import { useUretim, byId, gunlukTuketim, rezerve, HAREKET_TIP } from '@/lib/uretim-utils'
+import { useUretim, byId, gunlukTuketim, rezerveMap, HAREKET_TIP } from '@/lib/uretim-utils'
 import { sum } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, InfoRow, Divider, Empty, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
@@ -17,7 +17,7 @@ const DURUM: Record<string, { l: string; tone: any }> = { tukendi: { l: 'Tükend
 
 export default function HammaddePage() {
   const toast = useToast()
-  const { d, loading, reload } = useUretim(['hammaddeler', 'depolar', 'cariTam', 'lotlar', 'stokHareketleri', 'receteKalemleri', 'receteler', 'products', 'variants', 'siparisler', 'siparisKalemleri', 'sevkiyatlar', 'emirler'])
+  const { d, loading, reload } = useUretim(['hammaddeler', 'depolar', 'cariTam', 'lotlar', 'tuketimRows', 'receteKalemleri', 'receteler', 'products', 'variants', 'rezerveRows', 'emirler'])
   const [tab, setTab] = useState('hepsi')
   const [detay, setDetay] = useState<any>(null)
   const [dTab, setDTab] = useState('ozet')
@@ -27,21 +27,27 @@ export default function HammaddePage() {
   const [islem, setIslem] = useState<any>(null)
   const [lot, setLot] = useState({ lot_no: '', miktar: '', giris_tarihi: todayISO(), tedarikci_id: '' })
   const [busy, setBusy] = useState(false)
+  const [hmHareket, setHmHareket] = useState<any[]>([])
 
   const cari = useMemo(() => byId(d.cariTam), [d.cariTam])
   const depo = useMemo(() => byId(d.depolar), [d.depolar])
   const urun = useMemo(() => byId(d.products), [d.products])
   const detayH = detay ? d.hammaddeler.find((h: any) => h.id === detay.id) || detay : null
+  // Seçili hammaddenin son hareketleri (sunucudan, yalnızca 60 satır)
+  useEffect(() => {
+    if (!detay?.id) { setHmHareket([]); return }
+    erp.from('v_stok_defteri').select('*').eq('hammadde_id', detay.id).order('tarih', { ascending: false }).limit(60).then((r: any) => setHmHareket(r.data || [])).catch(() => setHmHareket([]))
+  }, [detay?.id, d.hammaddeler])
 
-  const tuk = useMemo(() => Object.fromEntries(d.hammaddeler.map((h: any) => [h.id, gunlukTuketim(h.id, d.stokHareketleri)])), [d.hammaddeler, d.stokHareketleri])
+  const tuk = useMemo(() => Object.fromEntries(d.hammaddeler.map((h: any) => [h.id, gunlukTuketim(h.id, d.tuketimRows)])), [d.hammaddeler, d.tuketimRows])
   const aktifler = d.hammaddeler.filter((h: any) => h.aktif !== false)
   const kritik = aktifler.filter((h: any) => ['kritik', 'tukendi'].includes(durumu(h)))
   const deger = sum(aktifler, (h: any) => (+h.mevcut_stok || 0) * (+h.ortalama_maliyet || 0))
-  const tuketim30 = sum(d.stokHareketleri.filter((m: any) => m.hammadde_id && m.yon === 'cikis' && ['uretim_cikis', 'fire'].includes(m.tip) && Date.now() - +new Date(m.tarih) <= 30 * 86400000), (m: any) => (+m.miktar || 0) * (+d.hammaddeler.find((h: any) => h.id === m.hammadde_id)?.ortalama_maliyet || 0))
+  const tuketim30 = sum(d.tuketimRows, (t: any) => (+t.toplam_30g || 0) * (+d.hammaddeler.find((h: any) => h.id === t.hammadde_id)?.ortalama_maliyet || 0))
   const liste = d.hammaddeler.filter((h: any) => tab === 'hepsi' ? h.aktif !== false : tab === 'kritik' ? h.aktif !== false && ['kritik', 'tukendi'].includes(durumu(h)) : tab === 'fazla' ? durumu(h) === 'fazla' : tab === 'pasif' ? h.aktif === false : true)
 
   // Mamul stok (ürün varyantları)
-  const rez = useMemo(() => rezerve(d.siparisler, d.siparisKalemleri, d.sevkiyatlar, d.stokHareketleri), [d])
+  const rez = useMemo(() => rezerveMap(d.rezerveRows), [d.rezerveRows])
   const mamul = useMemo(() => d.variants.map((v: any) => {
     const ad = [urun[v.product_id]?.name, v.name, v.color, v.size].filter(Boolean).filter((a: any, i: number, arr: any[]) => arr.indexOf(a) === i).join(' · ')
     const uretimde = sum(d.emirler.filter((e: any) => ['planlandi', 'uretimde', 'durduruldu'].includes(e.durum) && e.urun_id === v.product_id), (e: any) => Math.max((+e.planlanan_miktar || 0) - (+e.uretilen_miktar || 0), 0))
@@ -119,7 +125,8 @@ export default function HammaddePage() {
 
   async function aktifToggle(h: any) { await erp.from('hammaddeler').update({ aktif: h.aktif === false }).eq('id', h.id); toast.show(h.aktif === false ? 'Aktif yapıldı' : 'Pasife alındı'); reload() }
   async function del(h: any) {
-    const n = d.stokHareketleri.filter((m: any) => m.hammadde_id === h.id).length
+    const cn: any = await erp.from('stok_hareketleri').select('id', { count: 'exact', head: true }).eq('hammadde_id', h.id)
+    const n = cn?.count || 0
     const rc = d.receteKalemleri.filter((k: any) => k.hammadde_id === h.id).length
     if (rc) return toast.show(`Bu hammadde ${rc} reçetede kullanılıyor — silinemez, pasife alabilirsin`, true)
     if (!confirm(`${h.ad} silinsin mi?${n ? `\n\n${n} stok hareketi kaydı var; geçmiş kayıtlar kalemsiz kalır. Pasife almak daha güvenli.` : ''}`)) return
@@ -198,7 +205,7 @@ export default function HammaddePage() {
         footer={detayH && <><button className="adm-btn-danger" onClick={() => del(detayH)}><Trash2 size={13} /></button><button className="adm-btn-ghost" onClick={() => aktifToggle(detayH)}><Power size={13} />{detayH.aktif === false ? 'Aktifleştir' : 'Pasife al'}</button><button className="adm-btn-ghost" onClick={() => openEdit(detayH)}><Pencil size={13} />Düzenle</button>
           <button className="adm-btn" onClick={() => setIslem({ h: detayH, tur: 'giris', miktar: '', maliyet: '', not: '', depo: detayH.depo_id || '' })}><ArrowDownCircle size={14} />Stok Hareketi</button></>}>
         {detayH && (() => {
-          const hm = d.stokHareketleri.filter((m: any) => m.hammadde_id === detayH.id)
+          const hm = hmHareket
           let b = +detayH.mevcut_stok || 0
           const hr = hm.map((m: any) => { const s = (m.yon === 'giris' ? 1 : -1) * +m.miktar; const after = b; b -= s; return { ...m, s, after } })
           const lots = d.lotlar.filter((l: any) => l.hammadde_id === detayH.id)

@@ -14,14 +14,21 @@ const FETCH = {
   receteler:       () => erp.all('urun_receteleri', '*', q => q.order('created_at', { ascending: false })),
   receteKalemleri: () => erp.all('recete_kalemleri'),
   emirler:         () => erp.all('uretim_emirleri', '*', q => q.order('created_at', { ascending: false })),
-  hareketler:      () => erp.all('uretim_hareketleri', '*', q => q.order('tarih', { ascending: false })),
+  // Son 400 gün (aylık/yıllık analizler için yeterli); daha eskisi için ilgili sunucu tarafı ekranlar/özetler kullanılır
+  hareketler:      () => erp.all('uretim_hareketleri', '*', q => q.gte('tarih', new Date(Date.now() - 400 * 86400000).toISOString()).order('tarih', { ascending: false })),
   siparisler:      () => erp.all('satis_siparisleri', '*', q => q.order('created_at', { ascending: false })),
   siparisKalemleri:() => erp.all('satis_siparisi_kalemleri'),
   kalite:          () => erp.all('kalite_kontrol_kayitlari', '*', q => q.order('tarih', { ascending: false })),
   fire:            () => erp.all('fire_kayitlari', '*', q => q.order('tarih', { ascending: false })),
   cariler:         () => muh.all('cari_hesaplar', 'id,ad,tip'),
   depolar:         () => erp.all('depolar', '*', q => q.order('ad', { ascending: true })),
-  stokHareketleri: () => erp.all('stok_hareketleri', '*', q => q.order('tarih', { ascending: false })),
+  // Yalnızca son 120 gün (güvenlik sınırı). Toplam/rezerve/sevk hesapları için aşağıdaki veritabanı görünümleri kullanılır.
+  stokHareketleri: () => erp.all('stok_hareketleri', '*', q => q.gte('tarih', new Date(Date.now() - 120 * 86400000).toISOString()).order('tarih', { ascending: false })),
+  rezerveRows:     () => erp.all('v_rezerve'),
+  sevkRows:        () => erp.all('v_sevk_edilen'),
+  tuketimRows:     () => erp.all('v_hammadde_tuketim'),
+  baskiRows:       () => erp.all('v_kalip_baski'),
+  depoOzet:        () => erp.all('v_depo_ozet'),
   lotlar:          () => erp.all('hammadde_lotlari', '*', q => q.order('giris_tarihi', { ascending: false })),
   satinalma:       () => erp.all('satinalma_siparisleri', '*', q => q.order('created_at', { ascending: false })),
   satinalmaKalemleri: () => erp.all('satinalma_siparisi_kalemleri'),
@@ -68,12 +75,10 @@ export const EMIR_DURUM: Record<string, { l: string; tone: any; color: string }>
 export const yuzde = (a: number, b: number) => (b > 0 ? Math.min(100, (a / b) * 100) : 0)
 export const fireOrani = (uretilen: number, fire: number) => (uretilen + fire > 0 ? (fire / (uretilen + fire)) * 100 : 0)
 
-// Kalıp baskı sayısı: (üretilen + fire) / kavite — kalıba bağlı emirlerin hareketlerinden
-export function kalipBaski(kalip: any, emirler: any[], hareketler: any[], sonra?: string | null) {
-  const ids = new Set(emirler.filter(e => e.kalip_id === kalip.id).map(e => e.id))
-  const kav = Math.max(+kalip.kavite_sayisi || 1, 1)
-  return Math.round(hareketler.filter(h => ids.has(h.uretim_emri_id) && (!sonra || (h.tarih || '').slice(0, 10) >= sonra))
-    .reduce((s, h) => s + (+h.uretilen_adet || 0) + (+h.fire_adet || 0), 0) / kav)
+// Kalıp baskı sayısı (v_kalip_baski satırından): { toplam, bakimdanBeri }
+export function kalipBaski(kalipId: string, baskiRows: any[]) {
+  const r = baskiRows.find(x => x.kalip_id === kalipId)
+  return { toplam: +r?.baski_toplam || 0, bakimdanBeri: +r?.baski_bakimdan_beri || 0 }
 }
 
 // Reçete maliyeti — miktarlar hammadde biriminde (kg) tutulur, ortalama_maliyet de aynı birimdedir
@@ -106,33 +111,23 @@ export const varyantEtiket = (v: any, products: Record<string, any>) =>
 /* ───── Stok / sipariş yardımcıları ───── */
 export const SIPARIS_ACIK = ['beklemede', 'uretimde', 'kismen_hazir', 'hazir']
 
-// Sevkiyat kayıtlarından (stok defteri) siparişe göre sevk edilen miktar: { [variant_id]: adet }
-export function sevkEdilen(siparisId: string, sevkiyatlar: any[], hareketler: any[]) {
-  const ids = new Set(sevkiyatlar.filter(s => s.siparis_id === siparisId && s.durum !== 'iptal').map(s => s.id))
+// Sevk edilen miktar (veritabanı görünümü v_sevk_edilen satırlarından): { [variant_id]: adet }
+export function sevkEdilen(siparisId: string, sevkRows: any[]) {
   const out: Record<string, number> = {}
-  hareketler.filter(h => h.kaynak_tablo === 'sevkiyatlar' && ids.has(h.kaynak_id) && h.variant_id).forEach(h => {
-    out[h.variant_id] = (out[h.variant_id] || 0) + (h.yon === 'cikis' ? 1 : -1) * (+h.miktar || 0)
-  })
+  sevkRows.filter(r => r.siparis_id === siparisId).forEach(r => { out[r.variant_id] = (out[r.variant_id] || 0) + (+r.adet || 0) })
   return out
 }
 
-// Açık siparişlerde henüz sevk edilmemiş (rezerve) miktar: { [variant_id]: adet }
-export function rezerve(siparisler: any[], kalemler: any[], sevkiyatlar: any[], hareketler: any[], haric?: string) {
+// Açık siparişlerde henüz sevk edilmemiş (rezerve) miktar (v_rezerve satırlarından): { [variant_id]: adet }
+export function rezerveMap(rows: any[]) {
   const out: Record<string, number> = {}
-  siparisler.filter(s => SIPARIS_ACIK.includes(s.durum) && s.id !== haric).forEach(s => {
-    const sevk = sevkEdilen(s.id, sevkiyatlar, hareketler)
-    kalemler.filter(k => k.siparis_id === s.id && k.variant_id).forEach(k => {
-      out[k.variant_id] = (out[k.variant_id] || 0) + Math.max((+k.miktar || 0) - (sevk[k.variant_id] || 0), 0)
-    })
-  })
+  rows.forEach(r => { out[r.variant_id] = (out[r.variant_id] || 0) + (+r.rezerve || 0) })
   return out
 }
 
-// Son N günde bir hammaddenin günlük ortalama tüketimi (üretim çıkışı + fire)
-export function gunlukTuketim(hammaddeId: string, hareketler: any[], gun = 30) {
-  const lim = Date.now() - gun * 86400000
-  const t = hareketler.filter(h => h.hammadde_id === hammaddeId && h.yon === 'cikis' && ['uretim_cikis', 'fire'].includes(h.tip) && +new Date(h.tarih) >= lim).reduce((s, h) => s + (+h.miktar || 0), 0)
-  return t / gun
+// Bir hammaddenin son 30 gündeki günlük ortalama tüketimi (v_hammadde_tuketim satırlarından)
+export function gunlukTuketim(hammaddeId: string, tuketimRows: any[]) {
+  return (+tuketimRows.find(r => r.hammadde_id === hammaddeId)?.toplam_30g || 0) / 30
 }
 
 export const HAREKET_TIP: Record<string, string> = {

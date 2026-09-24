@@ -15,7 +15,7 @@ const bosIhr = { ulke: '', para_birimi: 'USD', kur: '1', incoterm: '', konteyner
 
 export default function SevkiyatPage() {
   const toast = useToast()
-  const { d, loading, reload } = useUretim(['sevkiyatlar', 'siparisler', 'siparisKalemleri', 'cariTam', 'ihracat', 'variants', 'products', 'stokHareketleri'])
+  const { d, loading, reload } = useUretim(['sevkiyatlar', 'siparisler', 'siparisKalemleri', 'cariTam', 'ihracat', 'variants', 'products', 'sevkRows'])
   const [tab, setTab] = useState('acik')
   const [detay, setDetay] = useState<any>(null)
   const [modal, setModal] = useState(false)
@@ -31,12 +31,14 @@ export default function SevkiyatPage() {
   const etiket = (v: any) => [urun[v?.product_id]?.name, v?.name, v?.color, v?.size].filter(Boolean).filter((a: any, i: number, arr: any[]) => arr.indexOf(a) === i).join(' · ') || v?.name || '—'
   const ihrBy = useMemo(() => Object.fromEntries(d.ihracat.map((x: any) => [x.sevkiyat_id, x])), [d.ihracat])
 
-  // Sevkiyata bağlı kalemler = stok defterindeki sevkiyat hareketleri
-  const kalemler = (sid: string) => {
+  // Sevkiyata bağlı kalemler = stok defterindeki sevkiyat hareketleri (yalnızca ilgili sevkiyat için sunucudan çekilir)
+  const ledgerAl = async (sid: string) => { const r: any = await erp.from('stok_hareketleri').select('variant_id,yon,miktar').eq('kaynak_tablo', 'sevkiyatlar').eq('kaynak_id', sid); return r?.data || [] }
+  const kalemlerDen = (rows: any[]) => {
     const m: Record<string, number> = {}
-    d.stokHareketleri.filter((h: any) => h.kaynak_tablo === 'sevkiyatlar' && h.kaynak_id === sid && h.variant_id).forEach((h: any) => { m[h.variant_id] = (m[h.variant_id] || 0) + (h.yon === 'cikis' ? 1 : -1) * (+h.miktar || 0) })
+    rows.filter(h => h.variant_id).forEach(h => { m[h.variant_id] = (m[h.variant_id] || 0) + (h.yon === 'cikis' ? 1 : -1) * (+h.miktar || 0) })
     return Object.entries(m).filter(([, q]) => q !== 0).map(([vid, q]) => ({ vid, q, ad: etiket(varyant[vid]) }))
   }
+  const [dLedger, setDLedger] = useState<any[]>([])
 
   const cnt = (f: (s: any) => boolean) => d.sevkiyatlar.filter(f).length
   const ay = todayISO().slice(0, 7)
@@ -48,7 +50,7 @@ export default function SevkiyatPage() {
   const sonrakiNo = () => { const y = new Date().getFullYear(), p = `SV-${y}-`; return p + String(Math.max(0, ...d.sevkiyatlar.filter((s: any) => s.no?.startsWith(p)).map((s: any) => +s.no.slice(p.length) || 0)) + 1).padStart(4, '0') }
   function siparisSec(id: string, base?: any) {
     const s = siparis[id]
-    const sevk = id ? sevkEdilen(id, d.sevkiyatlar, d.stokHareketleri) : {}
+    const sevk = id ? sevkEdilen(id, d.sevkRows) : {}
     const yeni: Record<string, string> = {}
     d.siparisKalemleri.filter((k: any) => k.siparis_id === id && k.variant_id).forEach((k: any) => {
       const kalan = Math.max((+k.miktar || 0) - (sevk[k.variant_id] || 0), 0), stok = Math.max(+varyant[k.variant_id]?.stock || 0, 0)
@@ -69,7 +71,7 @@ export default function SevkiyatPage() {
   }, [loading]) // eslint-disable-line
 
   const seciliKalemler = d.siparisKalemleri.filter((k: any) => k.siparis_id === form.siparis_id)
-  const sevkMap = form.siparis_id ? sevkEdilen(form.siparis_id, d.sevkiyatlar, d.stokHareketleri) : {}
+  const sevkMap = form.siparis_id ? sevkEdilen(form.siparis_id, d.sevkRows) : {}
   const toplamAdet = sum(seciliKalemler, (k: any) => +satirlar[k.id] || 0)
 
   async function kaydet(e: React.FormEvent) {
@@ -106,7 +108,7 @@ export default function SevkiyatPage() {
     if (yeni === 'iptal') {
       if (!confirm(`${s.no} iptal edilsin mi?\n\nSevk edilen ürünler stoğa geri eklenir.`)) return
       setBusy(true)
-      const ters = kalemler(s.id).map(k => ({ tip: 'sevkiyat', yon: 'giris', variant_id: k.vid, miktar: k.q, kaynak_tablo: 'sevkiyatlar', kaynak_id: s.id, aciklama: `Sevkiyat iptali ${s.no}` }))
+      const ters = kalemlerDen(await ledgerAl(s.id)).map(k => ({ tip: 'sevkiyat', yon: 'giris', variant_id: k.vid, miktar: k.q, kaynak_tablo: 'sevkiyatlar', kaynak_id: s.id, aciklama: `Sevkiyat iptali ${s.no}` }))
       if (ters.length) { const h: any = await erp.from('stok_hareketleri').insert(ters); if (h?.error) { setBusy(false); return toast.show(h.error, true) } }
       if (s.siparis_id && ['sevk_edildi', 'tamamlandi'].includes(siparis[s.siparis_id]?.durum)) await erp.from('satis_siparisleri').update({ durum: 'hazir' }).eq('id', s.siparis_id)
       setBusy(false)
@@ -134,8 +136,8 @@ export default function SevkiyatPage() {
     setIhr(null); toast.show('İhracat detayı kaydedildi'); reload()
   }
 
-  function packing(s: any) {
-    const ih = ihrBy[s.id], ks = kalemler(s.id)
+  async function packing(s: any) {
+    const ih = ihrBy[s.id], ks = kalemlerDen(await ledgerAl(s.id))
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Packing List ${s.no}</title><style>body{font-family:Arial,sans-serif;color:#0b0e0b;padding:40px;max-width:820px;margin:0 auto}h1{font-size:20px;margin:0 0 4px}.muted{color:#6b7366;font-size:12px}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{padding:8px 6px;font-size:13px;border-bottom:1px solid #ddd;text-align:left}th{color:#6b7366;font-size:11px;text-transform:uppercase}td:last-child,th:last-child{text-align:right}.header{display:flex;justify-content:space-between;border-bottom:2px solid #e55f28;padding-bottom:14px;margin-bottom:14px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 30px;font-size:13px;margin-top:10px}@media print{body{padding:0}}</style></head><body>
       <div class="header"><div><h1>ALYA PLASTİK</h1><p class="muted">${ih ? 'PACKING LIST / ÇEKİ LİSTESİ' : 'SEVK İRSALİYE ÖZETİ'}</p></div><div style="text-align:right"><h1>${s.no}</h1><p class="muted">${fmtDate(s.tarih)}</p></div></div>
       <div class="grid"><div><b>Alıcı:</b> ${cari[s.cari_id]?.ad || '—'}</div><div><b>Sipariş:</b> ${siparis[s.siparis_id]?.no || '—'}</div>${ih ? `<div><b>Ülke:</b> ${ih.ulke}</div><div><b>Incoterm:</b> ${ih.incoterm || '—'}</div><div><b>Konteyner:</b> ${ih.konteyner_no || '—'}</div><div><b>Gümrük beyan no:</b> ${ih.gumruk_beyan_no || '—'}</div>` : `<div><b>Kargo:</b> ${s.kargo_firmasi || '—'}</div><div><b>Takip no:</b> ${s.takip_no || '—'}</div>`}</div>
@@ -162,7 +164,8 @@ export default function SevkiyatPage() {
   ]
 
   const dS = detay ? d.sevkiyatlar.find((s: any) => s.id === detay.id) || detay : null
-  const dK = dS ? kalemler(dS.id) : []
+  useEffect(() => { if (!detay?.id) { setDLedger([]); return } ledgerAl(detay.id).then(setDLedger) }, [detay?.id, d.sevkiyatlar]) // eslint-disable-line
+  const dK = dS ? kalemlerDen(dLedger) : []
   const dI = dS ? ihrBy[dS.id] : null
 
   return (
