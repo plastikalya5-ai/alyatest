@@ -23,6 +23,9 @@ Alya Plastik'in tanıtım sitesi ve yönetim paneli (mini ERP). Next.js (App Rou
 
 Yönetici uçları `/api/admin/ai` altındadır; kullanıcı başına saatte 80 istek sınırı vardır. Veriler OpenAI'a gönderilir: hassas alanları (vergi no vb.) göndermeyin, KVKK aydınlatmanızı buna göre güncelleyin.
 
+## Satınalma
+Panel: Satış / Lojistik → Satınalma Siparişleri (sipariş, kısmi teslim, stok girişi, alış faturası), Talepler / Teklifler (talep → tedarikçi teklifleri → karşılaştırma → `rpc_satinalma_teklif_siparise_cevir` ile tek işlemde siparişe çevirme) ve Tedarikçiler (cari “tedarikçi” kartları için zamanında teslim, ortalama termin, fiyat geçmişi).
+
 ## Sosyal medya + n8n
 Panel: Ürün Yönetimi → Sosyal Medya (AI içerik, takvim, görsel şablonlar). Otomatik paylaşım n8n'de kurulur:
 - **n8n → site** (çekme): `GET /api/webhooks/sosyal` tarihi gelmiş "planlandı" gönderileri verir; paylaşım sonrası `POST /api/webhooks/sosyal` `{"id","durum":"paylasildi","paylasim_url"}` ile işaretlenir (hata için `{"id","durum":"hata","mesaj"}`). Başlık: `Authorization: Bearer <N8N_SOSYAL_API_TOKEN>`.

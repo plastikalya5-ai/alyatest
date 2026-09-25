@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import SifreDegistir from './SifreDegistir'
 import { useEffect, useState } from 'react'
-import { Share2, LayoutDashboard, Package, Tag, MessageSquare, Settings, BarChart2, TrendingUp, Eye, Image, LogOut, ExternalLink, FileText, Bell, Activity, Layers, DollarSign, Receipt, Users2, PieChart, Landmark, FileSignature, Warehouse, Boxes, ArrowLeftRight, Cog, Wrench, FlaskConical, Factory, Zap, ClipboardList, PackageSearch, Truck, ShieldCheck, FlameKindling, UserCog, ScanLine, Sparkles, KeyRound } from 'lucide-react'
+import { Scale, Building2, Share2, LayoutDashboard, Package, Tag, MessageSquare, Settings, BarChart2, TrendingUp, Eye, Image, LogOut, ExternalLink, FileText, Bell, Activity, Layers, DollarSign, Receipt, Users2, PieChart, Landmark, FileSignature, Warehouse, Boxes, ArrowLeftRight, Cog, Wrench, FlaskConical, Factory, Zap, ClipboardList, PackageSearch, Truck, ShieldCheck, FlameKindling, UserCog, ScanLine, Sparkles, KeyRound } from 'lucide-react'
 
 const NAV = [
   { g:'Genel', mod:['dashboard'], items:[
@@ -56,6 +56,8 @@ const NAV = [
   { g:'Satış / Lojistik', mod:['satis','satinalma','sevkiyat'], items:[
     { href:'/admin/dashboard/satis/siparisler',       label:'Satış Siparişleri',    Icon:ClipboardList, mod:['satis'] },
     { href:'/admin/dashboard/satinalma/siparisler',   label:'Satınalma Siparişleri',Icon:PackageSearch, mod:['satinalma'] },
+    { href:'/admin/dashboard/satinalma/talepler',     label:'Talepler / Teklifler',Icon:Scale, mod:['satinalma'] },
+    { href:'/admin/dashboard/satinalma/tedarikciler',  label:'Tedarikçiler',        Icon:Building2, mod:['satinalma'] },
     { href:'/admin/dashboard/sevkiyat',               label:'Sevkiyat / İhracat',   Icon:Truck,         mod:['sevkiyat','stok'] },
   ]},
   { g:'Kalite & Bakım', mod:['kalite'], items:[

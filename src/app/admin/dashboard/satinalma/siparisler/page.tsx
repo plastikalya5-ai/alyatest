@@ -55,6 +55,12 @@ export default function SatinalmaPage() {
   const sonrakiNo = () => { const y = new Date().getFullYear(), p = `SA-${y}-`; return p + String(Math.max(0, ...d.satinalma.filter((s: any) => s.no?.startsWith(p)).map((s: any) => +s.no.slice(p.length) || 0)) + 1).padStart(4, '0') }
   const openNew = (pre?: { tedarikci_id?: string; kalemler?: Kalem[] }) => { setEditing(null); setForm({ no: sonrakiNo(), tedarikci_id: pre?.tedarikci_id || '', tarih: todayISO(), beklenen_teslim: '', notlar: '' }); setKalemler(pre?.kalemler?.length ? pre.kalemler : [bosKalem()]); setModal(true) }
   const openEdit = (s: any) => { setEditing(s); setForm({ no: s.no, tedarikci_id: s.tedarikci_id || '', tarih: s.tarih, beklenen_teslim: s.beklenen_teslim || '', notlar: s.notlar || '' }); setKalemler(P[s.id].ks.map((k: any) => ({ hammadde_id: k.hammadde_id, miktar: +k.miktar, birim_fiyat: +k.birim_fiyat || 0 }))); setModal(true) }
+  // Tedarikçi kartından gelen ?yeni=<tedarikçi id> bağlantısı: yeni sipariş formunu tedarikçi seçili açar
+  useEffect(() => {
+    if (loading) return
+    const y = new URLSearchParams(window.location.search).get('yeni')
+    if (y && /^[0-9a-f-]{36}$/.test(y)) { openNew({ tedarikci_id: y }); window.history.replaceState(null, '', window.location.pathname) }
+  }, [loading]) // eslint-disable-line
   const setK = (i: number, p: Partial<Kalem>) => setKalemler(ks => ks.map((k, j) => j === i ? { ...k, ...p } : k))
   const hamSec = (i: number, id: string) => { const h = ham[id]; setK(i, { hammadde_id: id, birim_fiyat: +h?.ortalama_maliyet || kalemler[i].birim_fiyat, miktar: h ? oneri(h) : kalemler[i].miktar }) }
   const formTutar = sum(kalemler, k => k.miktar * k.birim_fiyat)
