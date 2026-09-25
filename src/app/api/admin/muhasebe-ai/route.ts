@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { modulGerekli } from '@/lib/yetki'
 import { oranSiniri } from '@/lib/rate-limit'
 import { aiAktif, AiHata } from '@/lib/ai'
-import { belgedenCikar, muhasebeAsistan } from '@/lib/ai-muhasebe'
+import { belgedenCikar, kayitOner, muhasebeAsistan } from '@/lib/ai-muhasebe'
 import { topluKontrol } from '@/lib/mevzuat-takip'
 import type { Konusma } from '@/lib/ai-admin'
 
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   let body: any
   try { body = await req.json() } catch { return NextResponse.json({ error: 'Geçersiz istek' }, { status: 400 }) }
   const action = String(body?.action || '')
-  if (!['sor', 'belge_cikar', 'mevzuat_kontrol'].includes(action)) return NextResponse.json({ error: 'Geçersiz eylem' }, { status: 400 })
+  if (!['sor', 'belge_cikar', 'mevzuat_kontrol', 'kayit_oner'].includes(action)) return NextResponse.json({ error: 'Geçersiz eylem' }, { status: 400 })
 
   const y = await modulGerekli(['muhasebe']); if (y.hata) return y.hata
   if (action === 'mevzuat_kontrol') {
@@ -42,6 +42,10 @@ export async function POST(req: NextRequest) {
       if (!g.length || g[g.length - 1].role !== 'user') return NextResponse.json({ error: 'Soru gerekli' }, { status: 400 })
       const belge = typeof body.belge === 'string' && body.belge.trim() ? body.belge.slice(0, 9000) : undefined
       return NextResponse.json({ ok: true, ...(await muhasebeAsistan(y.sb, g, belge)) })
+    }
+    if (action === 'kayit_oner') {
+      if (!body.belge || typeof body.belge !== 'object' || !Array.isArray(body.belge.alanlar)) return NextResponse.json({ error: 'Belge verisi gerekli' }, { status: 400 })
+      return NextResponse.json({ ok: true, ...(await kayitOner(y.sb, body.belge)) })
     }
     if (typeof body.dosya !== 'string') return NextResponse.json({ error: 'Dosya gerekli' }, { status: 400 })
     return NextResponse.json({ ok: true, sonuc: await belgedenCikar(body.dosya, typeof body.istek === 'string' ? body.istek : '') })

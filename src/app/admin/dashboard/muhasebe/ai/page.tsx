@@ -8,6 +8,7 @@ import { belgeDataUrl } from '@/lib/belge-dosya'
 import { csvDownload, fmtDate, todayISO } from '@/lib/fmt'
 import { Page, PageHead, Badge, Tabs, Card, Modal, Field, FormGrid, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
+import KayitOner from '@/components/admin/KayitOner'
 import { Sparkles, Send, Trash2, Upload, FileText, Copy, Download, MessageSquare, Plus, Pencil, CheckCircle2, ShieldAlert, X, BookOpen, RefreshCw } from 'lucide-react'
 
 const ENDPOINT = '/api/admin/muhasebe-ai'
@@ -147,6 +148,7 @@ export default function MuhasebeAiPage() {
   const [belgeler, setBelgeler] = useState<BelgeSatir[]>([])
   const [okuyor, setOkuyor] = useState(false)
   const dosyaRef = useRef<HTMLInputElement>(null)
+  const [kayitBelge, setKayitBelge] = useState<BelgeSatir | null>(null)
 
   async function belgeOku(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []).slice(0, 6); e.target.value = ''
@@ -260,6 +262,7 @@ export default function MuhasebeAiPage() {
                     <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
                       <button className="adm-btn-ghost" onClick={() => csvAlanlar(b)}><Download size={13} />Alanları CSV indir</button>
                       <button className="adm-btn-ghost" onClick={() => kopyala(b)}><Copy size={13} />Kopyala</button>
+                      <button className="adm-btn-ghost" onClick={() => setKayitBelge(b)}><FileText size={13} />Kayda dönüştür</button>
                       <button className="adm-btn" onClick={() => sohbeteEkle(b)}><MessageSquare size={13} />Bu belgeyle sohbet et</button>
                     </div>
                   </>}
@@ -298,6 +301,7 @@ export default function MuhasebeAiPage() {
           <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 13 }}><input type="checkbox" checked={!!kbForm.aktif} onChange={e => setKbForm((f: any) => ({ ...f, aktif: e.target.checked }))} />Aktif (AI kullanır)</label>
         </FormGrid>
       </Modal>
+      {kayitBelge && kayitBelge.sonuc && <KayitOner belge={{ ad: kayitBelge.ad, sonuc: kayitBelge.sonuc }} onClose={() => setKayitBelge(null)} toast={toast} />}
       {toast.node}
     </div>
   )
