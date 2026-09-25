@@ -25,10 +25,18 @@ export async function proxy(request: NextRequest) {
   const isProtected = path.startsWith('/admin/dashboard')
   const isLogin = path === '/admin/login'
 
-  if (isProtected && !user) {
+  // İki adımlı doğrulaması açık kullanıcı, kodu girmeden (aal2 olmadan) panele alınmaz; kod adımı için giriş sayfasına yönlendirilir.
+  // (Veri erişimi ayrıca veritabanında zorunludur: aal1 oturum hiçbir yetkili veriyi okuyamaz.)
+  let kodBekliyor = false
+  if (user && user.factors?.some(f => f.status === 'verified' && f.factor_type === 'totp')) {
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    kodBekliyor = aal?.currentLevel !== 'aal2'
+  }
+
+  if (isProtected && (!user || kodBekliyor)) {
     return NextResponse.redirect(new URL('/admin/login', request.url))
   }
-  if (isLogin && user) {
+  if (isLogin && user && !kodBekliyor) {
     return NextResponse.redirect(new URL('/admin/dashboard', request.url))
   }
 

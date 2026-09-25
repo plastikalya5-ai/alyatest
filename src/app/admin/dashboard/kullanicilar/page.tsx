@@ -5,7 +5,7 @@ import { erp } from '@/lib/erp-client'
 import { fmtDate, fmtDateTime } from '@/lib/fmt'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Drawer, Modal, Field, FormGrid, InfoRow, Divider, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
-import { ShieldCheck, UserPlus, Pencil, Trash2, Power, Send, Mail, Users2, Check, ShieldAlert, Copy } from 'lucide-react'
+import { ShieldCheck, UserPlus, Pencil, Trash2, Power, Send, Mail, Users2, Check, ShieldAlert, Copy, ShieldOff } from 'lucide-react'
 
 const MODULLER: { k: string; l: string; grup: string }[] = [
   { k: 'dashboard', l: 'Dashboard, Analitik, Başvurular, Ziyaretçiler', grup: 'Genel' },
@@ -74,6 +74,10 @@ export default function KullanicilarPage() {
     if (!confirm(`${u.full_name || u.email} girişi engellensin mi? Aktif oturumları kesilir, tekrar açana kadar giriş yapamaz.`)) return
     try { await api({ action: 'ban', id: u.id }); toast.show('Kullanıcı pasife alındı'); load() } catch {}
   }
+  async function mfaSifirla(u: any) {
+    if (!confirm(`${u.full_name || u.email} kullanıcısının iki adımlı doğrulaması sıfırlansın mı?\n\nTelefonunu kaybettiyse yapın. Sonraki girişte yalnızca şifresi istenir; kullanıcıya doğrulamayı yeniden açmasını söyleyin.`)) return
+    try { await api({ action: 'mfa_sifirla', id: u.id }); toast.show('İki adımlı doğrulama sıfırlandı'); load() } catch {}
+  }
   async function aktifEt(u: any) { try { await api({ action: 'unban', id: u.id }); toast.show('Kullanıcı aktifleştirildi'); load() } catch {} }
   async function sil(u: any) {
     if (!confirm(`${u.full_name || u.email} kalıcı olarak silinsin mi? Bu işlem geri alınamaz.\n\nGeçmiş kayıtlardaki "oluşturan/güncelleyen" bilgisi etkilenmez.`)) return
@@ -113,6 +117,7 @@ export default function KullanicilarPage() {
       <select className="adm-sel" value={u.role_id || ''} onChange={e => rolDegistir(u, e.target.value)} onClick={e => e.stopPropagation()} style={u.role_id ? undefined : { borderColor: 'var(--adm-amber)', color: 'var(--adm-amber)' }}>
         <option value="">Rol atanmadı</option>{roller.map(r => <option key={r.id} value={r.id}>{r.ad}</option>)}
       </select>) },
+    { key: 'mfa', label: '2FA', width: 80, sort: u => u.mfa ? 1 : 0, render: u => u.mfa ? <Badge tone="green">Açık</Badge> : <span style={{ color: 'var(--adm-tx3)', fontSize: 12 }}>Kapalı</span>, hideSm: true },
     { key: 'giris', label: 'Son Giriş', sort: u => u.last_sign_in_at || '', render: u => u.last_sign_in_at ? fmtDateTime(u.last_sign_in_at) : <span style={{ color: 'var(--adm-tx3)' }}>Hiç giriş yapmadı</span>, hideSm: true },
     { key: 'durum', label: 'Durum', width: 130, sort: u => u.banned ? 1 : !u.email_confirmed_at ? 0 : 2, render: u => u.banned ? <Badge tone="red">Pasif</Badge> : !u.email_confirmed_at ? <Badge tone="amber">Davet bekliyor</Badge> : <Badge tone="green">Aktif</Badge> },
     { key: 'act', label: '', width: 130, align: 'right', render: u => (
@@ -167,6 +172,7 @@ export default function KullanicilarPage() {
       <Drawer open={!!detay} onClose={() => setDetay(null)} width={440} title={detay?.full_name || detay?.email} sub={detay?.email}
         footer={detay && <>
           <button className="adm-btn-danger" onClick={() => sil(detay)}><Trash2 size={13} />Sil</button>
+          {detay.mfa && detay.id !== meId && <button className="adm-btn-ghost" onClick={() => mfaSifirla(detay)} title="Telefonunu kaybeden kullanıcı için"><ShieldOff size={13} />2FA sıfırla</button>}
           {detay.id !== meId && (detay.banned ? <button className="adm-btn" onClick={() => aktifEt(detay)}><Power size={14} />Aktifleştir</button> : <button className="adm-btn-ghost" onClick={() => pasifeAl(detay)}><Power size={13} />Pasife Al</button>)}
         </>}>
         {detay && <div style={{ padding: 20 }}>

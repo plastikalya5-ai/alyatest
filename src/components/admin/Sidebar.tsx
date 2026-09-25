@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import SifreDegistir from './SifreDegistir'
+import MfaAyar from './MfaAyar'
 import { useEffect, useState } from 'react'
 import { Scale, Building2, Share2, LayoutDashboard, Package, Tag, MessageSquare, Settings, BarChart2, TrendingUp, Eye, Image, LogOut, ExternalLink, FileText, Bell, Activity, Layers, DollarSign, Receipt, Users2, PieChart, Landmark, FileSignature, Warehouse, Boxes, ArrowLeftRight, Cog, Wrench, FlaskConical, Factory, Zap, ClipboardList, PackageSearch, Truck, ShieldCheck, FlameKindling, UserCog, ScanLine, Sparkles, KeyRound } from 'lucide-react'
 
@@ -81,6 +82,7 @@ export default function AdminSidebar({ onClose }: { onClose?: () => void } = {})
   const [name, setName] = useState('Admin')
   const [email, setEmail] = useState('')
   const [sifreAcik, setSifreAcik] = useState(false)
+  const [mfaAcik, setMfaAcik] = useState(false)
   const [moduller, setModuller] = useState<string[]>([])
 
   useEffect(() => {
@@ -148,12 +150,14 @@ export default function AdminSidebar({ onClose }: { onClose?: () => void } = {})
             <p style={{ fontSize:10,color:'var(--adm-tx3)',marginTop:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{email}</p>
           </div>
         </div>
+        <button type="button" className="adm-btn-ghost" style={{ width:'100%', justifyContent:'center', fontSize:11.5, padding:'6px 8px', marginBottom:6 }} onClick={() => setMfaAcik(true)}><ShieldCheck size={12} strokeWidth={1.8}/>İki adımlı doğrulama</button>
         <div style={{ display:'flex', gap:6 }}>
           <button type="button" className="adm-btn-ghost" style={{ flex:1, justifyContent:'center', fontSize:11.5, padding:'6px 8px' }} onClick={() => setSifreAcik(true)}><KeyRound size={12} strokeWidth={1.8}/>Şifre değiştir</button>
           <button type="button" className="adm-btn-ghost" style={{ flex:1, justifyContent:'center', fontSize:11.5, padding:'6px 8px' }} onClick={async () => { await createClient().auth.signOut(); window.location.href = '/admin/login' }}><LogOut size={12} strokeWidth={1.8}/>Çıkış yap</button>
         </div>
       </div>
       <SifreDegistir open={sifreAcik} onClose={() => setSifreAcik(false)} email={email} />
+      <MfaAyar open={mfaAcik} onClose={() => setMfaAcik(false)} />
     </aside>
   )
 }

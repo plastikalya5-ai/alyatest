@@ -23,6 +23,11 @@ Alya Plastik'in tanıtım sitesi ve yönetim paneli (mini ERP). Next.js (App Rou
 
 Yönetici uçları `/api/admin/ai` altındadır; kullanıcı başına saatte 80 istek sınırı vardır. Veriler OpenAI'a gönderilir: hassas alanları (vergi no vb.) göndermeyin, KVKK aydınlatmanızı buna göre güncelleyin.
 
+## Yönetici güvenliği
+- **İki adımlı doğrulama (TOTP):** kenar çubuğu → “İki adımlı doğrulama”. Açık olan kullanıcı, kodu girmeden panele ve veriye erişemez: zorunluluk `private.mfa_tamam()` ile `has_module/is_staff/user_modules` içinde, yani tüm RLS politikalarında uygulanır (`aal2` gerekir).
+- **Kurtarma:** telefonunu kaybeden kullanıcının doğrulaması, tam yetkili başka bir yönetici tarafından Kullanıcılar → kullanıcı → “2FA sıfırla” ile kaldırılır. Tek yönetici kilitlenirse Supabase paneli → Authentication → Users → kullanıcı → MFA faktörünü silin. Bu yüzden yedek bir tam yetkili yönetici hesabı bulundurun.
+- **Güvenlik bildirimleri:** Bildirimler sayfasındaki “Yönetici Güvenlik Olayı” alıcılarına şifre/2FA değişikliği, kullanıcı davet-silme-pasife alma ve rol değişikliği bildirilir.
+
 ## Satınalma
 Panel: Satış / Lojistik → Satınalma Siparişleri (sipariş, kısmi teslim, stok girişi, alış faturası), Talepler / Teklifler (talep → tedarikçi teklifleri → karşılaştırma → `rpc_satinalma_teklif_siparise_cevir` ile tek işlemde siparişe çevirme) ve Tedarikçiler (cari “tedarikçi” kartları için zamanında teslim, ortalama termin, fiyat geçmişi). Teslim alma `rpc_satinalma_teslim_al` ile tek işlemde yapılır. Muhasebe AI'da okunan alış faturası, `SiparisEslestir` ile tedarikçinin siparişleriyle karşılaştırılır (tutar/miktar/fiyat, teslim alınan mal esas; sistemin oluşturduğu `ALIS-…` faturasıyla çifte kayıt uyarısı) ve `faturalar.satinalma_siparis_id` ile bağlanır.
 

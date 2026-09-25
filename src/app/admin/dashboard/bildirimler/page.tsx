@@ -11,6 +11,7 @@ const sb = createClient()
 const EVENTS = [
   { event:'new_contact', label:'Yeni Başvuru', desc:'Birisi iletişim formunu doldurduğunda bildirim al' },
   { event:'new_visit_milestone', label:'Ziyaret Kilometre Taşı', desc:'Site 100, 500, 1000 ziyarete ulaştığında bildirim al' },
+  { event:'yonetici_olay', label:'Yönetici Güvenlik Olayı', desc:'Şifre/iki adımlı doğrulama değişikliği, kullanıcı ekleme-silme-pasife alma ve rol değişikliklerinde anında bildirim al (önerilir)' },
   { event:'gunluk_ozet', label:'Günlük Özet', desc:'Her sabah 08:30 (Pzt-Cmt): vadesi geçen alacaklar/ödemeler, çek-senet, kritik stok, geciken siparişler, yanıt bekleyen başvurular. Dikkat gerektiren madde yoksa gönderilmez' },
   { event:'mevzuat_uyari', label:'Mevzuat Değişiklik Uyarısı', desc:'Günlük kaynak kontrolünde bir mevzuat kaydında değişiklik olasılığı bulunursa bildirim al' },
 ]

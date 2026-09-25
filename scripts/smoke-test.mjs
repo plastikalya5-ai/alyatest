@@ -47,6 +47,16 @@ await check('/api/admin/sosyal-gonder oturumsuz istekte 401 dönüyor', async ()
   return r.status === 401
 })
 
+await check('/api/admin/olay oturumsuz istekte 401 dönüyor', async () => {
+  const r = await fetch(base + '/api/admin/olay', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ olay: 'sifre_degisti' }) })
+  return r.status === 401
+})
+
+await check('ürün sayfası açılıyor ve geçersiz adres 404 dönüyor', async () => {
+  const [a, b] = await Promise.all([fetch(base + '/urun/ufo-saksi'), fetch(base + '/urun/olmayan-bir-urun-xyz')])
+  return a.status === 200 && b.status === 404
+})
+
 await check('/api/db kaldırılmış (404 dönüyor)', async () => {
   const r = await fetch(base + '/api/db?table=cari_hesaplar')
   return r.status === 404

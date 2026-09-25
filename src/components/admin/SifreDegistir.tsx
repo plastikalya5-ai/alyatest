@@ -30,6 +30,7 @@ export default function SifreDegistir({ open, onClose, email }: { open: boolean;
     const { error } = await sb.auth.updateUser({ password: yeni })
     if (error) { setBusy(false); return setHata(error.message.includes('weak') || error.message.includes('Password') ? 'Bu şifre kabul edilmedi (çok zayıf veya bilinen bir şifre olabilir).' : 'Şifre değiştirilemedi, tekrar deneyin.') }
     await sb.auth.signOut({ scope: 'others' }).catch(() => {}) // diğer cihazlardaki oturumları kapat
+    fetch('/api/admin/olay', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ olay: 'sifre_degisti' }) }).catch(() => {})
     setBusy(false); setTamam(true)
   }
 

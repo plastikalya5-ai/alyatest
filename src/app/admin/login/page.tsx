@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 export default function AdminLoginPage() {
@@ -9,14 +9,41 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false)
   const [resetMode, setResetMode] = useState(false)
   const [resetMsg, setResetMsg] = useState('')
+  const [mfaFaktor, setMfaFaktor] = useState<string | null>(null)   // doğrulanmış TOTP faktörü varsa kod adımı
+  const [kod, setKod] = useState('')
+
+  // Şifre adımı geçilmiş ama kod girilmemiş oturum (ör. proxy /admin/login'e yönlendirdi): doğrudan kod adımını göster
+  useEffect(() => {
+    (async () => {
+      const sb = createClient()
+      const { data: { user } } = await sb.auth.getUser()
+      const f = user?.factors?.find(x => x.status === 'verified' && x.factor_type === 'totp')
+      if (!f) return
+      const { data: a } = await sb.auth.mfa.getAuthenticatorAssuranceLevel()
+      if (a?.currentLevel === 'aal2') { window.location.href = '/admin/dashboard'; return }
+      setMfaFaktor(f.id)
+    })()
+  }, [])
 
   async function login(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true); setErr('')
-    const { error } = await createClient().auth.signInWithPassword({ email, password: pass })
-    if (error) { setErr('E-posta veya şifre hatalı.'); setLoading(false) }
-    else window.location.href = '/admin/dashboard'
+    const { data, error } = await createClient().auth.signInWithPassword({ email, password: pass })
+    if (error) { setErr('E-posta veya şifre hatalı.'); setLoading(false); return }
+    const f = data.user?.factors?.find(x => x.status === 'verified' && x.factor_type === 'totp')
+    if (f) { setMfaFaktor(f.id); setKod(''); setLoading(false); return }   // şifre doğru → ikinci adım
+    window.location.href = '/admin/dashboard'
   }
+
+  async function kodDogrula(e: React.FormEvent) {
+    e.preventDefault(); if (loading || !mfaFaktor) return
+    if (!/^\d{6}$/.test(kod)) return setErr('6 haneli kodu girin.')
+    setLoading(true); setErr('')
+    const { error } = await createClient().auth.mfa.challengeAndVerify({ factorId: mfaFaktor, code: kod })
+    if (error) { setErr('Kod hatalı veya süresi dolmuş. Uygulamadaki güncel kodu girin.'); setKod(''); setLoading(false); return }
+    window.location.href = '/admin/dashboard'
+  }
+  async function vazgec() { await createClient().auth.signOut(); setMfaFaktor(null); setKod(''); setPass(''); setErr('') }
 
   async function resetPassword(e: React.FormEvent) {
     e.preventDefault()
@@ -41,7 +68,17 @@ export default function AdminLoginPage() {
           <p style={{ fontSize:12.5, color:'var(--adm-tx3)', marginTop:4 }}>Yönetim Paneli</p>
         </div>
 
-        {!resetMode ? (
+        {mfaFaktor ? (
+          <form onSubmit={kodDogrula} className="adm-card" style={{ padding:28 }}>
+            <p style={{ fontSize:13, color:'var(--adm-tx2, var(--adm-tx3))', marginBottom:16, lineHeight:1.6 }}>İki adımlı doğrulama: telefonunuzdaki doğrulayıcı uygulamada görünen <b>6 haneli kodu</b> girin.</p>
+            <input className="adm-inp" inputMode="numeric" autoComplete="one-time-code" maxLength={6} autoFocus placeholder="123456" value={kod} onChange={e=>setKod(e.target.value.replace(/\D/g,''))} style={{ letterSpacing:8, textAlign:'center', fontSize:20, marginBottom:14 }} />
+            {err && <p style={{ color:'var(--adm-red)', fontSize:12.5, marginBottom:14, textAlign:'center' }}>{err}</p>}
+            <div style={{ display:'flex', gap:8 }}>
+              <button type="button" className="adm-btn-ghost" style={{ flex:1, justifyContent:'center' }} onClick={vazgec}>Vazgeç</button>
+              <button type="submit" className="adm-btn" disabled={loading || kod.length !== 6} style={{ flex:1, justifyContent:'center' }}>{loading ? 'Doğrulanıyor...' : 'Doğrula'}</button>
+            </div>
+          </form>
+        ) : !resetMode ? (
           <form onSubmit={login} className="adm-card" style={{ padding:28 }}>
             <div style={{ marginBottom:16 }}>
               <label className="adm-label">E-posta</label>
