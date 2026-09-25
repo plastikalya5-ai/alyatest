@@ -36,6 +36,9 @@ const NAV = [
     { href:'/admin/dashboard/muhasebe/raporlar', label:'Raporlar',     Icon:PieChart,    mod:['muhasebe'] },
     { href:'/admin/dashboard/muhasebe/ai', label:'Muhasebe AI', Icon:Sparkles, mod:['muhasebe'] },
   ]},
+  { g:'Personel', mod:['personel'], items:[
+    { href:'/admin/dashboard/personel', label:'Giriş-Çıkış / Puantaj', Icon:Users2, mod:['personel'] },
+  ]},
   { g:'Stok / Depo', mod:['stok'], items:[
     { href:'/admin/dashboard/stok/depo',       label:'Depolar',           Icon:Warehouse,     mod:['stok'] },
     { href:'/admin/dashboard/stok/hammadde',   label:'Hammadde',          Icon:Boxes,         mod:['stok'] },

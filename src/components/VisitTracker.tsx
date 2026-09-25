@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 export default function VisitTracker() {
   const pathname = usePathname()
   useEffect(() => {
-    if (pathname.startsWith('/admin')) return
+    if (pathname.startsWith('/admin') || pathname.startsWith('/kiosk')) return
     try {
       if (sessionStorage.getItem('alya_visit')) return
       sessionStorage.setItem('alya_visit', '1')

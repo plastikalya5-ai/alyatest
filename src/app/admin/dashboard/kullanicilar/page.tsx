@@ -13,6 +13,7 @@ const MODULLER: { k: string; l: string; grup: string }[] = [
   { k: 'muhasebe_cari', l: 'Yalnızca Cari Hesaplar', grup: 'Muhasebe' },
   { k: 'stok', l: 'Stok / Depo / Hammadde / Barkod Terminali', grup: 'Operasyon' },
   { k: 'uretim', l: 'Üretim (makine, kalıp, reçete, emirler, canlı üretim)', grup: 'Operasyon' },
+  { k: 'personel', l: 'Personel giriş-çıkış, puantaj, izin', grup: 'Operasyon' },
   { k: 'kalite', l: 'Kalite Kontrol ve Fire Yönetimi', grup: 'Operasyon' },
   { k: 'satis', l: 'Satış Siparişleri', grup: 'Satış / Lojistik' },
   { k: 'satinalma', l: 'Satınalma Siparişleri', grup: 'Satış / Lojistik' },
