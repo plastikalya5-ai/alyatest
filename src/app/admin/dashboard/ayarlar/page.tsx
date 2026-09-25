@@ -121,7 +121,7 @@ export default function AdminAyarlarPage() {
             <button type="submit" className="adm-btn" disabled={saving} style={{padding:'10px 24px'}}>
               <Save size={14}/>{saving?'Kaydediliyor...':'Kaydet'}
             </button>
-            <a href="https://alyatest-alyis.vercel.app" target="_blank" rel="noopener noreferrer nofollow"
+            <a href="/" target="_blank" rel="noopener noreferrer nofollow"
               className="adm-btn-ghost" style={{fontSize:12}}>
               <ExternalLink size={13}/>Siteyi Önizle
             </a>
