@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { erp } from '@/lib/erp-client'
 import { muh } from '@/lib/muhasebe-client'
 import AdminTopBar from '@/components/admin/TopBar'
-import { Bell, Mail, Phone, Save, Info, AlertTriangle, Boxes, Wrench, FileSignature } from 'lucide-react'
+import { Mail, Phone, Save, Info, AlertTriangle, Boxes, Wrench, FileSignature } from 'lucide-react'
 
 const sb = createClient()
 

@@ -7,7 +7,7 @@ import { muh } from '@/lib/muhasebe-client'
 import { fmt, fmtK, fmtN, fmtInt, fmtDate, fmtDateTime, todayISO, daysBetween } from '@/lib/fmt'
 import { useUretim, byId, EMIR_DURUM, MAKINE_DURUM, yuzde, fireOrani, receteMaliyet, emirIhtiyac } from '@/lib/uretim-utils'
 import { sum } from '@/lib/muh-utils'
-import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, InfoRow, Divider, Empty, useToast } from '@/components/admin/erp/ui'
+import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Drawer, Modal, Field, FormGrid, InfoRow, Divider, Empty, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
 import { Plus, Factory, Play, Pause, CheckCircle2, Ban, Undo2, Activity, AlertTriangle, PackageSearch, Timer, TrendingUp, ShieldCheck, Send, Layers, FlaskConical, ShoppingCart } from 'lucide-react'
 

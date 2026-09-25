@@ -67,7 +67,7 @@ export default function AdminSidebar({ onClose }: { onClose?: () => void } = {})
   const pathname = usePathname()
   const [init, setInit] = useState('AP')
   const [name, setName] = useState('Admin')
-  const [moduller, setModuller] = useState<string[]>(['*'])
+  const [moduller, setModuller] = useState<string[]>([])
 
   useEffect(() => {
     const sb = createClient()

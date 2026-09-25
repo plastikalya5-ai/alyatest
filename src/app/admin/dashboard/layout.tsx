@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import AdminSidebar from '@/components/admin/Sidebar'
-import { Menu, X } from 'lucide-react'
+import { Menu } from 'lucide-react'
 
 export default function AdminDashboardLayout({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false)

@@ -8,7 +8,7 @@ import { fmtInt, fmtN } from '@/lib/fmt'
 import { sum, CHART_COLORS } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Card, Empty } from '@/components/admin/erp/ui'
 import { Donut, BarList } from '@/components/admin/erp/charts'
-import { Package, FolderTree, Star, Sparkles, ImageOff, FileText, ScanLine, Layers, FlaskConical, CheckCircle2, Circle } from 'lucide-react'
+import { Package, Star, Sparkles, ImageOff, FileText, ScanLine, Layers, FlaskConical, CheckCircle2, Circle } from 'lucide-react'
 
 export default function IstatistikPage() {
   const { d } = useUretim(['variants', 'receteler'])

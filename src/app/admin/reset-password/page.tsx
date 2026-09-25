@@ -9,12 +9,13 @@ export default function ResetPasswordPage() {
   const [ok, setOk] = useState(false)
   const [loading, setLoading] = useState(false)
   const [ready, setReady] = useState(false)
+  const [hasSession, setHasSession] = useState(false)
 
   useEffect(() => {
     // Supabase, e-postadaki bağlantıdan gelen recovery token'ı otomatik olarak
     // oturuma işler (@supabase/ssr) — burada sadece oturumun kurulmasını bekliyoruz.
     const sb = createClient()
-    sb.auth.getSession().then(() => setReady(true))
+    sb.auth.getSession().then(({ data }) => { setHasSession(!!data.session); setReady(true) })
   }, [])
 
   async function submit(e: React.FormEvent) {
@@ -43,6 +44,11 @@ export default function ResetPasswordPage() {
           </div>
         ) : !ready ? (
           <p style={{textAlign:'center',fontSize:12.5,color:'var(--adm-tx3)'}}>Yükleniyor...</p>
+        ) : !hasSession ? (
+          <div className="adm-card" style={{ padding:28, textAlign:'center' }}>
+            <p style={{fontSize:13,color:'var(--adm-tx)',marginBottom:16}}>Bu bağlantı geçersiz veya süresi dolmuş. Giriş sayfasından &quot;Şifremi unuttum&quot; ile yeni bağlantı isteyin.</p>
+            <a href="/admin/login" className="adm-btn" style={{justifyContent:'center'}}>Giriş Sayfası</a>
+          </div>
         ) : (
           <form onSubmit={submit} className="adm-card" style={{ padding:28 }}>
             <div style={{ marginBottom:16 }}>

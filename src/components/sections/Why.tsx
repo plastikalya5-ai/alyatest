@@ -1,5 +1,4 @@
 "use client";
-import { useRef } from "react";
 import type { Stats } from "@/lib/supabase";
 import { IMG } from "@/data/images";
 

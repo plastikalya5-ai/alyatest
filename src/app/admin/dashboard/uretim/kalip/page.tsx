@@ -2,12 +2,12 @@
 import { useMemo, useState } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
 import { erp } from '@/lib/erp-client'
-import { fmt, fmtK, fmtN, fmtInt, fmtDate, todayISO, daysBetween } from '@/lib/fmt'
+import { fmt, fmtK, fmtInt, fmtDate, todayISO, daysBetween } from '@/lib/fmt'
 import { useUretim, byId, KALIP_DURUM, EMIR_DURUM, kalipBaski } from '@/lib/uretim-utils'
 import { sum } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, InfoRow, Divider, Empty, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
-import { Plus, Pencil, Trash2, Wrench, AlertTriangle, Package, Layers, CalendarClock, Coins } from 'lucide-react'
+import { Plus, Pencil, Trash2, Wrench, AlertTriangle, Package, Layers, Coins } from 'lucide-react'
 
 const bos = { kod: '', ad: '', urettigi_urun_id: '', kavite_sayisi: '1', lokasyon: '', bakim_periyodu_gun: '90', sonraki_bakim: '', durum: 'depoda', notlar: '', uyumlu: [] as string[] }
 const bakimBos = () => ({ tarih: todayISO(), aciklama: '', maliyet: '' })

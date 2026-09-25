@@ -7,9 +7,9 @@ import { muh } from '@/lib/muhasebe-client'
 import { fmt, fmtK, fmtN, fmtInt, fmtDate, todayISO, daysBetween } from '@/lib/fmt'
 import { useUretim, byId, sevkEdilen, rezerveMap, SIPARIS_ACIK } from '@/lib/uretim-utils'
 import { sum } from '@/lib/muh-utils'
-import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, InfoRow, Divider, Empty, useToast } from '@/components/admin/erp/ui'
+import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, Divider, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
-import { Plus, ClipboardList, Truck, Factory, Receipt, Ban, CheckCircle2, Pencil, Trash2, Timer, AlertTriangle, Coins, Package, X, Copy } from 'lucide-react'
+import { Plus, ClipboardList, Truck, Factory, Receipt, Ban, CheckCircle2, Pencil, Trash2, AlertTriangle, Coins, X, Copy } from 'lucide-react'
 
 const DURUM: Record<string, { l: string; tone: any }> = { beklemede: { l: 'Beklemede', tone: 'muted' }, uretimde: { l: 'Üretimde', tone: 'blue' }, kismen_hazir: { l: 'Kısmen Hazır', tone: 'amber' }, hazir: { l: 'Hazır', tone: 'green' }, sevk_edildi: { l: 'Sevk Edildi', tone: 'ac' }, tamamlandi: { l: 'Tamamlandı', tone: 'green' }, iptal: { l: 'İptal', tone: 'red' } }
 type Kalem = { variant_id: string; urun_adi: string; miktar: number; birim_fiyat: number; not?: string }

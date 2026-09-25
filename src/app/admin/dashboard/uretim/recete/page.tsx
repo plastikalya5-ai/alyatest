@@ -2,13 +2,13 @@
 import { useMemo, useState } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
 import { erp } from '@/lib/erp-client'
-import { fmt, fmtK, fmtN, fmtDate } from '@/lib/fmt'
+import { fmt, fmtN, fmtDate } from '@/lib/fmt'
 import { useUretim, byId, receteMaliyet } from '@/lib/uretim-utils'
-import { sum, CHART_COLORS } from '@/lib/muh-utils'
-import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, InfoRow, Divider, Empty, useToast } from '@/components/admin/erp/ui'
+import { sum } from '@/lib/muh-utils'
+import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, Divider, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
 import { Donut } from '@/components/admin/erp/charts'
-import { Plus, Pencil, Trash2, FlaskConical, Copy, Power, Coins, AlertTriangle, Timer, X } from 'lucide-react'
+import { Plus, Pencil, Trash2, FlaskConical, Copy, Power, Coins, AlertTriangle, X } from 'lucide-react'
 
 type Kalem = { hammadde_id: string; miktar: string; giris: string }
 const bos = { urun_id: '', versiyon: '1', kalip_id: '', kavite_sayisi: '1', hedef_cevrim_suresi: '', hedef_fire_orani: '0', iscilik_maliyeti: '0', genel_gider_maliyeti: '0', amortisman_maliyeti: '0', notlar: '' }

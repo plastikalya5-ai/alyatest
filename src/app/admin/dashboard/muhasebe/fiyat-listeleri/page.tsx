@@ -4,7 +4,7 @@ import AdminTopBar from '@/components/admin/TopBar'
 import { erp } from '@/lib/erp-client'
 import { muh } from '@/lib/muhasebe-client'
 import { fmt, fmtN } from '@/lib/fmt'
-import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Modal, Field, FormGrid, Card, Empty, useToast } from '@/components/admin/erp/ui'
+import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Modal, Field, FormGrid, Card, Empty, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
 import { Plus, Copy, Trash2, Pencil, Star, Tag, Percent, Upload, Package, Users2, BadgePercent } from 'lucide-react'
 

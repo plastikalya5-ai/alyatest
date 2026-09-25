@@ -5,9 +5,9 @@ import { erp } from '@/lib/erp-client'
 import { fmtN, fmtInt, fmtDate, todayISO } from '@/lib/fmt'
 import { useUretim, byId, sevkEdilen, SIPARIS_ACIK } from '@/lib/uretim-utils'
 import { sum } from '@/lib/muh-utils'
-import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Drawer, Modal, Field, FormGrid, InfoRow, Divider, Empty, useToast } from '@/components/admin/erp/ui'
+import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Drawer, Modal, Field, FormGrid, InfoRow, Divider, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
-import { Plus, Truck, Globe, PackageCheck, Boxes, Weight, Printer, Ban, Send, CheckCircle2, Trash2, Pencil } from 'lucide-react'
+import { Plus, Truck, Globe, PackageCheck, Boxes, Weight, Printer, Ban, Send, CheckCircle2, Trash2 } from 'lucide-react'
 
 const DURUM: Record<string, { l: string; tone: any }> = { hazirlaniyor: { l: 'Hazırlanıyor', tone: 'muted' }, yola_cikti: { l: 'Yolda', tone: 'blue' }, teslim_edildi: { l: 'Teslim Edildi', tone: 'green' }, iptal: { l: 'İptal', tone: 'red' } }
 const INCOTERMS = ['EXW', 'FCA', 'FOB', 'CFR', 'CIF', 'CPT', 'CIP', 'DAP', 'DPU', 'DDP']

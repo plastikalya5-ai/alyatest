@@ -33,8 +33,9 @@ export function applyQuery(q: any, sp: URLSearchParams) {
   const fields = (sp.get('searchIn') || '').split(',').filter(f => FIELD.test(f))
   if (term && fields.length) q = q.or(fields.map(f => `${f}.ilike.%${term}%`).join(','))
 
-  const limit = sp.get('limit') ? Math.min(+sp.get('limit')!, 1000) : null
-  const offset = sp.get('offset') ? Math.max(+sp.get('offset')!, 0) : 0
+  const limRaw = Number(sp.get('limit')), offRaw = Number(sp.get('offset'))
+  const limit = sp.get('limit') && Number.isFinite(limRaw) && limRaw > 0 ? Math.min(Math.floor(limRaw), 1000) : null
+  const offset = sp.get('offset') && Number.isFinite(offRaw) ? Math.max(Math.floor(offRaw), 0) : 0
   if (offset && limit) q = q.range(offset, offset + limit - 1)
   else if (limit) q = q.limit(limit)
   return q

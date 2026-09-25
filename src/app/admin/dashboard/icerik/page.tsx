@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AdminTopBar from '@/components/admin/TopBar'
-import { FileText, Save, Eye, RefreshCw } from 'lucide-react'
+import { Save, Eye, RefreshCw } from 'lucide-react'
 
 const sb = createClient()
 

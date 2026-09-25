@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 
 const BASE = "https://alyatest-alyis.vercel.app";
 
+// Tek sayfalık site: #hash adresleri ayrı URL sayılmaz, bu yüzden yalnızca kök adres listelenir.
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
     {
@@ -9,30 +10,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: new Date(),
       changeFrequency: "weekly",
       priority: 1,
-    },
-    {
-      url: `${BASE}/#products`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.9,
-    },
-    {
-      url: `${BASE}/#collection`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.8,
-    },
-    {
-      url: `${BASE}/#why`,
-      lastModified: new Date(),
-      changeFrequency: "monthly",
-      priority: 0.7,
-    },
-    {
-      url: `${BASE}/#contact`,
-      lastModified: new Date(),
-      changeFrequency: "monthly",
-      priority: 0.8,
     },
   ];
 }

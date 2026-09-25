@@ -72,6 +72,12 @@ export async function POST(req: NextRequest) {
     }
     if (action === 'role') {
       const { id, role_id } = body
+      if (id === user.id) {
+        // Kendi rolünü yönetim yetkisi olmayan bir role çevirip panelden kilitlenmeyi engelle
+        const { data: yeni } = role_id ? await sb.from('roller').select('moduller').eq('id', role_id).single() : { data: null }
+        const m: string[] = yeni?.moduller || []
+        if (!(m.includes('*') || m.includes('yonetim'))) return NextResponse.json({ error: 'Kendi yönetim yetkini kaldıramazsın' }, { status: 400 })
+      }
       const r = await sb.from('admin_profiles').update({ role_id: role_id || null }).eq('id', id)
       if (r.error) throw new Error(r.error.message)
       return NextResponse.json({ ok: true })

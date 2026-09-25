@@ -6,9 +6,9 @@ import { createClient } from '@/lib/supabase/client'
 import { fmtN, fmtInt, fmtDate, fmtDateTime, fmtPct } from '@/lib/fmt'
 import { useUretim, byId, receteMaliyet } from '@/lib/uretim-utils'
 import { sum, CHART_COLORS } from '@/lib/muh-utils'
-import { Page, PageHead, Kpi, KpiGrid, Card, Badge, Tabs, Drawer, Modal, Field, FormGrid, InfoRow, Divider, Empty, Money, useToast } from '@/components/admin/erp/ui'
+import { Page, PageHead, Kpi, KpiGrid, Card, Badge, Tabs, Drawer, Modal, Field, FormGrid, InfoRow, Divider, Empty, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
-import { TrendChart, Donut, BarList } from '@/components/admin/erp/charts'
+import { TrendChart, BarList } from '@/components/admin/erp/charts'
 import { Plus, Pencil, Trash2, ShieldCheck, ShieldAlert, PackageX, Percent, ClipboardList, Flame, CheckCircle2 } from 'lucide-react'
 
 const SONUC: Record<string, { l: string; tone: any }> = { uygun: { l: 'Uygun', tone: 'green' }, sartli_uygun: { l: 'Şartlı Uygun', tone: 'amber' }, red: { l: 'Red', tone: 'red' } }

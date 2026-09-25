@@ -3,9 +3,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
 import { erp } from '@/lib/erp-client'
 import { fmtDate, fmtDateTime } from '@/lib/fmt'
-import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Drawer, Modal, Field, FormGrid, InfoRow, Divider, Empty, useToast } from '@/components/admin/erp/ui'
+import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Drawer, Modal, Field, FormGrid, InfoRow, Divider, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
-import { UserCog, ShieldCheck, UserPlus, Pencil, Trash2, Power, Send, Mail, Clock, Users2, Check, X, ShieldAlert, Copy } from 'lucide-react'
+import { ShieldCheck, UserPlus, Pencil, Trash2, Power, Send, Mail, Users2, Check, ShieldAlert, Copy } from 'lucide-react'
 
 const MODULLER: { k: string; l: string; grup: string }[] = [
   { k: 'dashboard', l: 'Dashboard, Analitik, Başvurular, Ziyaretçiler', grup: 'Genel' },

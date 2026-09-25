@@ -2,7 +2,7 @@
 import { useMemo, useState } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
 import { erp } from '@/lib/erp-client'
-import { fmtK, fmtN, fmtInt, fmtDate } from '@/lib/fmt'
+import { fmtK, fmtN, fmtDate } from '@/lib/fmt'
 import { useUretim } from '@/lib/uretim-utils'
 import { sum } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Money, Drawer, Modal, Field, FormGrid, Card, Empty, useToast } from '@/components/admin/erp/ui'

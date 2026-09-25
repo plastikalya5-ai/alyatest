@@ -31,7 +31,6 @@ export async function GET(req: NextRequest) {
   const { sb, user } = await requireSession()
   if (!user) return NextResponse.json({ error: 'Oturum gerekli' }, { status: 401 })
 
-  const p = Object.fromEntries(new URL(req.url).searchParams)
   const sp = new URL(req.url).searchParams
   const table = sp.get('table') || ''
   const select = sp.get('select') || '*'
@@ -62,6 +61,8 @@ export async function POST(req: NextRequest) {
   const { table, op, data, id } = body
   if (!table || !TABLES.has(table))
     return NextResponse.json({ error: 'Geçersiz tablo' }, { status: 400 })
+  if ((op === 'update' || op === 'delete') && !id)
+    return NextResponse.json({ error: 'Kayıt id gerekli' }, { status: 400 })
 
   let r: any
   if (op === 'insert') {
@@ -78,7 +79,8 @@ export async function POST(req: NextRequest) {
   if (r?.error) return NextResponse.json({ error: r.error.message }, { status: 500 })
 
   const recordId = id || r?.data?.[0]?.id
-  sb.from('admin_activity').insert({ action: op, table_name: table, record_id: recordId, user_id: user.id }).then(()=>{})
+  // Serverless ortamda yanıttan sonra yarım kalmaması için beklenir; log hatası işlemi bozmaz
+  await sb.from('admin_activity').insert({ action: op, table_name: table, record_id: recordId, user_id: user.id }).then(() => {}, () => {})
 
   return NextResponse.json({ ok: true, data: r?.data })
 }

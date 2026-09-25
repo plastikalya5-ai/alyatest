@@ -192,7 +192,7 @@ export function DataGrid<T>({
                 const k = rowKey(r)
                 return (
                   <tr key={k} className={`${onRowClick ? 'clickable' : ''} ${activeKey === k ? 'active' : ''}`} style={{ ...rowStyle?.(r), ...(server && srvLoading ? { opacity: .55 } : {}) }} onClick={() => onRowClick?.(r)}>
-                    {selectable && <td onClick={e => e.stopPropagation()}><input type="checkbox" checked={sel.has(k)} onChange={e => setSel(s => { const n = new Set(s); e.target.checked ? n.add(k) : n.delete(k); return n })} /></td>}
+                    {selectable && <td onClick={e => e.stopPropagation()}><input type="checkbox" checked={sel.has(k)} onChange={e => setSel(s => { const n = new Set(s); if (e.target.checked) n.add(k); else n.delete(k); return n })} /></td>}
                     {visCols.map(c => <td key={c.key} className={c.hideSm ? 'adm-hide-sm' : ''} style={{ textAlign: c.align || 'left' }}>{c.render ? c.render(r) : String(c.sort?.(r) ?? '')}</td>)}
                   </tr>
                 )

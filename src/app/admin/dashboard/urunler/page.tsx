@@ -6,7 +6,7 @@ import { web, webAll } from '@/lib/web-data'
 import { useUretim, byId, receteMaliyet } from '@/lib/uretim-utils'
 import { fmt, fmtN, fmtInt, fmtDate } from '@/lib/fmt'
 import { sum } from '@/lib/muh-utils'
-import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, InfoRow, Divider, Empty, useToast } from '@/components/admin/erp/ui'
+import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, InfoRow, Divider, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
 import { Plus, Pencil, Trash2, Copy, Package, Star, Sparkles, Layers, FlaskConical, X, ImageOff, Boxes, Tag } from 'lucide-react'
 

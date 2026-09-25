@@ -30,9 +30,9 @@ export default function SchemaOrg({
     url: SITE_URL,
     logo: {
       "@type": "ImageObject",
-      url: `${SITE_URL}/logo.png`,
-      width: 200,
-      height: 60,
+      url: `${SITE_URL}/apple-touch-icon.png`,
+      width: 180,
+      height: 180,
     },
     image: `${SITE_URL}/og-image.jpg`,
     description: `${founded}'den bu yana plastik ürün üretiminde lider. Saksı, sepet, sandık ve ev ürünleri. ${models}+ model, ${countries}+ ülke ihracatı.`,
