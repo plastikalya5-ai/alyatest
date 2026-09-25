@@ -12,6 +12,7 @@ const NAV = [
     { href:'/admin/dashboard/analytics',    label:'Analitik',        Icon:TrendingUp,      mod:['dashboard'] },
     { href:'/admin/dashboard/istatistik',   label:'İstatistikler',   Icon:BarChart2,       mod:['dashboard'] },
     { href:'/admin/dashboard/asistan',      label:'AI Asistan',      Icon:Sparkles,        mod:['dashboard','muhasebe','stok','uretim','satis','satinalma','sevkiyat','kalite','yonetim'] },
+    { href:'/admin/dashboard/gunluk-ozet',   label:'Günlük Özet',     Icon:Bell,            mod:['dashboard','muhasebe','stok','uretim','satis','satinalma','sevkiyat','kalite','yonetim'] },
     { href:'/admin/dashboard/aktivite',     label:'Aktivite Logu',   Icon:Activity,        mod:['yonetim'] },
   ]},
   { g:'Ürün Yönetimi', mod:['yonetim'], items:[
