@@ -24,7 +24,10 @@ export default function AdminAyarlarPage() {
   },[])
 
   async function save(e:React.FormEvent){
-    e.preventDefault(); setSaving(true)
+    e.preventDefault()
+    const gecersiz = (['linkedin','instagram','facebook'] as const).find(k=>site[k] && !/^https:\/\/[^\s]+$/.test(String(site[k]).trim()))
+    if (gecersiz) { setToast('Sosyal medya bağlantıları https:// ile başlamalı'); setTimeout(()=>setToast(''),4000); return }
+    setSaving(true)
     await Promise.all([
       sb.from('settings').upsert({key:'site',value:site}),
       sb.from('settings').upsert({key:'stats',value:stats}),
@@ -79,6 +82,9 @@ export default function AdminAyarlarPage() {
                   <label className="adm-label"><MapPin size={12} style={{display:'inline',marginRight:4}}/>Adres</label>
                   <textarea className="adm-inp" rows={2} value={site.address||''} onChange={e=>setSite((s:any)=>({...s,address:e.target.value}))} placeholder="İkitelli OSB 4B Blok No:26-28 Kat:2, Başakşehir, İstanbul"/>
                 </div>
+                <F label="LinkedIn (https://…)"  k="linkedin"  obj={site} setObj={setSite} icon={Globe} placeholder="https://www.linkedin.com/company/…"/>
+                <F label="Instagram (https://…)" k="instagram" obj={site} setObj={setSite} icon={Globe} placeholder="https://www.instagram.com/…"/>
+                <F label="Facebook (https://…)"  k="facebook"  obj={site} setObj={setSite} icon={Globe} placeholder="https://www.facebook.com/…"/>
                 <div style={{gridColumn:'1/-1'}}>
                   <label className="adm-label"><Clock size={12} style={{display:'inline',marginRight:4}}/>Çalışma Saatleri</label>
                   <input className="adm-inp" value={site.working_hours||''} onChange={e=>setSite((s:any)=>({...s,working_hours:e.target.value}))} placeholder="Pazartesi - Cuma: 08:30 - 17:30"/>

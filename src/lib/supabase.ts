@@ -42,7 +42,13 @@ export type Settings = {
   email: string;
   export_email: string;
   working_hours: string;
+  instagram?: string;
+  linkedin?: string;
+  facebook?: string;
 };
+
+// Sosyal medya bağlantıları yalnızca https:// ile başlıyorsa kullanılır (javascript: vb. engellenir)
+export const guvenliUrl = (u?: string | null) => (typeof u === "string" && /^https:\/\/[^\s]+$/.test(u.trim()) ? u.trim() : null);
 
 export type Stats = {
   years: number;

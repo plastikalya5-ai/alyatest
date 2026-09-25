@@ -1,7 +1,7 @@
 // Schema.org yapılandırılmış veri — JSON-LD (Google'ın tercih ettiği format)
 // seo-schema skill kuralı: server-rendered HTML içinde, JS ile inject ETMEYİN
 
-import type { Settings, Stats } from "@/lib/supabase";
+import { guvenliUrl, type Settings, type Stats } from "@/lib/supabase";
 
 const SITE_URL = "https://alyatest-alyis.vercel.app";
 
@@ -78,6 +78,7 @@ export default function SchemaOrg({
     ],
     sameAs: [
       "https://wa.me/905357616524",
+      ...[settings?.linkedin, settings?.instagram, settings?.facebook].map(u => guvenliUrl(u)).filter((u): u is string => !!u),
     ],
     areaServed: {
       "@type": "Place",

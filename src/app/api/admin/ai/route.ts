@@ -3,6 +3,7 @@ import { modulGerekli } from '@/lib/yetki'
 import { oranSiniri } from '@/lib/rate-limit'
 import { aiAktif, AiHata } from '@/lib/ai'
 import { basvuruAnalizKaydet } from '@/lib/ai-basvuru'
+import { sosyalIcerikUret, AMACLAR } from '@/lib/ai-sosyal'
 import { asistanYanit, belgeOku, ekstreOner, gorselAnalizEt, haftalikOzet, urunMetniUret, type Konusma } from '@/lib/ai-admin'
 
 export const maxDuration = 60
@@ -11,6 +12,7 @@ export const maxDuration = 60
 // kullanıcının kendi oturumuyla (RLS + rpc_* içindeki yetki kontrolü) çalışır.
 const YETKI: Record<string, string[]> = {
   urun_metin: ['yonetim'],
+  sosyal_icerik: ['yonetim'],
   gorsel_analiz: ['yonetim'],
   basvuru_analiz: ['dashboard'],
   asistan: [],                      // her personel; veri erişimi zaten RLS ile sınırlı
@@ -47,6 +49,23 @@ export async function POST(req: NextRequest) {
           specs, tags: Array.isArray(p.tags) ? p.tags.slice(0, 20).map((t: any) => String(t).slice(0, 40)) : [], description: String(p.description || '').slice(0, 1500), image_url: typeof p.image_url === 'string' ? p.image_url : undefined,
         })
         return NextResponse.json({ ok: true, sonuc: r })
+      }
+      case 'sosyal_icerik': {
+        const platform = ['linkedin', 'instagram', 'facebook'].includes(body.platform) ? body.platform : null
+        if (!platform) return NextResponse.json({ error: 'Platform geçersiz' }, { status: 400 })
+        const amac = typeof body.amac === 'string' && body.amac in AMACLAR ? body.amac : 'urun'
+        let urun: any
+        if (body.urun_id) {
+          if (typeof body.urun_id !== 'string' || !/^[0-9a-f-]{36}$/.test(body.urun_id)) return NextResponse.json({ error: 'Ürün geçersiz' }, { status: 400 })
+          const { data } = await y.sb.from('products').select('name,code,category,subcategory,description,specs,tags').eq('id', body.urun_id).maybeSingle()
+          if (!data) return NextResponse.json({ error: 'Ürün bulunamadı' }, { status: 404 })
+          urun = { ...data, specs: data.specs && typeof data.specs === 'object' ? Object.fromEntries(Object.entries(data.specs).slice(0, 20).map(([k, v]) => [String(k).slice(0, 60), String(v).slice(0, 120)])) : {}, description: String(data.description || '').slice(0, 1200) }
+        }
+        const { data: st } = await y.sb.from('settings').select('key,value').in('key', ['site', 'stats', 'export_countries'])
+        const m = Object.fromEntries((st || []).map((r: any) => [r.key, r.value]))
+        const firma = { sirket: m.site?.company, kurulus_yili: m.site?.founded, adres: m.site?.address, e_posta: m.site?.email, ihracat_e_posta: m.site?.export_email, telefon: m.site?.phone, ihracat_ulkeleri: Array.isArray(m.export_countries) ? m.export_countries.slice(0, 30).join(', ') : undefined, model_sayisi: m.stats?.models, ihracat_ulke_sayisi: m.stats?.countries }
+        const sonuc = await sosyalIcerikUret({ platform, amac, dil: body.dil === 'en' ? 'en' : 'tr', adet: Number(body.adet) || 1, urun, firma, not: typeof body.not === 'string' ? body.not.slice(0, 600) : undefined })
+        return NextResponse.json({ ok: true, sonuc })
       }
       case 'gorsel_analiz': {
         if (typeof body.url !== 'string') return NextResponse.json({ error: 'Görsel adresi gerekli' }, { status: 400 })

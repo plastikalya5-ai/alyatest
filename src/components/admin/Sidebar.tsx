@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import SifreDegistir from './SifreDegistir'
 import { useEffect, useState } from 'react'
-import { LayoutDashboard, Package, Tag, MessageSquare, Settings, BarChart2, TrendingUp, Eye, Image, LogOut, ExternalLink, FileText, Bell, Activity, Layers, DollarSign, Receipt, Users2, PieChart, Landmark, FileSignature, Warehouse, Boxes, ArrowLeftRight, Cog, Wrench, FlaskConical, Factory, Zap, ClipboardList, PackageSearch, Truck, ShieldCheck, FlameKindling, UserCog, ScanLine, Sparkles, KeyRound } from 'lucide-react'
+import { Share2, LayoutDashboard, Package, Tag, MessageSquare, Settings, BarChart2, TrendingUp, Eye, Image, LogOut, ExternalLink, FileText, Bell, Activity, Layers, DollarSign, Receipt, Users2, PieChart, Landmark, FileSignature, Warehouse, Boxes, ArrowLeftRight, Cog, Wrench, FlaskConical, Factory, Zap, ClipboardList, PackageSearch, Truck, ShieldCheck, FlameKindling, UserCog, ScanLine, Sparkles, KeyRound } from 'lucide-react'
 
 const NAV = [
   { g:'Genel', mod:['dashboard'], items:[
@@ -19,6 +19,7 @@ const NAV = [
     { href:'/admin/dashboard/kategoriler',  label:'Kategoriler',     Icon:Tag,     mod:['yonetim'] },
     { href:'/admin/dashboard/varyantlar',   label:'Varyantlar',      Icon:Layers,  mod:['yonetim'] },
     { href:'/admin/dashboard/gorseller',    label:'Görseller',       Icon:Image,   mod:['yonetim'] },
+    { href:'/admin/dashboard/sosyal-medya', label:'Sosyal Medya',    Icon:Share2,  mod:['yonetim'] },
   ]},
   { g:'Müşteri', mod:['dashboard'], items:[
     { href:'/admin/dashboard/basvurular',   label:'Başvurular',      Icon:MessageSquare, mod:['dashboard'] },

@@ -1,4 +1,4 @@
-import type { Settings } from "@/lib/supabase";
+import { guvenliUrl, type Settings } from "@/lib/supabase";
 
 export default function Footer({ settings }: { settings: Settings | null }) {
   const s = settings;
@@ -8,6 +8,12 @@ export default function Footer({ settings }: { settings: Settings | null }) {
     { title:"İletişim", items:[s?.email ?? "info@alyaplastik.com", s?.export_email ?? "export@alyaplastik.com", s?.phone ?? "+90 212 671 85 65", "Başakşehir / İstanbul"] },
   ];
   const wa = s?.whatsapp ? `https://wa.me/${s.whatsapp.replace(/\D/g,"")}` : "https://wa.me/905357616524";
+
+  const sosyal = [
+    { ad: "LinkedIn", url: guvenliUrl(s?.linkedin) },
+    { ad: "Instagram", url: guvenliUrl(s?.instagram) },
+    { ad: "Facebook", url: guvenliUrl(s?.facebook) },
+  ].filter((x): x is { ad: string; url: string } => !!x.url);
 
   return (
     <footer className="bg-[#e3ddcf] border-t border-[#0b0e0b]/10" style={{ paddingTop:"clamp(56px,7vw,90px)", paddingBottom:"clamp(32px,4vw,48px)" }}>
@@ -27,6 +33,14 @@ export default function Footer({ settings }: { settings: Settings | null }) {
               className="inline-flex items-center gap-2 bg-[#e55f28] hover:bg-[#c94f1e] text-white text-[10px] font-semibold tracking-[0.14em] uppercase px-5 py-2.5 transition-colors">
               WhatsApp →
             </a>
+            {sosyal.length > 0 && (
+              <div className="flex flex-wrap gap-x-5 gap-y-2 mt-6">
+                {sosyal.map(x => (
+                  <a key={x.ad} href={x.url} target="_blank" rel="noopener noreferrer me" aria-label={`Alya Plastik ${x.ad}`}
+                    className="eyebrow text-[10px] text-[#0b0e0b]/60 hover:text-[#e55f28] transition-colors">{x.ad} ↗</a>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-10 gap-y-8">
