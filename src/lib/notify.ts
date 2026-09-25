@@ -7,7 +7,7 @@ import nodemailer from 'nodemailer'
 // WhatsApp: N8N_WHATSAPP_WEBHOOK_URL (+ opsiyonel N8N_WEBHOOK_SECRET)
 // Tanımlı değilse ilgili kanal sessizce atlanır (loglanır), site akışı bozulmaz.
 
-export type NotifyEvent = 'new_contact' | 'new_visit_milestone'
+export type NotifyEvent = 'new_contact' | 'new_visit_milestone' | 'mevzuat_uyari'
 
 function admin() {
   const url = process.env.SUPABASE_URL

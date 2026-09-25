@@ -3,6 +3,7 @@ import { modulGerekli } from '@/lib/yetki'
 import { oranSiniri } from '@/lib/rate-limit'
 import { aiAktif, AiHata } from '@/lib/ai'
 import { belgedenCikar, muhasebeAsistan } from '@/lib/ai-muhasebe'
+import { topluKontrol } from '@/lib/mevzuat-takip'
 import type { Konusma } from '@/lib/ai-admin'
 
 export const maxDuration = 90
@@ -18,9 +19,18 @@ export async function POST(req: NextRequest) {
   let body: any
   try { body = await req.json() } catch { return NextResponse.json({ error: 'Geçersiz istek' }, { status: 400 }) }
   const action = String(body?.action || '')
-  if (!['sor', 'belge_cikar'].includes(action)) return NextResponse.json({ error: 'Geçersiz eylem' }, { status: 400 })
+  if (!['sor', 'belge_cikar', 'mevzuat_kontrol'].includes(action)) return NextResponse.json({ error: 'Geçersiz eylem' }, { status: 400 })
 
   const y = await modulGerekli(['muhasebe']); if (y.hata) return y.hata
+  if (action === 'mevzuat_kontrol') {
+    // Kaynak kontrolü ucuzdur ve AI olmadan da (deterministik rakam kontrolüyle) çalışır
+    if (typeof body.id !== 'string') return NextResponse.json({ error: 'Kayıt id gerekli' }, { status: 400 })
+    const { data: kayit } = await y.sb.from('muhasebe_mevzuat').select('id').eq('id', body.id).maybeSingle() // RLS ile erişim doğrulaması
+    if (!kayit) return NextResponse.json({ error: 'Kayıt bulunamadı' }, { status: 404 })
+    if (!(await oranSiniri(`mk:${y.user.id}`, 40, 3600, false))) return NextResponse.json({ error: 'Saatlik kontrol sınırına ulaştın.' }, { status: 429 })
+    try { const r = await topluKontrol(1, body.id); return NextResponse.json({ ok: true, sonuc: r[0] || null }) }
+    catch (e: any) { console.error('[mevzuat_kontrol]', e); return NextResponse.json({ error: 'Kontrol başarısız oldu.' }, { status: 500 }) }
+  }
   if (!aiAktif()) return NextResponse.json({ error: 'AI özelliği henüz yapılandırılmamış (OPENAI_API_KEY).', kapali: true }, { status: 503 })
   if (!(await oranSiniri(`aim:${y.user.id}`, 120, 3600, false))) return NextResponse.json({ error: 'Saatlik AI kullanım sınırına ulaştın, biraz sonra tekrar dene.' }, { status: 429 })
 

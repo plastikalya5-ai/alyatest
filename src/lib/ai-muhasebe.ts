@@ -8,6 +8,7 @@ export type MevzuatKaydi = {
   gecerlilik_baslangic: string | null; gecerlilik_bitis: string | null
   kaynak_adi: string | null; kaynak_url: string | null; guven: 'resmi' | 'coklu_kaynak' | 'tek_kaynak'
   dogrulama_tarihi: string; notlar: string | null
+  son_kontrol_at?: string | null; kontrol_sonucu?: 'tutarli' | 'degismis_olabilir' | 'belirsiz' | 'okunamadi' | null; kontrol_notu?: string | null
 }
 const GUVEN_AD = { resmi: 'RESMİ KAYNAK', coklu_kaynak: 'ÇOKLU KAYNAKTA DOĞRULANDI', tek_kaynak: 'TEK KAYNAK — TEYİT GEREKİR' } as const
 const BAYAT_GUN = 120
@@ -25,6 +26,7 @@ export async function mevzuatBaglami(sb: SupabaseClient) {
     const etiket: string[] = [GUVEN_AD[k.guven] || 'TEK KAYNAK']
     if (k.gecerlilik_bitis && k.gecerlilik_bitis < bugun) { etiket.push('SÜRESİ DOLMUŞ'); uyarilar.push(`${k.baslik}: geçerlilik ${k.gecerlilik_bitis} tarihinde bitmiş`) }
     if (k.gecerlilik_baslangic && k.gecerlilik_baslangic > bugun) etiket.push('HENÜZ YÜRÜRLÜKTE DEĞİL')
+    if (k.kontrol_sonucu === 'degismis_olabilir') { etiket.push(`KAYNAKTA DEĞİŞİKLİK OLASI (otomatik kontrol ${String(k.son_kontrol_at || '').slice(0, 10)}${k.kontrol_notu ? ': ' + k.kontrol_notu : ''})`); uyarilar.push(`${k.baslik}: kaynakta değişiklik olası, teyit edilmeli`) }
     const yas = gunFarki(bugun, k.dogrulama_tarihi)
     if (yas > BAYAT_GUN) { etiket.push(`BAYAT (${yas} gün önce doğrulandı)`); uyarilar.push(`${k.baslik}: ${yas} gündür doğrulanmadı`) }
     const gecerlilik = `${k.gecerlilik_baslangic || '?'} → ${k.gecerlilik_bitis || 'süresiz/bilinmiyor'}`

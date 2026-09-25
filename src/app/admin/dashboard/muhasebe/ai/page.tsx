@@ -8,10 +8,11 @@ import { belgeDataUrl } from '@/lib/belge-dosya'
 import { csvDownload, fmtDate, todayISO } from '@/lib/fmt'
 import { Page, PageHead, Badge, Tabs, Card, Modal, Field, FormGrid, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
-import { Sparkles, Send, Trash2, Upload, FileText, Copy, Download, MessageSquare, Plus, Pencil, CheckCircle2, ShieldAlert, X, BookOpen } from 'lucide-react'
+import { Sparkles, Send, Trash2, Upload, FileText, Copy, Download, MessageSquare, Plus, Pencil, CheckCircle2, ShieldAlert, X, BookOpen, RefreshCw } from 'lucide-react'
 
 const ENDPOINT = '/api/admin/muhasebe-ai'
 const GUVEN: Record<string, { l: string; tone: any }> = { resmi: { l: 'Resmi kaynak', tone: 'green' }, coklu_kaynak: { l: 'Çoklu kaynak', tone: 'blue' }, tek_kaynak: { l: 'Tek kaynak — teyit et', tone: 'amber' } }
+const KONTROL: Record<string, { l: string; tone: any }> = { tutarli: { l: 'Kaynakla tutarlı', tone: 'green' }, degismis_olabilir: { l: 'Kaynakta değişiklik olası', tone: 'red' }, belirsiz: { l: 'Kontrol belirsiz', tone: 'amber' }, okunamadi: { l: 'Kaynak okunamadı', tone: 'muted' } }
 const OKUMA: Record<string, any> = { yuksek: 'green', orta: 'amber', dusuk: 'red' }
 const BAYAT_GUN = 120
 
@@ -52,6 +53,7 @@ export default function MuhasebeAiPage() {
     bayat: kb.filter(k => k.aktif && yas(k) > BAYAT_GUN).length,
     tek: kb.filter(k => k.aktif && k.guven === 'tek_kaynak').length,
     bitmis: kb.filter(k => k.aktif && k.gecerlilik_bitis && k.gecerlilik_bitis < bugun).length,
+    degisen: kb.filter(k => k.aktif && k.kontrol_sonucu === 'degismis_olabilir').length,
   }), [kb]) // eslint-disable-line
 
   const loadKb = useCallback(async () => {
@@ -88,6 +90,15 @@ export default function MuhasebeAiPage() {
     if (error) return toast.show(error.message, true)
     toast.show('Doğrulama tarihi bugüne çekildi'); loadKb()
   }
+  const [kontrolde, setKontrolde] = useState('')
+  async function kbKontrol(k: any) {
+    setKontrolde(k.id)
+    try {
+      const r = await aiIstek<{ sonuc: any }>('mevzuat_kontrol', { id: k.id }, ENDPOINT)
+      toast.show(r.sonuc ? `Kontrol: ${KONTROL[r.sonuc.sonuc]?.l || r.sonuc.sonuc}` : 'Kontrol edilemedi', r.sonuc?.sonuc === 'degismis_olabilir'); await loadKb()
+    } catch (e: any) { toast.show(e.message, true) }
+    setKontrolde('')
+  }
   async function kbSil(k: any) {
     if (!confirm(`"${k.baslik}" kaydı silinsin mi?`)) return
     const { error } = await web.from('muhasebe_mevzuat').delete().eq('id', k.id)
@@ -101,8 +112,12 @@ export default function MuhasebeAiPage() {
     { key: 'guven', label: 'Güven', width: 150, sort: k => k.guven, render: k => <Badge tone={GUVEN[k.guven]?.tone}>{GUVEN[k.guven]?.l}</Badge>, hideSm: true },
     { key: 'gec', label: 'Geçerlilik', width: 150, sort: k => k.gecerlilik_baslangic || '', render: k => <span style={{ fontSize: 12 }}>{k.gecerlilik_baslangic ? fmtDate(k.gecerlilik_baslangic) : '?'} → {k.gecerlilik_bitis ? fmtDate(k.gecerlilik_bitis) : '—'}{k.gecerlilik_bitis && k.gecerlilik_bitis < bugun && <div><Badge tone="red">süresi dolmuş</Badge></div>}</span>, hideSm: true },
     { key: 'dog', label: 'Doğrulama', width: 130, sort: k => k.dogrulama_tarihi, render: k => <span style={{ fontSize: 12 }}>{fmtDate(k.dogrulama_tarihi)}{yas(k) > BAYAT_GUN && <div><Badge tone="amber">{yas(k)} gün önce</Badge></div>}</span> },
+    { key: 'kontrol', label: 'Kaynak kontrolü', width: 170, sort: k => k.kontrol_sonucu || '', hideSm: true, render: k => k.kontrol_sonucu
+      ? <div><Badge tone={KONTROL[k.kontrol_sonucu]?.tone}>{KONTROL[k.kontrol_sonucu]?.l}</Badge><div style={{ fontSize: 10.5, color: 'var(--adm-tx3)', marginTop: 3, lineHeight: 1.4 }}>{fmtDate(String(k.son_kontrol_at).slice(0, 10))}{k.kontrol_notu ? ` — ${String(k.kontrol_notu).slice(0, 110)}` : ''}</div></div>
+      : <span style={{ fontSize: 11, color: 'var(--adm-tx3)' }}>henüz kontrol edilmedi</span> },
     { key: 'kaynak', label: 'Kaynak', width: 110, render: k => k.kaynak_url ? <a href={k.kaynak_url} target="_blank" rel="noopener noreferrer nofollow" style={{ color: 'var(--adm-ac)', fontSize: 12 }} title={k.kaynak_adi || ''}>Aç ↗</a> : <span style={{ color: 'var(--adm-tx3)' }}>—</span>, hideSm: true },
-    { key: 'act', label: '', width: 130, align: 'right', render: k => <span style={{ display: 'inline-flex', gap: 4 }} onClick={e => e.stopPropagation()}>
+    { key: 'act', label: '', width: 160, align: 'right', render: k => <span style={{ display: 'inline-flex', gap: 4 }} onClick={e => e.stopPropagation()}>
+      <button className="adm-btn-ghost" style={{ padding: '4px 7px' }} title="Kaynağı şimdi kontrol et" disabled={kontrolde === k.id || !k.kaynak_url} onClick={() => kbKontrol(k)}><RefreshCw size={12} className={kontrolde === k.id ? 'spin' : ''} /></button>
       <button className="adm-btn-ghost" style={{ padding: '4px 7px' }} title="Bugün doğruladım" onClick={() => kbDogrulandi(k)}><CheckCircle2 size={12} /></button>
       <button className="adm-btn-ghost" style={{ padding: '4px 7px' }} onClick={() => kbAc(k)}><Pencil size={12} /></button>
       <button className="adm-btn-danger" style={{ padding: '4px 7px' }} onClick={() => kbSil(k)}><Trash2 size={12} /></button></span> },
@@ -169,11 +184,11 @@ export default function MuhasebeAiPage() {
       <Page>
         <PageHead title="Muhasebe AI" sub="Güncel 2026 mevzuat bilgi tabanına dayalı muhasebe asistanı: soru sor, belge yükleyip istediğin verileri çıkar. Cevaplar yapay zeka ile üretilir; nihai karar mali müşavirindir." />
 
-        {!kbYukleniyor && (sorunlu.bayat > 0 || sorunlu.bitmis > 0 || sorunlu.tek > 0) && (
+        {!kbYukleniyor && (sorunlu.bayat > 0 || sorunlu.bitmis > 0 || sorunlu.tek > 0 || sorunlu.degisen > 0) && (
           <div className="adm-card" style={{ padding: '10px 16px', marginBottom: 14, display: 'flex', gap: 10, alignItems: 'center', borderColor: 'var(--adm-amber)' }}>
             <ShieldAlert size={17} style={{ color: 'var(--adm-amber)', flexShrink: 0 }} />
             <span style={{ fontSize: 12.5, flex: 1 }}>
-              Mevzuat bilgi tabanında dikkat: {sorunlu.tek > 0 && <b>{sorunlu.tek} kayıt tek kaynaklı</b>}{sorunlu.tek > 0 && (sorunlu.bayat || sorunlu.bitmis) ? ', ' : ''}{sorunlu.bayat > 0 && <b>{sorunlu.bayat} kayıt {BAYAT_GUN}+ gündür doğrulanmadı</b>}{sorunlu.bayat > 0 && sorunlu.bitmis ? ', ' : ''}{sorunlu.bitmis > 0 && <b>{sorunlu.bitmis} kaydın süresi dolmuş</b>}. AI bunları cevaplarında uyarıyla belirtir.
+              Mevzuat bilgi tabanında dikkat: {sorunlu.degisen > 0 && <b style={{ color: 'var(--adm-red)' }}>{sorunlu.degisen} kayıtta kaynakta değişiklik olası{(sorunlu.tek || sorunlu.bayat || sorunlu.bitmis) ? ', ' : ''}</b>}{sorunlu.tek > 0 && <b>{sorunlu.tek} kayıt tek kaynaklı</b>}{sorunlu.tek > 0 && (sorunlu.bayat || sorunlu.bitmis) ? ', ' : ''}{sorunlu.bayat > 0 && <b>{sorunlu.bayat} kayıt {BAYAT_GUN}+ gündür doğrulanmadı</b>}{sorunlu.bayat > 0 && sorunlu.bitmis ? ', ' : ''}{sorunlu.bitmis > 0 && <b>{sorunlu.bitmis} kaydın süresi dolmuş</b>}. AI bunları cevaplarında uyarıyla belirtir.
             </span>
             <button className="adm-btn-ghost" style={{ fontSize: 12 }} onClick={() => setTab('mevzuat')}><BookOpen size={12} />İncele</button>
           </div>
