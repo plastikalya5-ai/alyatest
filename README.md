@@ -6,6 +6,19 @@ Alya Plastik'in tanıtım sitesi ve yönetim paneli (mini ERP). Next.js (App Rou
 - **Admin (`/admin`):** site yönetimi, muhasebe, stok, üretim, satış/satınalma/sevkiyat, kalite, kullanıcı ve roller.
 - **Yetkilendirme:** Supabase Auth + `roller.moduller` (RLS: `private.has_module`). Yönetici rolü `*` modülüne sahiptir.
 
+## AI özellikleri (OpenAI)
+
+`OPENAI_API_KEY` tanımlıysa açılır; yoksa hepsi kapalıdır ve site/panel normal çalışır.
+
+- **Site sohbet asistanı** (`/api/chat`): katalog bilgili, IP başına saatte 15 mesaj + günlük toplam tavan.
+- **Başvuru analizi:** yeni başvurular otomatik sınıflandırılır (kategori, öncelik, dil, spam) ve taslak cevap üretilir.
+- **Ürünler:** AI ile açıklama + 5 dil çevirisi + SEO önerisi, görselden etiket önerisi.
+- **AI Asistan** (`/admin/dashboard/asistan`) ve dashboard **AI Durum Özeti**: yalnızca yetkili kullanıcının oturumuyla, hazır `rpc_*`/görünüm araçlarıyla okur; yazma yapmaz.
+- **Banka ekstresi:** eşleşmeyen satırlar için cari/kategori önerisi (IBAN maskelenir).
+- **Faturalar:** fatura/irsaliye fotoğrafı veya PDF'inden form doldurma (kaydı kullanıcı onaylar).
+
+Yönetici uçları `/api/admin/ai` altındadır; kullanıcı başına saatte 80 istek sınırı vardır. Veriler OpenAI'a gönderilir: hassas alanları (vergi no vb.) göndermeyin, KVKK aydınlatmanızı buna göre güncelleyin.
+
 ## Kurulum
 
 ```bash

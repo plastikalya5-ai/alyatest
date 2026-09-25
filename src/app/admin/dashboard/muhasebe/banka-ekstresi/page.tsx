@@ -7,7 +7,8 @@ import { fmt, fmtK, fmtDate, csvDownload } from '@/lib/fmt'
 import { sum } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Modal, Field, FormGrid, Empty, Card, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
-import { Upload, Landmark, Wand2, Link2, Plus, X, Download, CheckCircle2, ListChecks, AlertCircle } from 'lucide-react'
+import { Upload, Landmark, Wand2, Link2, Plus, X, Download, CheckCircle2, ListChecks, AlertCircle, Sparkles } from 'lucide-react'
+import { aiIstek } from '@/lib/ai-client'
 
 // Türkçe sayı: 1.234,56 | -1234.56 | (1.234,56)
 function sayi(s: string) {
@@ -64,6 +65,8 @@ export default function BankaEkstresiPage() {
   const [esles, setEsles] = useState<any>(null)   // eşleştirme adayları modalı
   const [olustur, setOlustur] = useState<any>(null) // ekstreden işlem oluştur
   const [busy, setBusy] = useState(false)
+  const [oneriler, setOneriler] = useState<Record<string, any>>({})
+  const [aiBusy, setAiBusy] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   // Ekstre ve eşleşme adayları yalnızca seçili banka hesabı için (ve eşleştirmeye konu olabilecek son 400 gün için) çekilir
@@ -117,6 +120,18 @@ export default function BankaEkstresiPage() {
     if (fileRef.current) fileRef.current.value = ''; load()
   }
 
+  // AI: cari + kategori önerisi (yalnızca öneri; kayıt oluşturma yine kullanıcı onayıyla yapılır)
+  async function aiOner() {
+    const hedef = [...acik].sort((a, b) => adaylar(a).length - adaylar(b).length).filter(k => adaylar(k).length !== 1).slice(0, 25)
+    if (!hedef.length) return toast.show('Öneri gerektiren satır yok')
+    setAiBusy(true)
+    try {
+      const r: any = await aiIstek('ekstre_oner', { satirlar: hedef.map(k => ({ id: k.id, tarih: k.tarih, yon: k.yon, tutar: +k.tutar, aciklama: k.aciklama })) })
+      const m: Record<string, any> = { ...oneriler }; (r.sonuc || []).forEach((o: any) => { m[o.id] = o })
+      setOneriler(m); toast.show(`${(r.sonuc || []).length} satır için öneri hazırlandı — "İşlem Oluştur" alanları doldurulur`)
+    } catch (e: any) { toast.show(e.message, true) }
+    setAiBusy(false)
+  }
   async function eslestir(kayit: any, islemId: string) {
     const r: any = await erp.from('banka_ekstre_kayitlari').update({ eslesme_islem_id: islemId, durum: 'eslesti' }).eq('id', kayit.id)
     if (r?.error) return toast.show(r.error, true)
@@ -146,7 +161,7 @@ export default function BankaEkstresiPage() {
   const islemAd = useMemo(() => Object.fromEntries(islemler.map(i => [i.id, i])), [islemler])
   const cols: Col<any>[] = [
     { key: 'tarih', label: 'Tarih', width: 96, sort: k => k.tarih, render: k => fmtDate(k.tarih) },
-    { key: 'aciklama', label: 'Açıklama', sort: k => k.aciklama || '', render: k => <span>{k.aciklama || '—'}</span> },
+    { key: 'aciklama', label: 'Açıklama', sort: k => k.aciklama || '', render: k => { const o = oneriler[k.id]; const cariAd = o?.cari_id ? cariler.find(c => c.id === o.cari_id)?.ad : null; return <div><span>{k.aciklama || '—'}</span>{o && (cariAd || o.kategori) && k.durum === 'eslesmedi' && <div style={{ fontSize: 11, color: 'var(--adm-ac)', marginTop: 2 }}>AI: {[cariAd, o.kategori].filter(Boolean).join(' · ')} <span style={{ color: 'var(--adm-tx3)' }}>({o.guven} güven{o.gerekce ? ` — ${o.gerekce}` : ''})</span></div>}</div> } },
     { key: 'tutar', label: 'Tutar', align: 'right', sort: k => (k.yon === 'giris' ? 1 : -1) * k.tutar, render: k => <Money v={(k.yon === 'giris' ? 1 : -1) * +k.tutar} tone="auto" sign />, total: rs => <Money v={net(rs)} tone="auto" />, csv: k => (k.yon === 'giris' ? 1 : -1) * +k.tutar },
     {
       key: 'durum', label: 'Durum', width: 200, sort: k => k.durum, render: k => k.durum === 'eslesti'
@@ -159,7 +174,7 @@ export default function BankaEkstresiPage() {
         <span style={{ display: 'inline-flex', gap: 4 }}>
           {k.durum === 'eslesmedi' && <>
             <button className="adm-btn-ghost" style={{ padding: '4px 9px', fontSize: 11.5 }} disabled={!adaylar(k).length} onClick={() => setEsles(k)}><Link2 size={12} />Eşleştir</button>
-            <button className="adm-btn-ghost" style={{ padding: '4px 9px', fontSize: 11.5 }} onClick={() => setOlustur({ k, kategori: '', cari: '' })}><Plus size={12} />İşlem Oluştur</button>
+            <button className="adm-btn-ghost" style={{ padding: '4px 9px', fontSize: 11.5 }} onClick={() => setOlustur({ k, kategori: oneriler[k.id]?.kategori || '', cari: oneriler[k.id]?.cari_id || '' })}><Plus size={12} />İşlem Oluştur</button>
             <button className="adm-btn-ghost" style={{ padding: '4px 7px' }} title="Yoksay" onClick={() => durum([k], 'yoksayildi')}><X size={12} /></button>
           </>}
           {k.durum !== 'eslesmedi' && <button className="adm-btn-ghost" style={{ padding: '4px 9px', fontSize: 11.5 }} onClick={() => durum([k], 'eslesmedi')}>Geri al</button>}
@@ -195,6 +210,14 @@ export default function BankaEkstresiPage() {
                 <Wand2 size={18} style={{ color: 'var(--adm-blue)' }} />
                 <span style={{ flex: 1, fontSize: 13 }}><b>{otomatikAdet}</b> satırın tek bir net adayı var (aynı tutar, aynı yön, ±5 gün). Otomatik eşleştirebilirim.</span>
                 <button className="adm-btn" disabled={busy} onClick={otomatik}><Wand2 size={14} />Otomatik Eşleştir</button>
+              </div>
+            )}
+
+            {acik.length > 0 && (
+              <div className="adm-card" style={{ padding: '10px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
+                <Sparkles size={17} style={{ color: 'var(--adm-ac)' }} />
+                <span style={{ flex: 1, fontSize: 13 }}>Eşleşmeyen satırlar için açıklamaya bakarak <b>cari ve kategori önerisi</b> alabilirsin (en fazla 25 satır; IBAN/uzun numaralar maskelenerek gönderilir).</span>
+                <button className="adm-btn-ghost" disabled={aiBusy} onClick={aiOner}><Sparkles size={13} />{aiBusy ? 'Analiz ediliyor…' : 'AI ile öner'}</button>
               </div>
             )}
 

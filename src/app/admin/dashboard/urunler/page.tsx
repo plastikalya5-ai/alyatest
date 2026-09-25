@@ -8,9 +8,10 @@ import { fmt, fmtN, fmtInt, fmtDate } from '@/lib/fmt'
 import { sum } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, InfoRow, Divider, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
-import { Plus, Pencil, Trash2, Copy, Package, Star, Sparkles, Layers, FlaskConical, X, ImageOff, Boxes, Tag } from 'lucide-react'
+import { Plus, Pencil, Trash2, Copy, Package, Star, Sparkles, Layers, FlaskConical, X, ImageOff, Boxes, Tag, Wand2, ScanEye } from 'lucide-react'
+import { aiIstek } from '@/lib/ai-client'
 
-const bos = { code: '', name: '', slug: '', category: '', subcategory: '', description: '', image_url: '', images: [] as string[], tags: [] as string[], specs: [] as { k: string; v: string }[], barkod: '', is_featured: false, is_new: false, sort_order: 0 }
+const bos = { code: '', name: '', slug: '', category: '', subcategory: '', description: '', image_url: '', images: [] as string[], tags: [] as string[], specs: [] as { k: string; v: string }[], barkod: '', is_featured: false, is_new: false, sort_order: 0, description_i18n: {} as Record<string, any> }
 const slugla = (s: string) => s.toLocaleLowerCase('tr').replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ş/g, 's').replace(/ü/g, 'u').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 
 export default function AdminUrunlerPage() {
@@ -30,6 +31,33 @@ export default function AdminUrunlerPage() {
   const [yeniGorsel, setYeniGorsel] = useState('')
   const [busy, setBusy] = useState(false)
   const [katModal, setKatModal] = useState<any>(null)
+  const [aiBusy, setAiBusy] = useState('')
+  const [gorselNot, setGorselNot] = useState<any>(null)
+
+  // AI: TR açıklama + 5 dil çevirisi + SEO önerisi (kayıt için Kaydet'e basmak gerekir)
+  async function aiYaz() {
+    if (!form.name.trim()) return toast.show('Önce ürün adını gir', true)
+    setAiBusy('yaz')
+    try {
+      const r: any = await aiIstek('urun_metin', { urun: { name: form.name, code: form.code, category: catAd[form.category] || form.category, subcategory: form.subcategory, specs: Object.fromEntries(form.specs.filter((x: any) => x.k.trim()).map((x: any) => [x.k, x.v])), tags: form.tags, description: form.description, image_url: form.image_url } })
+      const m = r.sonuc
+      setForm((f: any) => ({ ...f, description: m.aciklama_tr, description_i18n: { ...m.ceviriler, seo: { baslik: m.seo_baslik, aciklama: m.seo_aciklama } } }))
+      toast.show('Metin ve çeviriler hazırlandı — okuyup Kaydet\'e bas')
+    } catch (e: any) { toast.show(e.message, true) }
+    setAiBusy('')
+  }
+  // AI: görselden etiket/görünüm önerisi
+  async function gorselOner() {
+    if (!form.image_url) return toast.show('Önce ana görsel URL\'si gir', true)
+    setAiBusy('gorsel')
+    try {
+      const r: any = await aiIstek('gorsel_analiz', { url: form.image_url, ad: form.name })
+      const m = r.sonuc
+      setForm((f: any) => ({ ...f, tags: Array.from(new Set([...f.tags, ...(m.etiketler || []).map((t: string) => t.toLocaleLowerCase('tr'))])) }))
+      setGorselNot(m); toast.show('Etiketler eklendi')
+    } catch (e: any) { toast.show(e.message, true) }
+    setAiBusy('')
+  }
 
   const load = useCallback(async () => {
     const [p, c] = await Promise.all([webAll('products', '*', q => q.order('sort_order', { ascending: true })), webAll('categories', '*', q => q.order('sort_order', { ascending: true }))])
@@ -60,7 +88,7 @@ export default function AdminUrunlerPage() {
   const openNew = () => { setEditing(null); setSlugElle(false); setForm({ ...bos, sort_order: products.length + 1, category: cats[0]?.slug || '' }); setModal(true) }
   const openEdit = (p: any) => {
     setEditing(p); setSlugElle(true)
-    setForm({ code: p.code || '', name: p.name || '', slug: p.slug || '', category: p.category || '', subcategory: p.subcategory || '', description: p.description || '', image_url: p.image_url || '', images: p.images || [], tags: p.tags || [], specs: Object.entries(p.specs || {}).map(([k, v]) => ({ k, v: String(v) })), barkod: p.barkod || '', is_featured: !!p.is_featured, is_new: !!p.is_new, sort_order: p.sort_order || 0 })
+    setForm({ code: p.code || '', name: p.name || '', slug: p.slug || '', category: p.category || '', subcategory: p.subcategory || '', description: p.description || '', image_url: p.image_url || '', images: p.images || [], tags: p.tags || [], specs: Object.entries(p.specs || {}).map(([k, v]) => ({ k, v: String(v) })), barkod: p.barkod || '', is_featured: !!p.is_featured, is_new: !!p.is_new, sort_order: p.sort_order || 0, description_i18n: p.description_i18n || {} })
     setModal(true)
   }
   async function save(e: React.FormEvent) {
@@ -69,7 +97,7 @@ export default function AdminUrunlerPage() {
     if (products.some(p => p.slug === form.slug && p.id !== editing?.id)) return toast.show('Bu slug başka üründe kullanılıyor', true)
     if (form.barkod && products.some(p => p.barkod === form.barkod && p.id !== editing?.id)) return toast.show('Bu barkod başka üründe kayıtlı', true)
     setBusy(true)
-    const payload: any = { code: form.code.trim(), name: form.name.trim(), slug: form.slug.trim(), category: form.category, subcategory: form.subcategory || null, description: form.description || null, image_url: form.image_url || '', images: form.images, tags: form.tags, specs: Object.fromEntries(form.specs.filter((s: any) => s.k.trim()).map((s: any) => [s.k.trim(), s.v])), barkod: form.barkod || null, is_featured: form.is_featured, is_new: form.is_new, sort_order: +form.sort_order || 0, updated_at: new Date().toISOString() }
+    const payload: any = { code: form.code.trim(), name: form.name.trim(), slug: form.slug.trim(), category: form.category, subcategory: form.subcategory || null, description: form.description || null, image_url: form.image_url || '', images: form.images, tags: form.tags, specs: Object.fromEntries(form.specs.filter((s: any) => s.k.trim()).map((s: any) => [s.k.trim(), s.v])), barkod: form.barkod || null, description_i18n: form.description_i18n || {}, is_featured: form.is_featured, is_new: form.is_new, sort_order: +form.sort_order || 0, updated_at: new Date().toISOString() }
     const { error } = editing ? await web.from('products').update(payload).eq('id', editing.id) : await web.from('products').insert(payload)
     setBusy(false)
     if (error) return toast.show(error.message, true)
@@ -208,6 +236,19 @@ export default function AdminUrunlerPage() {
           <Field label="Ana görsel URL" span={3}><div style={{ display: 'flex', gap: 10, alignItems: 'center' }}><input className="adm-inp" value={form.image_url} onChange={e => setForm((f: any) => ({ ...f, image_url: e.target.value }))} placeholder="https://..." />{form.image_url && <img src={form.image_url} alt="" style={{ height: 44, width: 44, objectFit: 'contain', borderRadius: 8, background: 'var(--adm-s2)', flexShrink: 0 }} />}</div></Field>
           <Field label="Açıklama" span={3}><textarea className="adm-inp" rows={3} value={form.description} onChange={e => setForm((f: any) => ({ ...f, description: e.target.value }))} /></Field>
         </FormGrid>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+          <button type="button" className="adm-btn-ghost" style={{ fontSize: 12 }} disabled={!!aiBusy} onClick={aiYaz}><Wand2 size={13} />{aiBusy === 'yaz' ? 'Yazılıyor…' : 'AI ile açıklama + çeviri yaz'}</button>
+          <button type="button" className="adm-btn-ghost" style={{ fontSize: 12 }} disabled={!!aiBusy} onClick={gorselOner}><ScanEye size={13} />{aiBusy === 'gorsel' ? 'İnceleniyor…' : 'Görselden etiket öner'}</button>
+        </div>
+        {gorselNot && <p style={{ fontSize: 12, color: 'var(--adm-tx3)', margin: '8px 0 0', lineHeight: 1.55 }}><b>Görsel:</b> {gorselNot.tur} — {gorselNot.gorunum} <br /><b>Site uygunluğu:</b> {gorselNot.site_uygunlugu}</p>}
+        {Object.keys(form.description_i18n || {}).some(k => k !== 'seo') && <>
+          <Divider label="Çeviriler (AI — yayınlamadan önce kontrol et)" />
+          {(['en', 'de', 'fr', 'ar', 'ru'] as const).filter(k => form.description_i18n?.[k] != null).map(k => (
+            <Field key={k} label={{ en: 'İngilizce', de: 'Almanca', fr: 'Fransızca', ar: 'Arapça', ru: 'Rusça' }[k]}>
+              <textarea className="adm-inp" rows={2} dir={k === 'ar' ? 'rtl' : 'ltr'} value={form.description_i18n[k]} onChange={e => setForm((f: any) => ({ ...f, description_i18n: { ...f.description_i18n, [k]: e.target.value } }))} />
+            </Field>))}
+          {form.description_i18n?.seo && <p style={{ fontSize: 12, color: 'var(--adm-tx3)', margin: '4px 0 0' }}><b>SEO başlık önerisi:</b> {form.description_i18n.seo.baslik}<br /><b>SEO açıklama önerisi:</b> {form.description_i18n.seo.aciklama}</p>}
+        </>}
 
         <Divider label="Ek görseller" />
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>{form.images.map((u: string, i: number) => <div key={i} style={{ position: 'relative' }}><img src={u} alt="" style={{ width: 56, height: 56, objectFit: 'contain', borderRadius: 8, background: 'var(--adm-s2)' }} /><button type="button" onClick={() => setForm((f: any) => ({ ...f, images: f.images.filter((_: any, j: number) => j !== i) }))} style={{ position: 'absolute', top: -6, right: -6, width: 18, height: 18, borderRadius: 9, border: 'none', background: 'var(--adm-red)', color: '#fff', fontSize: 11, lineHeight: 1 }}>×</button></div>)}</div>

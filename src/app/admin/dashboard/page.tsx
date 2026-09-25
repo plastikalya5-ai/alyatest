@@ -11,6 +11,7 @@ import { fmt, fmtK, fmtInt, fmtN, fmtDate, todayISO, daysBetween } from '@/lib/f
 import { sum, pctDelta, sonAylar, iso } from '@/lib/muh-utils'
 import { Page, Kpi, KpiGrid, Card, Badge, Money, Empty, Skeleton } from '@/components/admin/erp/ui'
 import { TrendChart } from '@/components/admin/erp/charts'
+import AiOzet from '@/components/admin/AiOzet'
 import {
   Wallet, HandCoins, Scale, Factory, AlertTriangle, ClipboardList, Boxes, MessageSquare, Eye, ChevronRight, CheckCircle2, Circle, ScanLine, Receipt, Plus, PackageSearch, Activity, Sparkles, ArrowRight,
 } from 'lucide-react'
@@ -170,6 +171,8 @@ export default function AdminDashboardPage() {
               {A.stok && <Kpi label="Kritik Stok" value={kritik.length} Icon={Boxes} color={kritik.length ? 'var(--adm-red)' : 'var(--adm-green)'} sub={kritik.length ? 'hammadde min. altında' : 'Sorun yok'} />}
               {A.web && web_ && <Kpi label="Yeni Başvuru" value={yeniSayi} Icon={MessageSquare} color="var(--adm-green)" sub={`bugün ${bugunZiyaret} ziyaret`} />}
             </KpiGrid>
+
+            <AiOzet />
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,420px),1fr))', gap: 16, marginBottom: 16 }}>
               <Card title={<><AlertTriangle size={14} style={{ color: alerts.some(a => a.tone === 'red') ? 'var(--adm-red)' : 'var(--adm-amber)' }} />Dikkat Gerektirenler {alerts.length ? `(${alerts.length})` : ''}</>}>

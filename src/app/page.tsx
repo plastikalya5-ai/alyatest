@@ -4,6 +4,7 @@ import Footer           from "@/components/layout/Footer";
 import Animations       from "@/components/layout/Animations";
 import SchemaOrg        from "@/components/layout/SchemaOrg";
 import WhatsAppFab      from "@/components/ui/WhatsAppFab";
+import ChatAsistan      from "@/components/ui/ChatAsistan";
 import ProgressDots     from "@/components/ui/ProgressDots";
 import Hero             from "@/components/sections/Hero";
 import Marquee          from "@/components/sections/Marquee";
@@ -56,6 +57,7 @@ export default async function Home() {
       </main>
       <Footer settings={settings} />
       <WhatsAppFab settings={settings} />
+      <ChatAsistan />
     </>
   );
 }

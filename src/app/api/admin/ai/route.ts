@@ -1,0 +1,90 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { modulGerekli } from '@/lib/yetki'
+import { oranSiniri } from '@/lib/rate-limit'
+import { aiAktif, AiHata } from '@/lib/ai'
+import { basvuruAnalizKaydet } from '@/lib/ai-basvuru'
+import { asistanYanit, belgeOku, ekstreOner, gorselAnalizEt, haftalikOzet, urunMetniUret, type Konusma } from '@/lib/ai-admin'
+
+export const maxDuration = 60
+
+// Yönetici paneli AI uçları. Her eylem kendi modül yetkisini ister; veriye erişen eylemler
+// kullanıcının kendi oturumuyla (RLS + rpc_* içindeki yetki kontrolü) çalışır.
+const YETKI: Record<string, string[]> = {
+  urun_metin: ['yonetim'],
+  gorsel_analiz: ['yonetim'],
+  basvuru_analiz: ['dashboard'],
+  asistan: [],                      // her personel; veri erişimi zaten RLS ile sınırlı
+  ozet: [],                         // yalnızca yetkili olduğu modüllerin verisi kullanılır
+  ekstre_oner: ['muhasebe'],
+  belge_oku: ['muhasebe', 'satinalma', 'stok'],
+}
+
+export async function GET() {
+  const y = await modulGerekli(); if (y.hata) return y.hata
+  return NextResponse.json({ aktif: aiAktif() })
+}
+
+export async function POST(req: NextRequest) {
+  let body: any
+  try { body = await req.json() } catch { return NextResponse.json({ error: 'Geçersiz istek' }, { status: 400 }) }
+  const action = String(body?.action || '')
+  if (!(action in YETKI)) return NextResponse.json({ error: 'Geçersiz eylem' }, { status: 400 })
+
+  const y = await modulGerekli(YETKI[action]); if (y.hata) return y.hata
+  if (!aiAktif()) return NextResponse.json({ error: 'AI özelliği henüz yapılandırılmamış (OPENAI_API_KEY).', kapali: true }, { status: 503 })
+
+  // Kullanıcı başına saatlik sınır (maliyet koruması)
+  if (!(await oranSiniri(`ai:${y.user.id}`, 80, 3600, false))) return NextResponse.json({ error: 'Saatlik AI kullanım sınırına ulaştın, biraz sonra tekrar dene.' }, { status: 429 })
+
+  try {
+    switch (action) {
+      case 'urun_metin': {
+        const p = body.urun || {}
+        if (!p.name || typeof p.name !== 'string') return NextResponse.json({ error: 'Ürün adı gerekli' }, { status: 400 })
+        const specs = p.specs && typeof p.specs === 'object' ? Object.fromEntries(Object.entries(p.specs).slice(0, 20).map(([k, v]) => [String(k).slice(0, 60), String(v).slice(0, 120)])) : {}
+        const r = await urunMetniUret({
+          name: p.name.slice(0, 160), code: String(p.code || '').slice(0, 40), category: String(p.category || '').slice(0, 60), subcategory: String(p.subcategory || '').slice(0, 60),
+          specs, tags: Array.isArray(p.tags) ? p.tags.slice(0, 20).map((t: any) => String(t).slice(0, 40)) : [], description: String(p.description || '').slice(0, 1500), image_url: typeof p.image_url === 'string' ? p.image_url : undefined,
+        })
+        return NextResponse.json({ ok: true, sonuc: r })
+      }
+      case 'gorsel_analiz': {
+        if (typeof body.url !== 'string') return NextResponse.json({ error: 'Görsel adresi gerekli' }, { status: 400 })
+        return NextResponse.json({ ok: true, sonuc: await gorselAnalizEt(body.url, body.ad) })
+      }
+      case 'basvuru_analiz': {
+        if (typeof body.id !== 'string') return NextResponse.json({ error: 'Başvuru id gerekli' }, { status: 400 })
+        // Başvurunun bu kullanıcıya görünür olduğunu kendi oturumuyla doğrula, sonra service_role ile yaz
+        const { data } = await y.sb.from('contact_submissions').select('id').eq('id', body.id).maybeSingle()
+        if (!data) return NextResponse.json({ error: 'Başvuru bulunamadı' }, { status: 404 })
+        return NextResponse.json({ ok: true, sonuc: await basvuruAnalizKaydet(body.id) })
+      }
+      case 'asistan': {
+        const g: Konusma[] = (Array.isArray(body.mesajlar) ? body.mesajlar : []).slice(-10)
+          .filter((m: any) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
+          .map((m: any) => ({ role: m.role, content: m.content.slice(0, 1500) }))
+        if (!g.length || g[g.length - 1].role !== 'user') return NextResponse.json({ error: 'Soru gerekli' }, { status: 400 })
+        return NextResponse.json({ ok: true, ...(await asistanYanit(y.sb, g)) })
+      }
+      case 'ozet':
+        return NextResponse.json({ ok: true, ...(await haftalikOzet(y.sb, y.moduller)) })
+      case 'ekstre_oner': {
+        const rows = (Array.isArray(body.satirlar) ? body.satirlar : []).slice(0, 25).map((r: any) => ({ id: String(r.id), tarih: String(r.tarih || ''), yon: r.yon === 'giris' ? 'giris' : 'cikis', tutar: Number(r.tutar) || 0, aciklama: String(r.aciklama || '') }))
+        if (!rows.length) return NextResponse.json({ error: 'Satır yok' }, { status: 400 })
+        // Cari ve kategori listeleri istemciden değil, kullanıcının oturumundan (RLS) okunur
+        const [c, k] = await Promise.all([y.sb.from('cari_hesaplar').select('id,ad').limit(300), y.sb.from('muhasebe_kategoriler').select('tip,ad')])
+        const kat = { gelir: (k.data || []).filter((x: any) => x.tip === 'gelir').map((x: any) => x.ad), gider: (k.data || []).filter((x: any) => x.tip === 'gider').map((x: any) => x.ad) }
+        return NextResponse.json({ ok: true, sonuc: await ekstreOner(rows, c.data || [], kat) })
+      }
+      case 'belge_oku': {
+        if (typeof body.dosya !== 'string') return NextResponse.json({ error: 'Dosya gerekli' }, { status: 400 })
+        return NextResponse.json({ ok: true, sonuc: await belgeOku(body.dosya) })
+      }
+    }
+  } catch (e: any) {
+    if (e instanceof AiHata) return NextResponse.json({ error: e.message }, { status: e.durum })
+    console.error('[api/admin/ai]', action, e)
+    return NextResponse.json({ error: 'AI işlemi başarısız oldu.' }, { status: 500 })
+  }
+  return NextResponse.json({ error: 'Geçersiz eylem' }, { status: 400 })
+}

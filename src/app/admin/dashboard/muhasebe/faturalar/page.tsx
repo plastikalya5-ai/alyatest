@@ -7,6 +7,7 @@ import { fmt, fmtK, fmtDate, todayISO, daysBetween } from '@/lib/fmt'
 import { kalanTutar, DONEMLER, donemAralik, type Donem } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, InfoRow, Divider, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col, type ServerMode } from '@/components/admin/erp/DataGrid'
+import BelgeOku, { type BelgeSonuc } from '@/components/admin/BelgeOku'
 import { Plus, Receipt, HandCoins, AlertTriangle, FileText, Printer, CheckCircle2, Ban, Copy, Trash2, X, Coins, Wallet } from 'lucide-react'
 
 const DURUM: Record<string, { l: string; tone: any }> = { taslak: { l: 'Taslak', tone: 'muted' }, onaylandi: { l: 'Açık', tone: 'blue' }, odendi: { l: 'Ödendi', tone: 'green' }, iptal: { l: 'İptal', tone: 'red' } }
@@ -240,6 +241,24 @@ export default function FaturalarPage() {
 
   const dOdemeler = detay ? odemeler.filter(o => o.fatura_id === detay.id) : []
   const kasaAd = Object.fromEntries(kasalar.map(k => [k.id, k.ad]))
+  // AI ile okunan belge verisini forma doldurur (kayıt için kullanıcı kontrol edip onaylar)
+  const norm = (t: string) => t.toLocaleLowerCase('tr').replace(/\b(a\.?ş\.?|ltd\.?|şti\.?|san\.?|tic\.?|ve|sanayi|ticaret|limited|anonim|şirketi)\b/g, ' ').replace(/[^a-z0-9ğüşıöç]+/g, ' ').trim()
+  function belgedenDoldur(b: BelgeSonuc) {
+    const kalemDoldur: Kalem[] = b.kalemler.filter(k => k.aciklama).map(k => {
+      const kdv = k.kdv_orani ?? 20, miktar = k.miktar && k.miktar > 0 ? k.miktar : 1
+      const fiyat = k.birim_fiyat ?? (k.toplam != null ? +(k.toplam / miktar / (1 + kdv / 100)).toFixed(4) : 0)
+      return { urun_adi: k.aciklama, variant_id: null, miktar, birim: k.birim || 'adet', birim_fiyat: fiyat, kdv_orani: kdv }
+    })
+    const aday = norm(b.satici || '')
+    const cari = aday ? cariler.find(c => { const n = norm(c.ad); return n && (n === aday || n.includes(aday) || aday.includes(n)) }) : null
+    const pb = ['TRY', 'USD', 'EUR', 'GBP'].includes(b.para_birimi) ? b.para_birimi : 'TRY'
+    setForm((f: any) => ({ ...f, no: b.belge_no || f.no, tarih: b.tarih || f.tarih, para_birimi: pb, kur: pb === 'TRY' ? '1' : f.kur, cari_id: cari?.id || f.cari_id, notlar: [f.notlar, b.notlar && `AI notu: ${b.notlar}`].filter(Boolean).join('\n') }))
+    if (kalemDoldur.length) setKalemler(kalemDoldur)
+    const hesap = kalemDoldur.reduce((t, k) => t + k.miktar * k.birim_fiyat * (1 + k.kdv_orani / 100), 0)
+    const fark = b.genel_toplam != null && hesap > 0 && Math.abs(hesap - b.genel_toplam) / b.genel_toplam > 0.01
+    toast.show(`Belge okundu (güven: ${b.guven}). ${cari ? '' : `Cari eşleşmedi${b.satici ? ` (${b.satici})` : ''}. `}${fark ? `Toplam uyuşmuyor: belge ${fmt(b.genel_toplam!)} / hesaplanan ${fmt(hesap)}. ` : ''}Lütfen kontrol et.`, !cari || fark || b.guven === 'dusuk')
+  }
+
   const cariSec = cariler.filter(c => (form.tip === 'alis' ? c.tip !== 'musteri' : form.tip === 'satis' ? c.tip !== 'tedarikci' : true))
 
   return (
@@ -318,6 +337,10 @@ export default function FaturalarPage() {
           <button type="button" className="adm-btn-ghost" disabled={busy} onClick={() => save(false)}>Taslak Kaydet</button>
           <button type="button" className="adm-btn" disabled={busy} onClick={() => save(true)}><CheckCircle2 size={14} />Kaydet ve Onayla</button>
         </>}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+          <BelgeOku onSonuc={belgedenDoldur} onHata={m => toast.show(m, true)} />
+          <span style={{ fontSize: 11.5, color: 'var(--adm-tx3)' }}>Fatura/irsaliye fotoğrafı veya PDF'i yükle; alanlar otomatik dolar, sen kontrol edip kaydet.</span>
+        </div>
         <FormGrid cols={4}>
           <Field label="Tür"><select className="adm-inp" value={form.tip} onChange={e => setForm((f: any) => ({ ...f, tip: e.target.value, cari_id: '' }))}><option value="satis">Satış</option><option value="alis">Alış</option><option value="iade">İade</option></select></Field>
           <Field label="Fatura No *"><input className="adm-inp" value={form.no || ''} onChange={e => setForm((f: any) => ({ ...f, no: e.target.value }))} /></Field>

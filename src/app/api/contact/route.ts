@@ -1,6 +1,9 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse, after } from 'next/server'
-import { notify } from '@/lib/notify'
+import { notify, supabaseAdmin } from '@/lib/notify'
+import { oranSiniri, istemciIp } from '@/lib/rate-limit'
+import { aiAktif } from '@/lib/ai'
+import { basvuruAnalizKaydet, type BasvuruAnaliz } from '@/lib/ai-basvuru'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 const SUBJECTS = new Set(['Ürün Bilgisi', 'Fiyat Talebi', 'İhracat', 'Katalog', 'Özel Kalıp', 'Diğer'])
@@ -38,43 +41,48 @@ export async function POST(req: NextRequest) {
   const { veri, hata } = temizle(body)
   if (hata || !veri) return NextResponse.json({ error: hata }, { status: 400 })
 
-  const sb = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!)
-
-  // Basit DB tabanlı rate limit: aynı IP saatte en fazla 5 gönderim yapabilir (spam/DDoS koruması).
-  // Vercel, gerçek istemci IP'sini x-real-ip / x-vercel-forwarded-for ile verir; x-forwarded-for'un ilk değeri istemci tarafından taklit edilebilir.
-  const ip =
-    req.headers.get('x-real-ip') ||
-    req.headers.get('x-vercel-forwarded-for')?.split(',')[0]?.trim() ||
-    req.headers.get('x-forwarded-for')?.split(',').pop()?.trim() ||
-    'bilinmeyen'
-  const anahtar = `contact:${ip}`
-  const birSaatOnce = new Date(Date.now() - 60 * 60 * 1000).toISOString()
-  const { count } = await sb.from('rate_limit_kayitlari').select('id', { count: 'exact', head: true }).eq('anahtar', anahtar).gte('created_at', birSaatOnce)
-  if ((count || 0) >= 5) {
+  // DB tabanlı oran sınırı: aynı IP saatte en fazla 5 gönderim (spam/DDoS koruması).
+  if (!(await oranSiniri(`contact:${istemciIp(req)}`, 5, 3600))) {
     return NextResponse.json({ error: 'Çok fazla istek gönderildi, lütfen daha sonra tekrar deneyin.' }, { status: 429 })
   }
-  await sb.from('rate_limit_kayitlari').insert({ anahtar })
 
-  const { error } = await sb.from('contact_submissions').insert(veri)
-  if (error) {
-    console.error('[contact] kayıt hatası:', error.message)
-    return NextResponse.json({ error: 'Mesaj kaydedilemedi, lütfen tekrar deneyin.' }, { status: 500 })
+  // Kayıt id'sini geri almak için service_role ile eklenir (anon için SELECT politikası yok); yoksa anon'a düşer.
+  let id: string | null = null
+  try {
+    const { data, error } = await supabaseAdmin().from('contact_submissions').insert(veri).select('id').single()
+    if (error) throw error
+    id = data?.id ?? null
+  } catch (e: any) {
+    console.error('[contact] service_role kaydı başarısız, anon deneniyor:', e?.message)
+    const anon = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!)
+    const { error } = await anon.from('contact_submissions').insert(veri)
+    if (error) {
+      console.error('[contact] kayıt hatası:', error.message)
+      return NextResponse.json({ error: 'Mesaj kaydedilemedi, lütfen tekrar deneyin.' }, { status: 500 })
+    }
   }
 
-  // Yanıtı geciktirmeden bildirim gönder (e-posta / WhatsApp)
-  after(() => notify(
-    'new_contact',
-    `Yeni başvuru: ${veri.name}`,
-    [
-      'Alya Plastik sitesinden yeni iletişim formu geldi.',
-      `Ad: ${veri.name}`,
-      `Firma: ${veri.company ?? '-'}`,
-      `E-posta: ${veri.email}`,
-      `Telefon: ${veri.phone ?? '-'}`,
-      `Konu: ${veri.subject ?? '-'}`,
-      `Mesaj: ${veri.message}`,
-    ].join('\n'),
-    { name: veri.name, email: veri.email, phone: veri.phone },
-  ))
+  // Yanıtı geciktirmeden: AI analizi (varsa) + bildirim (e-posta / WhatsApp)
+  after(async () => {
+    let ai: BasvuruAnaliz | null = null
+    if (aiAktif() && id) {
+      try { ai = await basvuruAnalizKaydet(id, veri) } catch (e: any) { console.error('[contact] AI analiz hatası:', e?.message) }
+    }
+    await notify(
+      'new_contact',
+      `${ai?.spam ? '[Şüpheli] ' : ai?.oncelik === 'yuksek' ? '[Öncelikli] ' : ''}Yeni başvuru: ${veri.name}`,
+      [
+        'Alya Plastik sitesinden yeni iletişim formu geldi.',
+        ...(ai ? [`AI özeti: ${ai.ozet} (${ai.kategori}, öncelik: ${ai.oncelik})`] : []),
+        `Ad: ${veri.name}`,
+        `Firma: ${veri.company ?? '-'}`,
+        `E-posta: ${veri.email}`,
+        `Telefon: ${veri.phone ?? '-'}`,
+        `Konu: ${veri.subject ?? '-'}`,
+        `Mesaj: ${veri.message}`,
+      ].join('\n'),
+      { name: veri.name, email: veri.email, phone: veri.phone },
+    )
+  })
   return NextResponse.json({ ok: true })
 }

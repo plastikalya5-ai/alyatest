@@ -3,13 +3,14 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState } from 'react'
-import { LayoutDashboard, Package, Tag, MessageSquare, Settings, BarChart2, TrendingUp, Eye, Image, LogOut, ExternalLink, FileText, Bell, Activity, Layers, DollarSign, Receipt, Users2, PieChart, Landmark, FileSignature, Warehouse, Boxes, ArrowLeftRight, Cog, Wrench, FlaskConical, Factory, Zap, ClipboardList, PackageSearch, Truck, ShieldCheck, FlameKindling, UserCog, ScanLine } from 'lucide-react'
+import { LayoutDashboard, Package, Tag, MessageSquare, Settings, BarChart2, TrendingUp, Eye, Image, LogOut, ExternalLink, FileText, Bell, Activity, Layers, DollarSign, Receipt, Users2, PieChart, Landmark, FileSignature, Warehouse, Boxes, ArrowLeftRight, Cog, Wrench, FlaskConical, Factory, Zap, ClipboardList, PackageSearch, Truck, ShieldCheck, FlameKindling, UserCog, ScanLine, Sparkles } from 'lucide-react'
 
 const NAV = [
   { g:'Genel', mod:['dashboard'], items:[
     { href:'/admin/dashboard',              label:'Dashboard',       Icon:LayoutDashboard, mod:['dashboard'] },
     { href:'/admin/dashboard/analytics',    label:'Analitik',        Icon:TrendingUp,      mod:['dashboard'] },
     { href:'/admin/dashboard/istatistik',   label:'İstatistikler',   Icon:BarChart2,       mod:['dashboard'] },
+    { href:'/admin/dashboard/asistan',      label:'AI Asistan',      Icon:Sparkles,        mod:['dashboard','muhasebe','stok','uretim','satis','satinalma','sevkiyat','kalite','yonetim'] },
     { href:'/admin/dashboard/aktivite',     label:'Aktivite Logu',   Icon:Activity,        mod:['yonetim'] },
   ]},
   { g:'Ürün Yönetimi', mod:['yonetim'], items:[
