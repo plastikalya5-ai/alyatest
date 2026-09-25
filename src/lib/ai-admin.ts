@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { aiCagir, aiJson, AiHata, S, veriBlok, type AiArac, type AiMesaj } from '@/lib/ai'
 
-const bugunISO = () => new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10) // Europe/Istanbul (UTC+3)
+export const bugunISO = () => new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10) // Europe/Istanbul (UTC+3)
 
 /* ───────────────────────── Ürün metni (çok dilli) ───────────────────────── */
 export type UrunMetin = {
@@ -51,7 +51,7 @@ export async function gorselAnalizEt(url: string, ad?: string): Promise<GorselAn
 
 /* ───────────────────────── ERP araçları (asistan + özet) ───────────────────────── */
 const TARIH = { type: 'string', description: 'YYYY-MM-DD' }
-const ARACLAR: AiArac[] = [
+export const ARACLAR: AiArac[] = [
   { type: 'function', function: { name: 'finans_ozet', description: 'Dönem gelir/gider, önceki dönem karşılaştırması, kasa toplamı, cari alacak/borç, geciken fatura, çek/senet ve aylık seri.', parameters: { type: 'object', properties: { bas: TARIH, bit: TARIH, onceki_bas: TARIH, onceki_bit: TARIH }, required: ['bas', 'bit', 'onceki_bas', 'onceki_bit'], additionalProperties: false } } },
   { type: 'function', function: { name: 'satis_analiz', description: 'Dönemdeki satış analizi (ürün/müşteri bazlı satışlar).', parameters: { type: 'object', properties: { bas: TARIH, bit: TARIH }, required: ['bas', 'bit'], additionalProperties: false } } },
   { type: 'function', function: { name: 'fatura_ozet', description: 'Dönemdeki fatura özeti (adet, tutar, durumlar).', parameters: { type: 'object', properties: { bas: TARIH, bit: TARIH }, required: ['bas', 'bit'], additionalProperties: false } } },

@@ -33,6 +33,7 @@ const NAV = [
     { href:'/admin/dashboard/muhasebe/cek-senet', label:'Çek/Senet',   Icon:FileSignature,mod:['muhasebe'] },
     { href:'/admin/dashboard/muhasebe/fiyat-listeleri', label:'Fiyat Listeleri', Icon:Tag, mod:['muhasebe','satis'] },
     { href:'/admin/dashboard/muhasebe/raporlar', label:'Raporlar',     Icon:PieChart,    mod:['muhasebe'] },
+    { href:'/admin/dashboard/muhasebe/ai', label:'Muhasebe AI', Icon:Sparkles, mod:['muhasebe'] },
   ]},
   { g:'Stok / Depo', mod:['stok'], items:[
     { href:'/admin/dashboard/stok/depo',       label:'Depolar',           Icon:Warehouse,     mod:['stok'] },

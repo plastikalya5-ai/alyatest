@@ -16,6 +16,7 @@ Alya Plastik'in tanıtım sitesi ve yönetim paneli (mini ERP). Next.js (App Rou
 - **AI Asistan** (`/admin/dashboard/asistan`) ve dashboard **AI Durum Özeti**: yalnızca yetkili kullanıcının oturumuyla, hazır `rpc_*`/görünüm araçlarıyla okur; yazma yapmaz.
 - **Banka ekstresi:** eşleşmeyen satırlar için cari/kategori önerisi (IBAN maskelenir).
 - **Faturalar:** fatura/irsaliye fotoğrafı veya PDF'inden form doldurma (kaydı kullanıcı onaylar).
+- **Muhasebe AI** (`/admin/dashboard/muhasebe/ai`, yalnızca `muhasebe` modülü): (1) mevzuat sorularına yalnızca `muhasebe_mevzuat` tablosundaki kaynaklı, tarihli kayıtlardan cevap verir (modelin eski hafızası kullanılmaz; tek kaynaklı/bayat/süresi dolmuş kayıtlar cevapta uyarıyla belirtilir), (2) tüm aritmetiği deterministik hesap aracıyla yapar, (3) şirket verisini (fatura, işlem, KDV, yaşlandırma...) kullanıcının yetkisiyle okur, (4) yüklenen belgeden kullanıcının istediği alanları/tabloları çıkarır (CSV/kopyala, belgeyle sohbet). Mevzuat kayıtları aynı sayfadaki "Güncel mevzuat" sekmesinden güncellenir; yeni tebliğ/karar çıktığında güncellemek ve "Bugün doğruladım" ile işaretlemek gerekir.
 
 Yönetici uçları `/api/admin/ai` altındadır; kullanıcı başına saatte 80 istek sınırı vardır. Veriler OpenAI'a gönderilir: hassas alanları (vergi no vb.) göndermeyin, KVKK aydınlatmanızı buna göre güncelleyin.
 
