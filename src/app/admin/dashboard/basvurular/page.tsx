@@ -6,7 +6,7 @@ import { muh } from '@/lib/muhasebe-client'
 import { fmtDateTime, daysBetween, fmtInt } from '@/lib/fmt'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Drawer, InfoRow, Divider, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
-import { MessageSquare, Mail, Phone, MessageCircle, Archive, CheckCheck, Eye, Trash2, UserPlus, Clock, Inbox, Reply, Sparkles, Copy, ShieldAlert } from 'lucide-react'
+import { FileText, MessageSquare, Mail, Phone, MessageCircle, Archive, CheckCheck, Eye, Trash2, UserPlus, Clock, Inbox, Reply, Sparkles, Copy, ShieldAlert } from 'lucide-react'
 import { aiIstek } from '@/lib/ai-client'
 
 const ST: Record<string, { l: string; tone: any }> = { new: { l: 'Yeni', tone: 'ac' }, read: { l: 'Okundu', tone: 'blue' }, replied: { l: 'Yanıtlandı', tone: 'green' }, archived: { l: 'Arşiv', tone: 'muted' } }
@@ -92,7 +92,7 @@ export default function BasvurularPage() {
       </Page>
 
       <Drawer open={!!sel} onClose={() => setSel(null)} width={520} title={sel && <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>{sel.name}<Badge tone={ST[st(sel)].tone}>{ST[st(sel)].l}</Badge></span>} sub={sel && `${sel.company ? sel.company + ' · ' : ''}${fmtDateTime(sel.created_at)}`}
-        footer={sel && <><button className="adm-btn-danger" onClick={() => sil(sel)}><Trash2 size={13} /></button><button className="adm-btn-ghost" onClick={() => durum(sel, 'archived')}><Archive size={13} />Arşivle</button>
+        footer={sel && <><button className="adm-btn-danger" onClick={() => sil(sel)}><Trash2 size={13} /></button><button className="adm-btn-ghost" onClick={() => durum(sel, 'archived')}><Archive size={13} />Arşivle</button><a className="adm-btn-ghost" style={{ textDecoration: 'none' }} href={`/admin/dashboard/satis/teklifler?basvuru=${sel.id}`} title="Bu başvurudan fiyat teklifi hazırla"><FileText size={13} />Teklif hazırla</a>
           <a className="adm-btn" href={yanit(sel)} onClick={() => durum(sel, 'replied', true)} style={{ textDecoration: 'none' }}><Mail size={14} />E-posta ile Yanıtla</a></>}>
         {sel && <div style={{ padding: 20 }}>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>

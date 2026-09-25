@@ -4,6 +4,7 @@ import { oranSiniri } from '@/lib/rate-limit'
 import { aiAktif, AiHata } from '@/lib/ai'
 import { basvuruAnalizKaydet } from '@/lib/ai-basvuru'
 import { sosyalIcerikUret, AMACLAR } from '@/lib/ai-sosyal'
+import { teklifKalemOner } from '@/lib/ai-teklif'
 import { asistanYanit, belgeOku, ekstreOner, gorselAnalizEt, haftalikOzet, urunMetniUret, type Konusma } from '@/lib/ai-admin'
 
 export const maxDuration = 60
@@ -13,6 +14,7 @@ export const maxDuration = 60
 const YETKI: Record<string, string[]> = {
   urun_metin: ['yonetim'],
   sosyal_icerik: ['yonetim'],
+  teklif_kalem_oner: ['satis', 'yonetim'],
   gorsel_analiz: ['yonetim'],
   basvuru_analiz: ['dashboard'],
   asistan: [],                      // her personel; veri erişimi zaten RLS ile sınırlı
@@ -66,6 +68,20 @@ export async function POST(req: NextRequest) {
         const firma = { sirket: m.site?.company, kurulus_yili: m.site?.founded, adres: m.site?.address, e_posta: m.site?.email, ihracat_e_posta: m.site?.export_email, telefon: m.site?.phone, ihracat_ulkeleri: Array.isArray(m.export_countries) ? m.export_countries.slice(0, 30).join(', ') : undefined, model_sayisi: m.stats?.models, ihracat_ulke_sayisi: m.stats?.countries }
         const sonuc = await sosyalIcerikUret({ platform, amac, dil: body.dil === 'en' ? 'en' : 'tr', adet: Number(body.adet) || 1, urun, firma, not: typeof body.not === 'string' ? body.not.slice(0, 600) : undefined })
         return NextResponse.json({ ok: true, sonuc })
+      }
+      case 'teklif_kalem_oner': {
+        let mesaj = typeof body.metin === 'string' ? body.metin.slice(0, 3000) : ''
+        if (body.basvuru_id) {
+          if (typeof body.basvuru_id !== 'string' || !/^[0-9a-f-]{36}$/.test(body.basvuru_id)) return NextResponse.json({ error: 'Başvuru geçersiz' }, { status: 400 })
+          const { data: b } = await y.sb.from('contact_submissions').select('name,company,subject,product,message').eq('id', body.basvuru_id).maybeSingle()
+          if (!b) return NextResponse.json({ error: 'Başvuru bulunamadı' }, { status: 404 })
+          mesaj = [b.subject && `Konu: ${b.subject}`, b.product && `İlgilendiği ürün: ${b.product}`, b.message].filter(Boolean).join('\n').slice(0, 3000)
+        }
+        if (mesaj.trim().length < 5) return NextResponse.json({ error: 'Analiz edilecek metin yok' }, { status: 400 })
+        const [v, p] = await Promise.all([y.sb.from('product_variants').select('id,product_id,name,color,size').limit(3000), y.sb.from('products').select('id,name').limit(3000)])
+        const pn = new Map((p.data || []).map((x: any) => [x.id, x.name]))
+        const katalog = (v.data || []).map((x: any) => ({ id: x.id, label: [pn.get(x.product_id), x.name, x.color, x.size].filter(Boolean).filter((a: any, i: number, arr: any[]) => arr.indexOf(a) === i).join(' · ') || x.name }))
+        return NextResponse.json({ ok: true, sonuc: await teklifKalemOner(mesaj, katalog), katalogBos: katalog.length === 0 })
       }
       case 'gorsel_analiz': {
         if (typeof body.url !== 'string') return NextResponse.json({ error: 'Görsel adresi gerekli' }, { status: 400 })

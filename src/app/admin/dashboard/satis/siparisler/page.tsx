@@ -1,8 +1,9 @@
 'use client'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import AdminTopBar from '@/components/admin/TopBar'
 import { erp } from '@/lib/erp-client'
+import { web } from '@/lib/web-data'
 import { muh } from '@/lib/muhasebe-client'
 import { fmt, fmtK, fmtN, fmtInt, fmtDate, todayISO, daysBetween } from '@/lib/fmt'
 import { useUretim, byId, sevkEdilen, rezerveMap, SIPARIS_ACIK } from '@/lib/uretim-utils'
@@ -25,6 +26,7 @@ export default function SatisSiparisleriPage() {
   const [form, setForm] = useState<any>({})
   const [kalemler, setKalemler] = useState<Kalem[]>([bosKalem()])
   const [busy, setBusy] = useState(false)
+  const [teklifRef, setTeklifRef] = useState<string | null>(null)   // tekliften açılan sipariş: kaydedilince teklif 'kabul' olur
 
   const cari = useMemo(() => byId(d.cariTam), [d.cariTam])
   const urun = useMemo(() => byId(d.products), [d.products])
@@ -60,6 +62,24 @@ export default function SatisSiparisleriPage() {
   }
   const openKopya = (s: any) => { setEditing(null); setForm({ no: sonrakiNo(), cari_id: s.cari_id || '', tarih: todayISO(), teslim_tarihi: '', notlar: s.notlar || '' }); setKalemler(S[s.id].ks.map((k: any) => ({ variant_id: k.variant_id || '', urun_adi: k.urun_adi, miktar: +k.miktar, birim_fiyat: +k.birim_fiyat || 0 }))); setDetay(null); setModal(true) }
 
+  // Tekliften gelen ?teklif=<id>[&kur=<TL>] bağlantısı: yeni sipariş formunu teklif kalemleriyle (iskonto düşülmüş net fiyatla) açar.
+  useEffect(() => {
+    if (loading) return
+    const sp = new URLSearchParams(window.location.search), tid = sp.get('teklif')
+    if (!tid || !/^[0-9a-f-]{36}$/.test(tid)) return
+    const kur = +(sp.get('kur') || '1') || 1
+    window.history.replaceState(null, '', window.location.pathname)
+    ;(async () => {
+      const [t, k] = await Promise.all([web.from('teklifler').select('id,no,cari_id,musteri_adi,durum,siparis_id').eq('id', tid).maybeSingle(), web.from('teklif_kalemleri').select('*').eq('teklif_id', tid).order('sira')])
+      const tk: any = t.data
+      if (!tk || k.error) return toast.show('Teklif okunamadı', true)
+      if (tk.durum === 'kabul' || tk.siparis_id) return toast.show(`${tk.no} zaten siparişe çevrilmiş`, true)
+      setEditing(null); setTeklifRef(tid)
+      setForm({ no: sonrakiNo(), cari_id: tk.cari_id || '', tarih: todayISO(), teslim_tarihi: '', notlar: `Teklif ${tk.no}${tk.cari_id ? '' : ` — müşteri: ${tk.musteri_adi} (cari seçin)`}${kur !== 1 ? ` · fiyatlar ${kur} kuruyla TL'ye çevrildi` : ''}` })
+      setKalemler((k.data || []).map((x: any) => ({ variant_id: x.variant_id || '', urun_adi: x.urun_adi, miktar: +x.miktar, birim_fiyat: +(((+x.birim_fiyat) * (1 - (+x.iskonto_yuzde || 0) / 100)) * kur).toFixed(4) })))
+      setModal(true); toast.show('Teklif kalemleri forma aktarıldı; cariyi seçip kaydedin')
+    })()
+  }, [loading]) // eslint-disable-line
   const varsayilanListe = d.fiyatListeleri.find((l: any) => l.varsayilan)?.id
   function fiyatBul(variantId: string, cariId: string, miktar: number) {
     const lid = cari[cariId]?.fiyat_listesi_id || varsayilanListe
@@ -115,6 +135,11 @@ export default function SatisSiparisleriPage() {
         return { siparis_id: id, variant_id: k.variant_id || null, urun_adi: k.urun_adi, miktar: k.miktar, birim_fiyat: k.birim_fiyat, karsilanan_miktar: karsilanan, uretim_gereken_miktar: k.miktar - karsilanan }
       })
       const kk: any = await erp.from('satis_siparisi_kalemleri').insert(rows); if (kk?.error) throw new Error(kk.error)
+      if (!editing && teklifRef) {
+        const u = await web.from('teklifler').update({ durum: 'kabul', siparis_id: id, updated_at: new Date().toISOString() }).eq('id', teklifRef).neq('durum', 'kabul')
+        if (u.error) toast.show(`Sipariş oluştu ama teklif durumu güncellenemedi: ${u.error.message}`, true)
+        setTeklifRef(null)
+      }
       toast.show(editing ? 'Sipariş güncellendi' : 'Sipariş oluşturuldu'); setModal(false); await reload()
       if (detay?.id === id) setDetay((x: any) => ({ ...x, ...payload }))
     } catch (err: any) { toast.show(err.message, true) }
@@ -243,7 +268,7 @@ export default function SatisSiparisleriPage() {
         )}
       </Drawer>
 
-      <Modal open={modal} onClose={() => setModal(false)} width={900} title={editing ? `${editing.no} — Düzenle` : 'Yeni Satış Siparişi'}
+      <Modal open={modal} onClose={() => { setModal(false); setTeklifRef(null) }} width={900} title={editing ? `${editing.no} — Düzenle` : 'Yeni Satış Siparişi'}
         footer={<><span style={{ marginRight: 'auto', fontSize: 13 }}>Tutar {fmt(formTutar)} · KDV dahil <b style={{ color: 'var(--adm-green)', fontSize: 15 }}>{fmt(formTutar * 1.2)}</b></span><button type="button" className="adm-btn-ghost" onClick={() => setModal(false)}>İptal</button><button type="button" className="adm-btn" disabled={busy} onClick={save as any}>{busy ? 'Kaydediliyor...' : 'Kaydet'}</button></>}>
         <FormGrid cols={4}>
           <Field label="Sipariş No"><input className="adm-inp" value={form.no || ''} onChange={e => setForm((f: any) => ({ ...f, no: e.target.value }))} /></Field>
