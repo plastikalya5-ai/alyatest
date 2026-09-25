@@ -5,6 +5,7 @@ import { muh } from '@/lib/muhasebe-client'
 import { csvDownload, fmt } from '@/lib/fmt'
 import { Modal, Field, FormGrid, Badge, Divider } from '@/components/admin/erp/ui'
 import { Copy, Download, Plus, X } from 'lucide-react'
+import SiparisEslestir, { type EslesmeSecim } from '@/components/admin/SiparisEslestir'
 
 const ENDPOINT = '/api/admin/muhasebe-ai'
 type Kalem = { urun_adi: string; miktar: number; birim: string; birim_fiyat: number; kdv_orani: number }
@@ -23,6 +24,7 @@ export default function KayitOner({ belge, onClose, toast }: { belge: { ad: stri
   const [yeniCari, setYeniCari] = useState(false)
   const [kasaId, setKasaId] = useState('')
   const [busy, setBusy] = useState(false)
+  const [eslesme, setEslesme] = useState<EslesmeSecim | null>(null)
 
   useEffect(() => {
     let iptal = false
@@ -43,6 +45,7 @@ export default function KayitOner({ belge, onClose, toast }: { belge: { ad: stri
   const ara = useMemo(() => kalemler.reduce((t, k) => t + k.miktar * k.birim_fiyat, 0), [kalemler])
   const kdv = useMemo(() => kalemler.reduce((t, k) => t + (k.miktar * k.birim_fiyat * k.kdv_orani) / 100, 0), [kalemler])
   const setK = (idx: number, p: Partial<Kalem>) => setKalemler(ks => ks.map((k, j) => (j === idx ? { ...k, ...p } : k)))
+  useEffect(() => { setEslesme(null) }, [cariId, f.tip])
   const cariTip = f.tip === 'alis' ? 'tedarikci' : 'musteri'
   const cariListe = (d?.cariler || []).filter((c: any) => (f.tip === 'alis' ? c.tip !== 'musteri' : f.tip === 'satis' ? c.tip !== 'tedarikci' : true))
 
@@ -63,18 +66,24 @@ export default function KayitOner({ belge, onClose, toast }: { belge: { ad: stri
     if (!gecerli.length) return toast.show('En az bir kalem gerekli', true)
     if (!f.tarih) return toast.show('Fatura tarihi gerekli', true)
     if (d.mukerrer.fatura.length && !confirm(`${f.no} numaralı fatura sistemde zaten var. Yine de taslak oluşturulsun mu?`)) return
+    if (eslesme?.iptalOto && eslesme.otoFatura && !confirm(`${eslesme.otoFatura.no} otomatik faturası İPTAL edilecek ve tedarikçinin cari borcundan düşülecek. Gerçek fatura onaylanınca borç yeniden yazılır. Devam edilsin mi?`)) return
     setBusy(true)
     try {
       const cid = await cariHazirla()
       const r: any = await muh.from('faturalar').insert({
-        tip: f.tip, no: f.no.trim(), cari_id: cid, tarih: f.tarih, vade: f.vade || null, notlar: [f.notlar, `Belgeden AI ile aktarıldı: ${belge.ad}`].filter(Boolean).join('\n'), para_birimi: f.para_birimi, kur,
+        tip: f.tip, no: f.no.trim(), cari_id: cid, tarih: f.tarih, vade: f.vade || null, notlar: [f.notlar, `Belgeden AI ile aktarıldı: ${belge.ad}`, eslesme ? `Satınalma siparişi: ${eslesme.siparisNo}` : ''].filter(Boolean).join('\n'), ...(eslesme ? { satinalma_siparis_id: eslesme.siparisId } : {}), para_birimi: f.para_birimi, kur,
         kdv_orani: gecerli[0].kdv_orani, ara_toplam: ara * kur, kdv_tutari: kdv * kur, toplam: (ara + kdv) * kur, doviz_tutari: f.para_birimi !== 'TRY' ? ara + kdv : null, durum: 'taslak',
       })
       if (r?.error) throw new Error(r.error)
       const id = r.data?.[0]?.id
       const k: any = await muh.from('fatura_kalemleri').insert(gecerli.map(x => ({ fatura_id: id, urun_adi: x.urun_adi, variant_id: null, miktar: x.miktar, birim: x.birim || 'adet', birim_fiyat: x.birim_fiyat, kdv_orani: x.kdv_orani, toplam: x.miktar * x.birim_fiyat * (1 + x.kdv_orani / 100) })))
       if (k?.error) throw new Error(k.error)
-      toast.show('Fatura TASLAK olarak oluşturuldu (Muhasebe → Faturalar); kontrol edip onaylayın'); onClose()
+      let iptalNot = ''
+      if (eslesme?.iptalOto && eslesme.otoFatura) {
+        const u: any = await muh.from('faturalar').update({ durum: 'iptal' }).eq('id', eslesme.otoFatura.id)
+        iptalNot = u?.error ? ` UYARI: ${eslesme.otoFatura.no} otomatik faturası iptal EDİLEMEDİ (${u.error}); Faturalar ekranından elle iptal edin.` : ` ${eslesme.otoFatura.no} otomatik faturası iptal edildi.`
+      }
+      toast.show('Fatura TASLAK olarak oluşturuldu (Muhasebe → Faturalar); kontrol edip onaylayın.' + iptalNot, iptalNot.includes('UYARI')); onClose()
     } catch (e: any) { toast.show(e.message, true) }
     setBusy(false)
   }
@@ -144,6 +153,7 @@ export default function KayitOner({ belge, onClose, toast }: { belge: { ad: stri
             <button type="button" className="adm-btn-ghost" style={{ fontSize: 12 }} onClick={() => setKalemler(ks => [...ks, { urun_adi: '', miktar: 1, birim: 'adet', birim_fiyat: 0, kdv_orani: 20 }])}><Plus size={12} />Kalem ekle</button>
             <span style={{ fontSize: 13 }}>Ara {fmt(ara)} · KDV {fmt(kdv)} · <b>Toplam {fmt(ara + kdv)} {f.para_birimi}</b></span>
           </div>
+          {f.tip === 'alis' && <SiparisEslestir cariId={cariId} araToplamTRY={ara * kur} tarih={f.tarih} kalemler={kalemler} paraBirimi={f.para_birimi} secim={eslesme} onChange={setEslesme} />}
         </>}
 
         {tur === 'islem' && <FormGrid cols={3}>

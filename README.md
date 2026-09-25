@@ -24,7 +24,7 @@ Alya Plastik'in tanıtım sitesi ve yönetim paneli (mini ERP). Next.js (App Rou
 Yönetici uçları `/api/admin/ai` altındadır; kullanıcı başına saatte 80 istek sınırı vardır. Veriler OpenAI'a gönderilir: hassas alanları (vergi no vb.) göndermeyin, KVKK aydınlatmanızı buna göre güncelleyin.
 
 ## Satınalma
-Panel: Satış / Lojistik → Satınalma Siparişleri (sipariş, kısmi teslim, stok girişi, alış faturası), Talepler / Teklifler (talep → tedarikçi teklifleri → karşılaştırma → `rpc_satinalma_teklif_siparise_cevir` ile tek işlemde siparişe çevirme) ve Tedarikçiler (cari “tedarikçi” kartları için zamanında teslim, ortalama termin, fiyat geçmişi).
+Panel: Satış / Lojistik → Satınalma Siparişleri (sipariş, kısmi teslim, stok girişi, alış faturası), Talepler / Teklifler (talep → tedarikçi teklifleri → karşılaştırma → `rpc_satinalma_teklif_siparise_cevir` ile tek işlemde siparişe çevirme) ve Tedarikçiler (cari “tedarikçi” kartları için zamanında teslim, ortalama termin, fiyat geçmişi). Teslim alma `rpc_satinalma_teslim_al` ile tek işlemde yapılır. Muhasebe AI'da okunan alış faturası, `SiparisEslestir` ile tedarikçinin siparişleriyle karşılaştırılır (tutar/miktar/fiyat, teslim alınan mal esas; sistemin oluşturduğu `ALIS-…` faturasıyla çifte kayıt uyarısı) ve `faturalar.satinalma_siparis_id` ile bağlanır.
 
 ## Sosyal medya + n8n
 Panel: Ürün Yönetimi → Sosyal Medya (AI içerik, takvim, görsel şablonlar). Otomatik paylaşım n8n'de kurulur:

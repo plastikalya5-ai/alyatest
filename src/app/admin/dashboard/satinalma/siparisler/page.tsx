@@ -114,21 +114,15 @@ export default function SatinalmaPage() {
     if (asan && !confirm(`${ham[asan.k.hammadde_id]?.ad}: teslim, sipariş miktarının %10'undan fazla aşıyor. Devam?`)) return
     setBusy(true)
     try {
-      for (const g of girisler) {
-        const h = ham[g.k.hammadde_id]
-        const r: any = await erp.from('stok_hareketleri').insert({ tip: 'satinalma', yon: 'giris', hammadde_id: g.k.hammadde_id, miktar: g.gelen, birim_maliyet: g.fiyat || null, depo_id: teslim.depo || h?.depo_id || null, kaynak_tablo: 'satinalma_siparisi_kalemleri', kaynak_id: g.k.id, aciklama: `${s.no} teslim alındı` })
-        if (r?.error) throw new Error(r.error)
-        await erp.from('satinalma_siparisi_kalemleri').update({ teslim_alinan_miktar: (+g.k.teslim_alinan_miktar || 0) + g.gelen, ...(g.fiyat ? { birim_fiyat: g.fiyat } : {}) }).eq('id', g.k.id)
-        // ağırlıklı ortalama maliyet
-        if (g.fiyat > 0 && h) { const eski = Math.max(+h.mevcut_stok || 0, 0); await erp.from('hammaddeler').update({ ortalama_maliyet: +((eski * (+h.ortalama_maliyet || 0) + g.gelen * g.fiyat) / (eski + g.gelen)).toFixed(4) }).eq('id', h.id) }
-        // lot kaydı
-        await erp.from('hammadde_lotlari').insert({ hammadde_id: g.k.hammadde_id, lot_no: teslim.lot ? `${teslim.lot}` : `${s.no}`, miktar: g.gelen, giris_tarihi: teslim.tarih, tedarikci_id: s.tedarikci_id || null })
-      }
-      const hepsi = ks.every((k: any) => { const g = girisler.find((x: any) => x.k.id === k.id); return (+k.teslim_alinan_miktar || 0) + (g?.gelen || 0) >= +k.miktar })
-      await erp.from('satinalma_siparisleri').update({ durum: hepsi ? 'teslim_alindi' : 'yolda' }).eq('id', s.id)
+      // Stok girişi, kalem güncelleme, ortalama maliyet, lot ve sipariş durumu veritabanında TEK işlemde yapılır (yarım kalmaz).
+      const r: any = await erp.rpc('rpc_satinalma_teslim_al', { p_siparis_id: s.id, p_tarih: teslim.tarih, p_depo_id: teslim.depo || null, p_lot: teslim.lot || null, p_asim_onay: !!asan, p_satirlar: girisler.map((g: any) => ({ kalem_id: g.k.id, gelen: g.gelen, fiyat: g.fiyat })) })
+      const hepsi = !!r?.tamamlandi
       // Alış faturası (sipariş tamamlandığında, KDV'li, onaylı → tedarikçi cari borcu işlenir)
-      if (hepsi && teslim.fatura && !s.fatura_olusturuldu) await alisFaturasi(s, girisler, +teslim.kdv || 0)
-      toast.show(hepsi ? 'Teslim alındı — sipariş tamamlandı' : 'Kısmi teslim alındı, stok güncellendi'); setTeslim(null); await reload(); setDetay((x: any) => x?.id === s.id ? { ...x, durum: hepsi ? 'teslim_alindi' : 'yolda', fatura_olusturuldu: x.fatura_olusturuldu || (hepsi && teslim.fatura) } : x)
+      let faturaHata = ''
+      if (hepsi && teslim.fatura && !s.fatura_olusturuldu) { try { await alisFaturasi(s, girisler, +teslim.kdv || 0) } catch (fe: any) { faturaHata = fe.message } }   // stok işlemi zaten tamamlandı; fatura hatası onu geri almaz
+      if (faturaHata) toast.show(`Teslim ve stok kaydedildi, ANCAK alış faturası oluşturulamadı (${faturaHata}). Muhasebe → Faturalar'dan elle oluşturun.`, true)
+      if (!faturaHata) toast.show(hepsi ? 'Teslim alındı — sipariş tamamlandı' : 'Kısmi teslim alındı, stok güncellendi')
+      setTeslim(null); await reload(); setDetay((x: any) => x?.id === s.id ? { ...x, durum: hepsi ? 'teslim_alindi' : 'yolda', fatura_olusturuldu: x.fatura_olusturuldu || (hepsi && teslim.fatura && !faturaHata) } : x)
     } catch (err: any) { toast.show(err.message, true); reload() }
     setBusy(false)
   }
