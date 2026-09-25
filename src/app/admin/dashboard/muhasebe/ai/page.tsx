@@ -9,7 +9,7 @@ import { csvDownload, fmtDate, todayISO } from '@/lib/fmt'
 import { Page, PageHead, Badge, Tabs, Card, Modal, Field, FormGrid, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
 import KayitOner from '@/components/admin/KayitOner'
-import { Sparkles, Send, Trash2, Upload, FileText, Copy, Download, MessageSquare, Plus, Pencil, CheckCircle2, ShieldAlert, X, BookOpen, RefreshCw } from 'lucide-react'
+import { Printer, FileSpreadsheet, History, Sparkles, Send, Trash2, Upload, FileText, Copy, Download, MessageSquare, Plus, Pencil, CheckCircle2, ShieldAlert, X, BookOpen, RefreshCw } from 'lucide-react'
 
 const ENDPOINT = '/api/admin/muhasebe-ai'
 const GUVEN: Record<string, { l: string; tone: any }> = { resmi: { l: 'Resmi kaynak', tone: 'green' }, coklu_kaynak: { l: 'Çoklu kaynak', tone: 'blue' }, tek_kaynak: { l: 'Tek kaynak — teyit et', tone: 'amber' } }
@@ -132,16 +132,66 @@ export default function MuhasebeAiPage() {
   const alt = useRef<HTMLDivElement>(null)
   useEffect(() => { alt.current?.scrollIntoView({ behavior: 'smooth' }) }, [msgs, loading])
 
+  /* ── Sohbet geçmişi (yalnızca kendi sohbetlerin; RLS) ── */
+  const [sohbetId, setSohbetId] = useState<string | null>(null)
+  const [gecmis, setGecmis] = useState<any[]>([])
+  const loadGecmis = useCallback(async () => {
+    const { data } = await web.from('muhasebe_ai_sohbetleri').select('id,baslik,updated_at').order('updated_at', { ascending: false }).limit(30)
+    setGecmis(data || [])
+  }, [])
+  useEffect(() => { loadGecmis() }, [loadGecmis])
+  async function sohbetKaydet(tum: Msg[], id: string | null) {
+    try {
+      const mesajlar = tum.slice(-60).map(m => ({ role: m.role, content: m.content.slice(0, 6000), ...(m.araclar ? { araclar: m.araclar } : {}) }))
+      if (id) { await web.from('muhasebe_ai_sohbetleri').update({ mesajlar, updated_at: new Date().toISOString() }).eq('id', id); return id }
+      const { data: { user } } = await createClient().auth.getUser(); if (!user) return null
+      const { data } = await web.from('muhasebe_ai_sohbetleri').insert({ user_id: user.id, baslik: (tum.find(m => m.role === 'user')?.content || 'Sohbet').slice(0, 70), mesajlar }).select('id').single()
+      return data?.id ?? null
+    } catch { return id } finally { loadGecmis() }
+  }
+  async function sohbetAc(id: string) {
+    if (!id) return
+    const { data } = await web.from('muhasebe_ai_sohbetleri').select('mesajlar').eq('id', id).single()
+    if (data) { setMsgs(data.mesajlar || []); setSohbetId(id); setBelgeBaglam(null) }
+  }
+  async function sohbetSil() {
+    if (!sohbetId || !confirm('Bu sohbet kalıcı silinsin mi?')) return
+    await web.from('muhasebe_ai_sohbetleri').delete().eq('id', sohbetId)
+    setSohbetId(null); setMsgs([]); loadGecmis(); toast.show('Sohbet silindi')
+  }
+  const yeniSohbet = () => { setSohbetId(null); setMsgs([]); setBelgeBaglam(null) }
+
   async function sor(metin: string) {
     const q = metin.trim(); if (!q || loading) return
     const yeni: Msg[] = [...msgs, { role: 'user', content: q }]
     setMsgs(yeni); setGirdi(''); setLoading(true)
     try {
       const r = await aiIstek<{ yanit: string; araclar: string[] }>('sor', { mesajlar: yeni.map(m => ({ role: m.role, content: m.content })), belge: belgeBaglam?.veri }, ENDPOINT)
-      setMsgs(m => [...m, { role: 'assistant', content: r.yanit, araclar: r.araclar }])
+      const tum: Msg[] = [...yeni, { role: 'assistant', content: r.yanit, araclar: r.araclar }]
+      setMsgs(tum)
+      sohbetKaydet(tum, sohbetId).then(id => { if (id) setSohbetId(id) })
     } catch (e: any) { toast.show(e.message, true); setMsgs(yeni.slice(0, -1)); setGirdi(q) }
     setLoading(false)
   }
+
+  /* ── Raporlar ── */
+  const [raporTip, setRaporTip] = useState('kdv')
+  const [raporDonem, setRaporDonem] = useState(bugun.slice(0, 7))
+  const [rapor, setRapor] = useState<any>(null)
+  const [raporBusy, setRaporBusy] = useState(false)
+  const [yorum, setYorum] = useState('')
+  const [yorumBusy, setYorumBusy] = useState(false)
+  async function raporOlustur() {
+    setRaporBusy(true); setYorum('')
+    try { const r = await aiIstek<{ rapor: any }>('rapor', { tip: raporTip, donem: raporDonem }, ENDPOINT); setRapor(r.rapor) } catch (e: any) { toast.show(e.message, true) }
+    setRaporBusy(false)
+  }
+  async function raporYorumla() {
+    setYorumBusy(true)
+    try { const r = await aiIstek<{ yorum: string }>('rapor_yorum', { tip: raporTip, donem: raporDonem }, ENDPOINT); setYorum(r.yorum) } catch (e: any) { toast.show(e.message, true) }
+    setYorumBusy(false)
+  }
+  const hucre = (v: any) => typeof v === 'number' ? v.toLocaleString('tr-TR', { minimumFractionDigits: Number.isInteger(v) ? 0 : 2, maximumFractionDigits: 2 }) : v
 
   /* ── Belge ── */
   const [istek, setIstek] = useState('')
@@ -196,10 +246,20 @@ export default function MuhasebeAiPage() {
           </div>
         )}
 
-        <div style={{ marginBottom: 14 }}><Tabs value={tab} onChange={setTab} tabs={[{ v: 'sor', l: 'Soru sor' }, { v: 'belge', l: 'Belge yükle', n: belgeler.length || undefined }, { v: 'mevzuat', l: 'Güncel mevzuat', n: kb.length || undefined }]} /></div>
+        <div style={{ marginBottom: 14 }}><Tabs value={tab} onChange={setTab} tabs={[{ v: 'sor', l: 'Soru sor' }, { v: 'belge', l: 'Belge yükle', n: belgeler.length || undefined }, { v: 'rapor', l: 'Raporlar' }, { v: 'mevzuat', l: 'Güncel mevzuat', n: kb.length || undefined }]} /></div>
 
         {tab === 'sor' && (
           <Card pad={0}>
+            <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--adm-bdr)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <History size={13} style={{ color: 'var(--adm-tx3)' }} />
+              <select className="adm-sel" value={sohbetId || ''} onChange={e => sohbetAc(e.target.value)} style={{ minWidth: 220, maxWidth: 360 }}>
+                <option value="">{gecmis.length ? 'Önceki sohbetler…' : 'Henüz kayıtlı sohbet yok'}</option>
+                {gecmis.map(g => <option key={g.id} value={g.id}>{fmtDate(String(g.updated_at).slice(0, 10))} — {g.baslik}</option>)}
+              </select>
+              <button className="adm-btn-ghost" style={{ fontSize: 12 }} onClick={yeniSohbet}><Plus size={12} />Yeni sohbet</button>
+              {sohbetId && <button className="adm-btn-ghost" style={{ fontSize: 12 }} onClick={sohbetSil}><Trash2 size={12} />Bu sohbeti sil</button>}
+              <span style={{ fontSize: 11, color: 'var(--adm-tx3)', marginLeft: 'auto' }}>Sohbetler yalnızca sana görünür</span>
+            </div>
             {belgeBaglam && <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--adm-bdr)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, background: 'var(--adm-s2)' }}><FileText size={13} />Belge bağlamı: <b>{belgeBaglam.ad}</b><button className="adm-btn-ghost" style={{ padding: '2px 8px', fontSize: 11.5, marginLeft: 'auto' }} onClick={() => setBelgeBaglam(null)}><X size={11} />Kaldır</button></div>}
             <div style={{ minHeight: 320, maxHeight: 'calc(100vh - 430px)', overflowY: 'auto', padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
               {msgs.length === 0 && (
@@ -223,7 +283,6 @@ export default function MuhasebeAiPage() {
               <textarea className="adm-inp" rows={2} value={girdi} onChange={e => setGirdi(e.target.value)} maxLength={3000} disabled={loading} placeholder="Sorularını yaz (Enter: gönder, Shift+Enter: yeni satır)…"
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sor(girdi) } }} style={{ resize: 'vertical' }} />
               <button className="adm-btn" type="submit" disabled={loading || !girdi.trim()}><Send size={14} />Sor</button>
-              {msgs.length > 0 && <button type="button" className="adm-btn-ghost" title="Sohbeti temizle" onClick={() => setMsgs([])}><Trash2 size={13} /></button>}
             </form>
           </Card>
         )}
@@ -269,6 +328,46 @@ export default function MuhasebeAiPage() {
                 </Card>
               </div>
             ))}
+          </>
+        )}
+
+        {tab === 'rapor' && (
+          <>
+            <style>{`@media print { body * { visibility: hidden !important; } #rapor-alani, #rapor-alani * { visibility: visible !important; } #rapor-alani { position: absolute; left: 0; top: 0; width: 100%; padding: 16px; background: #fff; color: #000; } .no-print { display: none !important; } }`}</style>
+            <Card pad={16}>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                <Field label="Rapor"><select className="adm-inp" value={raporTip} onChange={e => { setRaporTip(e.target.value); setRapor(null); setYorum('') }}><option value="kdv">KDV beyan hazırlık özeti</option><option value="aylik">Aylık yönetim raporu</option></select></Field>
+                <Field label="Dönem"><input type="month" className="adm-inp" value={raporDonem} onChange={e => { setRaporDonem(e.target.value); setRapor(null); setYorum('') }} /></Field>
+                <button className="adm-btn" disabled={raporBusy || !raporDonem} onClick={raporOlustur}>{raporBusy ? 'Hazırlanıyor…' : 'Raporu oluştur'}</button>
+              </div>
+              <p style={{ margin: '10px 0 0', fontSize: 11.5, color: 'var(--adm-tx3)' }}>Rakamlar doğrudan muhasebe kayıtlarından hesaplanır (yapay zeka rakam üretmez). İstersen hazır rakamlara yapay zeka yorumu ekleyebilirsin.</p>
+            </Card>
+            {rapor && (
+              <div style={{ marginTop: 14 }}>
+                <div className="no-print" style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+                  <a className="adm-btn-ghost" style={{ textDecoration: 'none' }} href={`/api/admin/muhasebe-rapor?tip=${raporTip}&donem=${raporDonem}`}><FileSpreadsheet size={13} />Excel indir</a>
+                  <button className="adm-btn-ghost" onClick={() => window.print()}><Printer size={13} />PDF / Yazdır</button>
+                  <button className="adm-btn-ghost" disabled={yorumBusy} onClick={raporYorumla}><Sparkles size={13} />{yorumBusy ? 'Yorumlanıyor…' : yorum ? 'Yorumu yenile' : 'AI yorumu ekle'}</button>
+                </div>
+                <div id="rapor-alani">
+                  <Card pad={18}>
+                    <h2 style={{ margin: '0 0 2px', fontSize: 18 }}>{rapor.baslik}</h2>
+                    <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--adm-tx3)' }}>Alya Plastik San. Tic. Ltd. Şti. · {fmtDate(rapor.bas)} – {fmtDate(rapor.bit)} · Oluşturma: {new Date(rapor.olusturma).toLocaleString('tr-TR')}</p>
+                    {rapor.bolumler.map((b: any, bi: number) => (
+                      <div key={bi} style={{ marginBottom: 18, overflowX: 'auto' }}>
+                        <h3 style={{ margin: '0 0 6px', fontSize: 14 }}>{b.baslik}</h3>
+                        {b.satirlar.length === 0 ? <p style={{ fontSize: 12.5, color: 'var(--adm-tx3)', margin: 0 }}>Bu dönemde kayıt yok.</p> : (
+                          <table className="adm-table" style={{ width: '100%' }}>
+                            <thead><tr>{b.kolonlar.map((c: string, ci: number) => <th key={ci} style={{ textAlign: b.sayisalKolonlar?.includes(ci) ? 'right' : 'left' }}>{c}</th>)}</tr></thead>
+                            <tbody>{b.satirlar.map((r: any[], ri: number) => <tr key={ri}>{r.map((v, ci) => <td key={ci} style={{ textAlign: b.sayisalKolonlar?.includes(ci) ? 'right' : 'left', fontFamily: b.sayisalKolonlar?.includes(ci) ? 'JetBrains Mono,monospace' : undefined }}>{hucre(v)}</td>)}</tr>)}</tbody>
+                          </table>)}
+                      </div>))}
+                    {yorum && <div style={{ padding: 14, borderRadius: 10, background: 'var(--adm-s2)', fontSize: 13.5, lineHeight: 1.65, whiteSpace: 'pre-wrap', marginBottom: 14 }}><b style={{ display: 'block', marginBottom: 6 }}>AI yorumu</b>{yorum}<div style={{ fontSize: 11, color: 'var(--adm-tx3)', marginTop: 8 }}>Yapay zeka tarafından yalnızca yukarıdaki rakamlara dayanarak üretilmiştir.</div></div>}
+                    <div style={{ fontSize: 11.5, color: 'var(--adm-tx3)', lineHeight: 1.6 }}>{rapor.notlar.map((n: string, ni: number) => <div key={ni}>• {n}</div>)}</div>
+                  </Card>
+                </div>
+              </div>
+            )}
           </>
         )}
 
