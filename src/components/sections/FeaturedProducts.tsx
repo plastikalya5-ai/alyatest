@@ -21,7 +21,7 @@ export default function FeaturedProducts({ products }: { products: Product[] }) 
 
         <div className="anim-stagger-parent grid grid-cols-2 md:grid-cols-4 gap-2">
           {products.map((p, i) => (
-            <a key={p.id} href="#contact"
+            <a key={p.id} href={`/urun/${p.slug}`}
               className={`anim-stagger-child tilt-card group relative overflow-hidden aspect-square ${i === 0 ? "md:col-span-2 md:row-span-2" : ""}`}
               style={{ background: i % 2 === 0 ? "#181d18" : "#1e241e" }}>
 

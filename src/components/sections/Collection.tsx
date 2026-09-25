@@ -6,9 +6,10 @@ export default function Collection({ products }: { products: Product[] }) {
   const ref  = useRef<HTMLDivElement>(null);
   const [idx, setIdx] = useState(0);
   const drag = useRef({ on:false, sx:0, sl:0 });
+  const moved = useRef(false);   // sürükleme sonrası bırakılan tıklama sayfadan ayrılmasın
 
-  const onDown = (e: React.MouseEvent) => { drag.current = { on:true, sx:e.pageX, sl:ref.current!.scrollLeft }; if(ref.current) ref.current.style.cursor="grabbing"; };
-  const onMove = (e: React.MouseEvent) => { if(!drag.current.on||!ref.current) return; e.preventDefault(); ref.current.scrollLeft = drag.current.sl-(e.pageX-drag.current.sx); };
+  const onDown = (e: React.MouseEvent) => { moved.current = false; drag.current = { on:true, sx:e.pageX, sl:ref.current!.scrollLeft }; if(ref.current) ref.current.style.cursor="grabbing"; };
+  const onMove = (e: React.MouseEvent) => { if(!drag.current.on||!ref.current) return; if(Math.abs(e.pageX-drag.current.sx)>5) moved.current = true; e.preventDefault(); ref.current.scrollLeft = drag.current.sl-(e.pageX-drag.current.sx); };
   const onUp   = () => { drag.current.on=false; if(ref.current) ref.current.style.cursor="grab"; };
 
   const BG = ["#181d18","#1e241e","#161b16","#1a1f1a"];
@@ -29,7 +30,7 @@ export default function Collection({ products }: { products: Product[] }) {
         onScroll={() => { if(!ref.current) return; setIdx(Math.round(ref.current.scrollLeft/(ref.current.clientWidth*0.68))); }}>
 
         {products.map((item, i) => (
-          <a key={item.id} href="#contact"
+          <a key={item.id} href={`/urun/${item.slug}`} onClick={e => { if (moved.current) e.preventDefault(); }} draggable={false}
             className="group relative flex-none overflow-hidden"
             style={{ width:"clamp(220px,65vw,380px)", aspectRatio:"0.72", scrollSnapAlign:"start", background:BG[i%4], display:"block" }}>
 

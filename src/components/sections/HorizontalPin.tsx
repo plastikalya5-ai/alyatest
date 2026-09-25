@@ -74,7 +74,7 @@ export default function HorizontalPin({ products }: { products: Product[] }) {
         </h2>
         <div className="anim-stagger-parent grid grid-cols-2 gap-3">
           {items.map((p, i) => (
-            <a key={p.id} href="#contact"
+            <a key={p.id} href={`/urun/${p.slug}`}
               className="anim-stagger-child relative overflow-hidden aspect-[3/4]"
               style={{ background: i % 2 === 0 ? "#0b0e0b" : "#111511" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
