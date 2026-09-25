@@ -2,8 +2,9 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import SifreDegistir from './SifreDegistir'
 import { useEffect, useState } from 'react'
-import { LayoutDashboard, Package, Tag, MessageSquare, Settings, BarChart2, TrendingUp, Eye, Image, LogOut, ExternalLink, FileText, Bell, Activity, Layers, DollarSign, Receipt, Users2, PieChart, Landmark, FileSignature, Warehouse, Boxes, ArrowLeftRight, Cog, Wrench, FlaskConical, Factory, Zap, ClipboardList, PackageSearch, Truck, ShieldCheck, FlameKindling, UserCog, ScanLine, Sparkles } from 'lucide-react'
+import { LayoutDashboard, Package, Tag, MessageSquare, Settings, BarChart2, TrendingUp, Eye, Image, LogOut, ExternalLink, FileText, Bell, Activity, Layers, DollarSign, Receipt, Users2, PieChart, Landmark, FileSignature, Warehouse, Boxes, ArrowLeftRight, Cog, Wrench, FlaskConical, Factory, Zap, ClipboardList, PackageSearch, Truck, ShieldCheck, FlameKindling, UserCog, ScanLine, Sparkles, KeyRound } from 'lucide-react'
 
 const NAV = [
   { g:'Genel', mod:['dashboard'], items:[
@@ -69,6 +70,8 @@ export default function AdminSidebar({ onClose }: { onClose?: () => void } = {})
   const pathname = usePathname()
   const [init, setInit] = useState('AP')
   const [name, setName] = useState('Admin')
+  const [email, setEmail] = useState('')
+  const [sifreAcik, setSifreAcik] = useState(false)
   const [moduller, setModuller] = useState<string[]>([])
 
   useEffect(() => {
@@ -76,7 +79,7 @@ export default function AdminSidebar({ onClose }: { onClose?: () => void } = {})
     sb.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return
       const n = user.email?.split('@')[0] || 'Admin'
-      setName(n); setInit(n.slice(0,2).toUpperCase())
+      setName(n); setInit(n.slice(0,2).toUpperCase()); setEmail(user.email || '')
 
       const { data: profile } = await sb.from('admin_profiles').select('role_id').eq('id', user.id).single()
       if (profile?.role_id) {
@@ -128,17 +131,20 @@ export default function AdminSidebar({ onClose }: { onClose?: () => void } = {})
         </div>
       </nav>
 
-      <div className="adm-sb-user" onClick={async () => {
-        await createClient().auth.signOut()
-        window.location.href = '/admin/login'
-      }}>
-        <div className="adm-sb-av">{init}</div>
-        <div style={{ flex:1,minWidth:0 }}>
-          <p style={{ fontSize:12.5,fontWeight:600,color:'var(--adm-tx)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{name}</p>
-          <p style={{ fontSize:10,color:'var(--adm-tx3)',marginTop:1 }}>Yönetici</p>
+      <div className="adm-sb-user" style={{ cursor:'default', flexDirection:'column', alignItems:'stretch', gap:8 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:9 }}>
+          <div className="adm-sb-av">{init}</div>
+          <div style={{ flex:1,minWidth:0 }}>
+            <p style={{ fontSize:12.5,fontWeight:600,color:'var(--adm-tx)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{name}</p>
+            <p style={{ fontSize:10,color:'var(--adm-tx3)',marginTop:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{email}</p>
+          </div>
         </div>
-        <LogOut size={13} style={{ color:'var(--adm-tx3)',flexShrink:0 }} strokeWidth={1.8}/>
+        <div style={{ display:'flex', gap:6 }}>
+          <button type="button" className="adm-btn-ghost" style={{ flex:1, justifyContent:'center', fontSize:11.5, padding:'6px 8px' }} onClick={() => setSifreAcik(true)}><KeyRound size={12} strokeWidth={1.8}/>Şifre değiştir</button>
+          <button type="button" className="adm-btn-ghost" style={{ flex:1, justifyContent:'center', fontSize:11.5, padding:'6px 8px' }} onClick={async () => { await createClient().auth.signOut(); window.location.href = '/admin/login' }}><LogOut size={12} strokeWidth={1.8}/>Çıkış yap</button>
+        </div>
       </div>
+      <SifreDegistir open={sifreAcik} onClose={() => setSifreAcik(false)} email={email} />
     </aside>
   )
 }
