@@ -29,6 +29,8 @@ export default function KioskSayfasi() {
   const mesgul = useRef(false);
   const sonKod = useRef({ kod: "", t: 0 });
   const kapatZaman = useRef<any>(null);
+  const [yapistir, setYapistir] = useState("");
+  const [yapistirHata, setYapistirHata] = useState("");
 
   // Kurulum: bağlantıdaki #k=<anahtar> saklanır ve adres çubuğundan silinir
   useEffect(() => {
@@ -92,12 +94,21 @@ export default function KioskSayfasi() {
     return () => { dur = true; cancelAnimationFrame(raf); akim?.getTracks().forEach(t => t.stop()); };
   }, [anahtar, yuz, gonder]);
 
+  function elleKur() {
+    const m = /([a-f0-9]{64})/i.exec(yapistir.trim());
+    if (!m) { setYapistirHata("Geçerli bir kurulum bağlantısı veya anahtar bulunamadı. Bağlantıyı eksiksiz kopyaladığınızdan emin olun."); return; }
+    try { localStorage.setItem(ANAHTAR, m[1].toLowerCase()); setAnahtar(m[1].toLowerCase()); } catch { setYapistirHata("Tarayıcı kaydetmeye izin vermiyor (gizli sekme olabilir)."); }
+  }
+
   if (anahtar === undefined) return null;
   if (!anahtar) return (
     <main style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center" }}>
       <div style={{ maxWidth: 460 }}>
         <h1 style={{ fontSize: 24, marginBottom: 12 }}>Kiosk yapılandırılmamış</h1>
-        <p style={{ color: "#9aa294", lineHeight: 1.6 }}>Bu cihaz henüz personel giriş-çıkış kiosku olarak tanımlanmamış. Yönetici panelinde <b>Personel → Ayarlar → Kiosk cihazları</b> bölümünden bir kurulum bağlantısı oluşturup bu tarayıcıda açın.</p>
+        <p style={{ color: "#9aa294", lineHeight: 1.6 }}>Bu cihaz henüz personel giriş-çıkış kiosku olarak tanımlanmamış. Yönetici panelinde <b>Personel → Ayarlar → Kiosk cihazları</b> bölümünden bir kurulum bağlantısı oluşturup bu tarayıcıda açın. Bağlantı açılmıyorsa eksiksiz halini aşağıya yapıştırın.</p>
+        <textarea value={yapistir} onChange={e => { setYapistir(e.target.value); setYapistirHata(""); }} placeholder="https://…/kiosk#k=…" rows={3} style={{ width: "100%", marginTop: 16, background: "#111", color: "#eae6dd", border: "1px solid #2a2f2a", padding: 10, fontSize: 12 }} />
+        {yapistirHata && <p style={{ color: "#d13b3b", fontSize: 13 }}>{yapistirHata}</p>}
+        <button onClick={elleKur} style={{ marginTop: 8, background: "#e55f28", color: "#fff", border: 0, padding: "10px 18px", fontWeight: 700 }}>Kur</button>
       </div>
     </main>
   );
