@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { web } from '@/lib/web-data'
 import { createClient } from '@/lib/supabase/client'
 import { Badge, Modal, Field, FormGrid, Card } from '@/components/admin/erp/ui'
-import { ChevronLeft, ChevronRight, Plus, Copy, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Copy, Trash2, Send } from 'lucide-react'
 import { PLATFORM, DURUM, bugunTR, tarihTR, etiketAyikla, etiketMetni, tamMetin, panoyaKopyala, type Platform } from './ortak'
 
 type Toast = { show: (m: string, err?: boolean) => void }
@@ -59,6 +59,15 @@ export default function TakvimTab({ toast, yenile }: { toast: Toast; yenile: num
     if (error) return toast.show(error.message, true)
     setModal(false); yukle()
   }
+  async function n8nGonder(r: any) {
+    if (!confirm(`“${r.baslik}” n8n'e gönderilsin mi? (${PLATFORM[r.platform as Platform].l})`)) return
+    try {
+      const res = await fetch('/api/admin/sosyal-gonder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: r.id }) })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok) return toast.show(j.error || 'Gönderilemedi', true)
+      toast.show('n8n’e gönderildi; n8n paylaşınca durum kendiliğinden “Paylaşıldı” olur')
+    } catch { toast.show('Sunucuya ulaşılamadı', true) }
+  }
   async function hizliDurum(r: any, durum: string) {
     const { error } = await web.from('sosyal_gonderiler').update({ durum, updated_at: new Date().toISOString() }).eq('id', r.id)
     if (error) return toast.show(error.message, true); yukle()
@@ -100,6 +109,7 @@ export default function TakvimTab({ toast, yenile }: { toast: Toast; yenile: num
               <Badge tone="blue">{PLATFORM[r.platform as Platform].l}</Badge>
               <span style={{ flex: 1, cursor: 'pointer' }} onClick={() => ac(r)}>{r.baslik}</span>
               <button className="adm-btn-ghost" style={{ padding: '3px 8px', fontSize: 12 }} onClick={async () => toast.show(await panoyaKopyala(tamMetin(r.metin, r.hashtagler)) ? 'Kopyalandı' : 'Kopyalanamadı')}><Copy size={12} />Kopyala</button>
+              <button className="adm-btn-ghost" style={{ padding: '3px 8px', fontSize: 12 }} onClick={() => n8nGonder(r)} title="n8n workflow'una gönder"><Send size={12} />n8n</button>
               <button className="adm-btn-ghost" style={{ padding: '3px 8px', fontSize: 12 }} onClick={() => hizliDurum(r, 'paylasildi')}>Paylaşıldı</button>
             </div>))}
         </Card>

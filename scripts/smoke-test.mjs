@@ -36,6 +36,17 @@ await check('/api/erp oturumsuz istekte 401 dönüyor', async () => {
   return r.status === 401
 })
 
+await check('/api/webhooks/sosyal tokensız istekte 401/503 dönüyor (veri sızmıyor)', async () => {
+  const r = await fetch(base + '/api/webhooks/sosyal', { headers: { Authorization: 'Bearer yanlis' } })
+  const t = await r.text()
+  return (r.status === 401 || r.status === 503) && !t.includes('gonderiler')
+})
+
+await check('/api/admin/sosyal-gonder oturumsuz istekte 401 dönüyor', async () => {
+  const r = await fetch(base + '/api/admin/sosyal-gonder', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })
+  return r.status === 401
+})
+
 await check('/api/db kaldırılmış (404 dönüyor)', async () => {
   const r = await fetch(base + '/api/db?table=cari_hesaplar')
   return r.status === 404
