@@ -8,7 +8,7 @@ export const maxDuration = 20
 // Panelden tek gönderiyi n8n webhook'una iter. Hedef adres yalnızca ortam değişkeninden gelir (N8N_SOSYAL_WEBHOOK_URL);
 // istemciden adres kabul edilmez (SSRF yok). n8n işi bitirince /api/webhooks/sosyal ile "paylaşıldı" işaretler.
 export async function POST(req: NextRequest) {
-  const y = await modulGerekli(['yonetim']); if (y.hata) return y.hata
+  const y = await modulGerekli(['sosyal', 'yonetim']); if (y.hata) return y.hata
   const url = guvenliWebhookUrl(process.env.N8N_SOSYAL_WEBHOOK_URL), secret = process.env.N8N_SOSYAL_WEBHOOK_SECRET
   if (!url || !secret || secret.length < 16) return NextResponse.json({ error: 'n8n bağlantısı yapılandırılmamış veya geçersiz (N8N_SOSYAL_WEBHOOK_URL, N8N_SOSYAL_WEBHOOK_SECRET).' }, { status: 503 })
   if (!(await oranSiniri(`n8ngonder:${y.user.id}`, 40, 3600, false))) return NextResponse.json({ error: 'Saatlik gönderim sınırına ulaşıldı.' }, { status: 429 })

@@ -12,16 +12,16 @@ const NAV = [
     { href:'/admin/dashboard',              label:'Dashboard',       Icon:LayoutDashboard, mod:['dashboard'] },
     { href:'/admin/dashboard/analytics',    label:'Analitik',        Icon:TrendingUp,      mod:['dashboard'] },
     { href:'/admin/dashboard/istatistik',   label:'İstatistikler',   Icon:BarChart2,       mod:['dashboard'] },
-    { href:'/admin/dashboard/asistan',      label:'AI Asistan',      Icon:Sparkles,        mod:['dashboard','muhasebe','stok','uretim','satis','satinalma','sevkiyat','kalite','yonetim'] },
-    { href:'/admin/dashboard/gunluk-ozet',   label:'Günlük Özet',     Icon:Bell,            mod:['dashboard','muhasebe','stok','uretim','satis','satinalma','sevkiyat','kalite','yonetim'] },
+    { href:'/admin/dashboard/asistan',      label:'AI Asistan',      Icon:Sparkles,        mod:['dashboard','muhasebe','stok','uretim','satis','satinalma','sevkiyat','kalite','yonetim','sosyal'] },
+    { href:'/admin/dashboard/gunluk-ozet',   label:'Günlük Özet',     Icon:Bell,            mod:['dashboard','muhasebe','stok','uretim','satis','satinalma','sevkiyat','kalite','yonetim','sosyal'] },
     { href:'/admin/dashboard/aktivite',     label:'Aktivite Logu',   Icon:Activity,        mod:['yonetim'] },
   ]},
-  { g:'Ürün Yönetimi', mod:['yonetim'], items:[
+  { g:'Ürün Yönetimi', mod:['yonetim','sosyal'], items:[
     { href:'/admin/dashboard/urunler',      label:'Ürünler',         Icon:Package, mod:['yonetim'] },
     { href:'/admin/dashboard/kategoriler',  label:'Kategoriler',     Icon:Tag,     mod:['yonetim'] },
     { href:'/admin/dashboard/varyantlar',   label:'Varyantlar',      Icon:Layers,  mod:['yonetim'] },
     { href:'/admin/dashboard/gorseller',    label:'Görseller',       Icon:Image,   mod:['yonetim'] },
-    { href:'/admin/dashboard/sosyal-medya', label:'Sosyal Medya',    Icon:Share2,  mod:['yonetim'] },
+    { href:'/admin/dashboard/sosyal-medya', label:'Sosyal Medya',    Icon:Share2,  mod:['sosyal','yonetim'] },
   ]},
   { g:'Müşteri', mod:['dashboard','satis','yonetim'], items:[
     { href:'/admin/dashboard/basvurular',   label:'Başvurular',      Icon:MessageSquare, mod:['dashboard'] },

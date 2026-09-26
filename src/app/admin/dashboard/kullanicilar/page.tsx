@@ -19,6 +19,7 @@ const MODULLER: { k: string; l: string; grup: string }[] = [
   { k: 'satinalma', l: 'Satınalma Siparişleri', grup: 'Satış / Lojistik' },
   { k: 'satinalma_onay', l: 'Satınalma sipariş onayı (limit üstü siparişleri onaylayabilir)', grup: 'Satış / Lojistik' },
   { k: 'sevkiyat', l: 'Sevkiyat / İhracat', grup: 'Satış / Lojistik' },
+  { k: 'sosyal', l: 'Sosyal Medya — yalnızca içerik üretici, takvim ve görsel şablonlar (+ sesli sosyal medya asistanı)', grup: 'Yönetim' },
   { k: 'yonetim', l: 'Site Yönetimi — ürünler, kullanıcılar, ayarlar, bildirimler (tam yetki)', grup: 'Yönetim' },
 ]
 const modAd = (k: string) => MODULLER.find(m => m.k === k)?.l.split(' — ')[0].split(' (')[0] || k

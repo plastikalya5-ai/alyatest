@@ -86,13 +86,13 @@ const YENI_ARACLAR: AiArac[] = [
   { type: 'function', function: { name: 'fatura_ara', description: 'Şirket faturalarını arar (cari adı, fatura no, tür, durum, tarih aralığı). Adet, toplamlar ve en fazla 20 satır döndürür.', parameters: { type: 'object', properties: { cari: { type: 'string' }, no: { type: 'string' }, tip: { type: 'string', enum: ['satis', 'alis', 'iade'] }, durum: { type: 'string', enum: ['taslak', 'onaylandi', 'odendi', 'iptal'] }, bas: TARIH, bit: TARIH }, additionalProperties: false } } },
   { type: 'function', function: { name: 'islem_ara', description: 'Gelir/gider işlemlerini arar (kategori, cari adı, tür, tarih aralığı). Adet, gelir/gider toplamları ve en fazla 25 satır döndürür.', parameters: { type: 'object', properties: { kategori: { type: 'string' }, cari: { type: 'string' }, tip: { type: 'string', enum: ['gelir', 'gider'] }, bas: TARIH, bit: TARIH }, additionalProperties: false } } },
 ]
-const MUH_ARACLAR: AiArac[] = [...ARACLAR.filter(a => MUH_ARAC_ADLARI.has(a.function.name)), ...YENI_ARACLAR]
+export const MUH_ARACLAR: AiArac[] = [...ARACLAR.filter(a => MUH_ARAC_ADLARI.has(a.function.name)), ...YENI_ARACLAR]
 
 const temizMetin = (v: unknown) => String(v ?? '').replace(/[%,()*\\:]/g, ' ').trim().slice(0, 80)
 const D = /^\d{4}-\d{2}-\d{2}$/
 const topla = (rows: any[], k: string) => Math.round(rows.reduce((t, r) => t + (Number(r[k]) || 0), 0) * 100) / 100
 
-async function muhAraci(sb: SupabaseClient, ad: string, a: Record<string, any>): Promise<string> {
+export async function muhAraci(sb: SupabaseClient, ad: string, a: Record<string, any>): Promise<string> {
   try {
     if (ad === 'hesapla') return String(guvenliHesapla(a.ifade))
     if (ad === 'fatura_ara') {

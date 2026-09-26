@@ -4,6 +4,7 @@ import AdminTopBar from '@/components/admin/TopBar'
 import { Page, PageHead, Card, useToast } from '@/components/admin/erp/ui'
 import { aiIstek } from '@/lib/ai-client'
 import { Send, Sparkles, Trash2 } from 'lucide-react'
+import SesliAsistan from '@/components/admin/SesliAsistan'
 
 type Msg = { role: 'user' | 'assistant'; content: string; araclar?: string[] }
 
@@ -41,6 +42,7 @@ export default function AsistanPage() {
       <Page>
         <PageHead title="Veri Asistanı" sub="İşletme verilerini Türkçe sor. Yalnızca okur; yetkin olmayan verilere erişemez. Cevaplar yapay zeka ile üretilir, önemli kararlardan önce ilgili ekrandan doğrula."
           actions={msgs.length > 0 && <button className="adm-btn-ghost" onClick={() => setMsgs([])}><Trash2 size={13} />Temizle</button>} />
+        <SesliAsistan />
         <Card pad={0}>
           <div style={{ minHeight: 320, maxHeight: 'calc(100vh - 340px)', overflowY: 'auto', padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
             {msgs.length === 0 && (

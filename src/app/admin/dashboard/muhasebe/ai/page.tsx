@@ -9,6 +9,7 @@ import { csvDownload, fmtDate, todayISO } from '@/lib/fmt'
 import { Page, PageHead, Badge, Tabs, Card, Modal, Field, FormGrid, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
 import KayitOner from '@/components/admin/KayitOner'
+import SesliAsistan from '@/components/admin/SesliAsistan'
 import { Printer, FileSpreadsheet, History, Sparkles, Send, Trash2, Upload, FileText, Copy, Download, MessageSquare, Plus, Pencil, CheckCircle2, ShieldAlert, X, BookOpen, RefreshCw } from 'lucide-react'
 
 const ENDPOINT = '/api/admin/muhasebe-ai'
@@ -235,6 +236,7 @@ export default function MuhasebeAiPage() {
       <AdminTopBar title="Muhasebe AI" />
       <Page>
         <PageHead title="Muhasebe AI" sub="Güncel 2026 mevzuat bilgi tabanına dayalı muhasebe asistanı: soru sor, belge yükleyip istediğin verileri çıkar. Cevaplar yapay zeka ile üretilir; nihai karar mali müşavirindir." />
+        <SesliAsistan birim="muhasebe" baslik="Sesli Muhasebe Asistanı" />
 
         {!kbYukleniyor && (sorunlu.bayat > 0 || sorunlu.bitmis > 0 || sorunlu.tek > 0 || sorunlu.degisen > 0) && (
           <div className="adm-card" style={{ padding: '10px 16px', marginBottom: 14, display: 'flex', gap: 10, alignItems: 'center', borderColor: 'var(--adm-amber)' }}>

@@ -5,6 +5,7 @@ import { aiAktif, AiHata } from '@/lib/ai'
 import { basvuruAnalizKaydet } from '@/lib/ai-basvuru'
 import { sosyalIcerikUret, AMACLAR } from '@/lib/ai-sosyal'
 import { teklifKalemOner } from '@/lib/ai-teklif'
+import { araclariSuz } from '@/lib/ai-birim'
 import { asistanYanit, belgeOku, ekstreOner, gorselAnalizEt, haftalikOzet, urunMetniUret, type Konusma } from '@/lib/ai-admin'
 
 export const maxDuration = 60
@@ -13,7 +14,7 @@ export const maxDuration = 60
 // kullanıcının kendi oturumuyla (RLS + rpc_* içindeki yetki kontrolü) çalışır.
 const YETKI: Record<string, string[]> = {
   urun_metin: ['yonetim'],
-  sosyal_icerik: ['yonetim'],
+  sosyal_icerik: ['sosyal', 'yonetim'],
   teklif_kalem_oner: ['satis', 'yonetim'],
   gorsel_analiz: ['yonetim'],
   basvuru_analiz: ['dashboard'],
@@ -99,7 +100,7 @@ export async function POST(req: NextRequest) {
           .filter((m: any) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
           .map((m: any) => ({ role: m.role, content: m.content.slice(0, 1500) }))
         if (!g.length || g[g.length - 1].role !== 'user') return NextResponse.json({ error: 'Soru gerekli' }, { status: 400 })
-        return NextResponse.json({ ok: true, ...(await asistanYanit(y.sb, g)) })
+        return NextResponse.json({ ok: true, ...(await asistanYanit(y.sb, g, araclariSuz(y.moduller))) })
       }
       case 'ozet':
         return NextResponse.json({ ok: true, ...(await haftalikOzet(y.sb, y.moduller)) })

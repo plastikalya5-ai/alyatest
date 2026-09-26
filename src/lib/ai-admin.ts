@@ -100,7 +100,8 @@ export async function araciCalistir(sb: SupabaseClient, ad: string, a: Record<st
 /* ───────────────────────── Doğal dil asistanı ───────────────────────── */
 export type Konusma = { role: 'user' | 'assistant'; content: string }
 
-export async function asistanYanit(sb: SupabaseClient, gecmis: Konusma[]) {
+export async function asistanYanit(sb: SupabaseClient, gecmis: Konusma[], araclar: AiArac[] = ARACLAR) {
+  const izinli = new Set(araclar.map(a => a.function.name))
   const bugun = bugunISO()
   const msgs: AiMesaj[] = [
     { role: 'system', content: `Sen Alya Plastik yönetim panelinin veri asistanısın. Bugün ${bugun}. Türkçe, kısa ve net cevap ver.
@@ -114,14 +115,14 @@ Kurallar:
   ]
   const kullanilan: string[] = []
   for (let tur = 0; tur < 5; tur++) {
-    const m = await aiCagir({ messages: msgs, tools: ARACLAR, maxTokens: 900 })
+    const m = await aiCagir({ messages: msgs, tools: araclar, maxTokens: 900 })
     if (m.tool_calls?.length) {
       msgs.push({ role: 'assistant', content: m.content, tool_calls: m.tool_calls })
       for (const c of m.tool_calls.slice(0, 4)) {
         let args: Record<string, any> = {}
         try { args = JSON.parse(c.function.arguments || '{}') } catch { /* boş */ }
         kullanilan.push(c.function.name)
-        msgs.push({ role: 'tool', tool_call_id: c.id, content: await araciCalistir(sb, c.function.name, args) })
+        msgs.push({ role: 'tool', tool_call_id: c.id, content: izinli.has(c.function.name) ? await araciCalistir(sb, c.function.name, args) : 'HATA: Bu kullanıcının bu araca yetkisi yok.' })
       }
       continue
     }

@@ -62,6 +62,11 @@ await check('/api/webhooks/potansiyel tokensız istekte 401/503 dönüyor (veri 
   return r.status === 401 || r.status === 503
 })
 
+await check('sesli asistan uçları oturumsuz 401 dönüyor', async () => {
+  const [a, b, c] = await Promise.all([fetch(base + '/api/admin/ses'), fetch(base + '/api/admin/ses', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }), fetch(base + '/api/admin/ses/arac', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })])
+  return a.status === 401 && b.status === 401 && c.status === 401
+})
+
 await check('dil sayfaları (en/ru/zh) açılıyor, tanımsız dil 404 dönüyor, sitemap hreflang içeriyor', async () => {
   const [en, ru, zh, de, sm] = await Promise.all(['/en', '/ru', '/zh', '/de', '/sitemap.xml'].map(p => fetch(base + p)))
   const [tEn, tRu, tZh, tSm] = await Promise.all([en.text(), ru.text(), zh.text(), sm.text()])
