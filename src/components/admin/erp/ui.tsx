@@ -184,9 +184,9 @@ export const Skeleton = ({ h = 14, w = '100%', style }: { h?: number; w?: number
   <div style={{ height: h, width: w, borderRadius: 6, background: 'linear-gradient(90deg,var(--adm-s2),var(--adm-s4),var(--adm-s2))', backgroundSize: '200% 100%', animation: 'admShimmer 1.2s infinite', ...style }} />
 
 /* ───────── Tutar hücresi ───────── */
-export const Money = ({ v, tone, sign, bold = true, size = 13 }: { v: number; tone?: 'auto' | 'green' | 'red'; sign?: boolean; bold?: boolean; size?: number }) => {
+export const Money = ({ v, tone, sign, bold = true, size = 13, cur = 'TRY' }: { v: number; tone?: 'auto' | 'green' | 'red'; sign?: boolean; bold?: boolean; size?: number; cur?: string }) => {
   const c = tone === 'auto' ? (v > 0 ? 'var(--adm-green)' : v < 0 ? 'var(--adm-red)' : 'var(--adm-tx3)') : tone === 'green' ? 'var(--adm-green)' : tone === 'red' ? 'var(--adm-red)' : 'var(--adm-tx)'
-  const s = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(Math.abs(v || 0))
+  const s = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: cur }).format(Math.abs(v || 0))
   return <span style={{ fontFamily: 'JetBrains Mono,monospace', fontWeight: bold ? 700 : 500, color: c, fontSize: size, whiteSpace: 'nowrap' }}>{sign && v > 0 ? '+' : v < 0 ? '-' : ''}{s}</span>
 }
 

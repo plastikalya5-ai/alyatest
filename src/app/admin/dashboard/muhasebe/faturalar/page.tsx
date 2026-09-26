@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
 import { muh } from '@/lib/muhasebe-client'
 import { erp } from '@/lib/erp-client'
+import { kasaPb, trKasa, islemAlan, paraGoster } from '@/lib/doviz'
 import { fmt, fmtK, fmtDate, todayISO, daysBetween } from '@/lib/fmt'
 import { kalanTutar, DONEMLER, donemAralik, type Donem } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, InfoRow, Divider, useToast } from '@/components/admin/erp/ui'
@@ -44,7 +45,7 @@ export default function FaturalarPage() {
   // Referans tabloları (küçük): cari, kasa, varyant, fiyat listeleri
   useEffect(() => {
     Promise.all([
-      muh.all('cari_hesaplar', 'id,ad,tip,fiyat_listesi_id'), muh.all('kasa_banka_hesaplari', 'id,ad,tip,aktif'),
+      muh.all('cari_hesaplar', 'id,ad,tip,fiyat_listesi_id'), muh.all('kasa_banka_hesaplari', 'id,ad,tip,aktif,para_birimi'),
       muh.all('product_variants', 'id,product_id,name,color,size,stock'), muh.all('products', 'id,name,code'),
       erp.from('fiyat_listeleri').select('*'), erp.from('fiyat_listesi_kalemleri').select('*'), erp.from('iskonto_kademeleri').select('*'),
     ]).then(([c, k, v, pr, fl, fk, ik]) => {
@@ -191,7 +192,9 @@ export default function FaturalarPage() {
     const gercek = D * K1, orijinal = D * K0, fark = gercek - orijinal
     setBusy(true)
     try {
-      const a: any = await muh.from('islemler').insert({ tip: 'gelir', tutar: gercek, kategori: 'Döviz Tahsilatı', tarih: todayISO(), kasa_hesap_id: doviz.kasa, fatura_id: f.id, aciklama: `${f.no} — ${D} ${f.para_birimi} × ${K1}` })
+      const kasaObj = kasalar.find(k => k.id === doviz.kasa)
+      const kasaAlan = kasaPb(kasaObj) === 'TRY' ? { tutar: gercek } : islemAlan(kasaObj, D, K1)   // döviz hesabına: döviz tutarı + kur
+      const a: any = await muh.from('islemler').insert({ tip: 'gelir', ...kasaAlan, kategori: 'Döviz Tahsilatı', tarih: todayISO(), kasa_hesap_id: doviz.kasa, fatura_id: f.id, aciklama: `${f.no} — ${D} ${f.para_birimi} × ${K1}` })
       if (a?.error) throw new Error(a.error)
       await muh.from('islemler').insert({ tip: 'gelir', tutar: orijinal, kategori: 'Fatura Kapama', tarih: todayISO(), cari_id: f.cari_id, fatura_id: f.id, aciklama: `${f.no} kapatma (fatura kuru: ${K0})` })
       if (Math.abs(fark) > 0.01) await muh.from('islemler').insert({ tip: fark > 0 ? 'gelir' : 'gider', tutar: Math.abs(fark), kategori: fark > 0 ? 'Kur Farkı Geliri' : 'Kur Farkı Gideri', tarih: todayISO(), fatura_id: f.id, aciklama: `${f.no} — fatura kuru ${K0}, tahsilat kuru ${K1}` })
@@ -300,8 +303,8 @@ export default function FaturalarPage() {
           {detay.durum === 'onaylandi' && <>
             <button className="adm-btn-ghost" style={{ color: 'var(--adm-red)' }} onClick={() => durumDegis(detay, 'iptal')}><Ban size={13} />İptal Et</button>
             {detay.para_birimi !== 'TRY' && detay.tip === 'satis'
-              ? <button className="adm-btn" onClick={() => setDoviz({ f: detay, kur: String(detay.kur || ''), kasa: kasalar[0]?.id || '' })}><Coins size={14} />Kurla Tahsil Et</button>
-              : detay.tip !== 'iade' && <button className="adm-btn" onClick={() => setOdeme({ f: detay, tutar: String(kalanTutar(detay).toFixed(2)), kasa: kasalar[0]?.id || '', tarih: todayISO(), yontem: 'havale' })}><HandCoins size={14} />{detay.tip === 'satis' ? 'Tahsilat Ekle' : 'Ödeme Ekle'}</button>}
+              ? <button className="adm-btn" onClick={() => setDoviz({ f: detay, kur: String(detay.kur || ''), kasa: kasalar.find(trKasa)?.id || '' })}><Coins size={14} />Kurla Tahsil Et</button>
+              : detay.tip !== 'iade' && <button className="adm-btn" onClick={() => setOdeme({ f: detay, tutar: String(kalanTutar(detay).toFixed(2)), kasa: kasalar.find(trKasa)?.id || '', tarih: todayISO(), yontem: 'havale' })}><HandCoins size={14} />{detay.tip === 'satis' ? 'Tahsilat Ekle' : 'Ödeme Ekle'}</button>}
           </>}
         </>}>
         {detay && (
@@ -389,7 +392,7 @@ export default function FaturalarPage() {
         {odeme && <FormGrid>
           <Field label="Tutar (₺) *" hint={`Kalan: ${fmt(kalanTutar(odeme.f))}`}><input type="number" step="0.01" required autoFocus className="adm-inp" value={odeme.tutar} onChange={e => setOdeme((o: any) => ({ ...o, tutar: e.target.value }))} style={{ fontSize: 16, fontWeight: 700 }} /></Field>
           <Field label="Tarih"><input type="date" className="adm-inp" value={odeme.tarih} onChange={e => setOdeme((o: any) => ({ ...o, tarih: e.target.value }))} /></Field>
-          <Field label="Kasa / Banka"><select className="adm-inp" value={odeme.kasa} onChange={e => setOdeme((o: any) => ({ ...o, kasa: e.target.value }))}><option value="">— Seçilmedi —</option>{kasalar.map(k => <option key={k.id} value={k.id}>{k.ad}</option>)}</select></Field>
+          <Field label="Kasa / Banka"><select className="adm-inp" value={odeme.kasa} onChange={e => setOdeme((o: any) => ({ ...o, kasa: e.target.value }))}><option value="">— Seçilmedi —</option>{kasalar.filter(trKasa).map(k => <option key={k.id} value={k.id}>{k.ad}</option>)}</select></Field>
           <Field label="Yöntem"><select className="adm-inp" value={odeme.yontem} onChange={e => setOdeme((o: any) => ({ ...o, yontem: e.target.value }))}><option value="nakit">Nakit</option><option value="havale">Havale/EFT</option><option value="kredi_karti">Kredi Kartı</option><option value="cek">Çek</option><option value="diger">Diğer</option></select></Field>
           <p style={{ gridColumn: 'span 2', margin: 0, fontSize: 11.5, color: 'var(--adm-tx3)' }}>Ödeme kalan tutarı kapatırsa fatura otomatik “Ödendi” olur; cari ve kasa bakiyeleri güncellenir.</p>
         </FormGrid>}
@@ -401,8 +404,8 @@ export default function FaturalarPage() {
         {doviz && <FormGrid cols={1}>
           <p style={{ margin: 0, fontSize: 12.5, color: 'var(--adm-tx3)' }}>Fatura {doviz.f.doviz_tutari} {doviz.f.para_birimi} olarak kesildi (kur {doviz.f.kur}). Tahsilat günü kurunu gir; gerçek TL girişi, cari kapama ve kur farkı ayrıştırılır.</p>
           <Field label={`Tahsilat Kuru (1 ${doviz.f.para_birimi} = ₺)`}><input type="number" step="0.0001" required className="adm-inp" value={doviz.kur} onChange={e => setDoviz((d: any) => ({ ...d, kur: e.target.value }))} /></Field>
-          <Field label="Kasa / Banka *"><select className="adm-inp" required value={doviz.kasa} onChange={e => setDoviz((d: any) => ({ ...d, kasa: e.target.value }))}><option value="">Seçin</option>{kasalar.map(k => <option key={k.id} value={k.id}>{k.ad}</option>)}</select></Field>
-          {doviz.kur && <p style={{ margin: 0, fontSize: 12.5 }}>Kasaya girecek: <b>{fmt((+doviz.f.doviz_tutari || 0) * +doviz.kur)}</b> · Kur farkı: <b style={{ color: +doviz.kur - +doviz.f.kur >= 0 ? 'var(--adm-green)' : 'var(--adm-red)' }}>{fmt(Math.abs((+doviz.f.doviz_tutari || 0) * (+doviz.kur - +doviz.f.kur)))}</b></p>}
+          <Field label="Kasa / Banka *"><select className="adm-inp" required value={doviz.kasa} onChange={e => setDoviz((d: any) => ({ ...d, kasa: e.target.value }))}><option value="">Seçin</option>{kasalar.filter(k => trKasa(k) || kasaPb(k) === doviz.f.para_birimi).map(k => <option key={k.id} value={k.id}>{k.ad}{kasaPb(k) !== 'TRY' ? ` (${kasaPb(k)})` : ''}</option>)}</select></Field>
+          {doviz.kur && <p style={{ margin: 0, fontSize: 12.5 }}>Kasaya girecek: <b>{(() => { const ko = kasalar.find(k => k.id === doviz.kasa); return ko && kasaPb(ko) !== 'TRY' ? paraGoster(+doviz.f.doviz_tutari || 0, kasaPb(ko)) : fmt((+doviz.f.doviz_tutari || 0) * +doviz.kur) })()}</b> · Kur farkı: <b style={{ color: +doviz.kur - +doviz.f.kur >= 0 ? 'var(--adm-green)' : 'var(--adm-red)' }}>{fmt(Math.abs((+doviz.f.doviz_tutari || 0) * (+doviz.kur - +doviz.f.kur)))}</b></p>}
         </FormGrid>}
       </Modal>
       {toast.node}

@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
 import { erp } from '@/lib/erp-client'
+import { kasaPb, islemAlan, kurlariYukle } from '@/lib/doviz'
 import { muh } from '@/lib/muhasebe-client'
 import { fmt, fmtK, fmtDate, csvDownload } from '@/lib/fmt'
 import { sum } from '@/lib/muh-utils'
@@ -152,7 +153,9 @@ export default function BankaEkstresiPage() {
   async function islemOlustur(e: React.FormEvent) {
     e.preventDefault(); if (busy || !olustur) return
     const k = olustur.k; setBusy(true)
-    const r: any = await muh.from('islemler').insert({ tip: k.yon === 'giris' ? 'gelir' : 'gider', kategori: olustur.kategori, tutar: k.tutar, tarih: k.tarih, odeme_yontemi: 'havale', kasa_hesap_id: k.kasa_hesap_id, cari_id: olustur.cari || null, aciklama: k.aciklama || 'Banka ekstresi' })
+    let alan: any
+    try { const ho = kasalar.find(x => x.id === k.kasa_hesap_id); alan = islemAlan(ho, +k.tutar, kasaPb(ho) === 'TRY' ? undefined : (await kurlariYukle())[kasaPb(ho)]) } catch (err: any) { setBusy(false); return toast.show(err.message, true) }
+    const r: any = await muh.from('islemler').insert({ tip: k.yon === 'giris' ? 'gelir' : 'gider', kategori: olustur.kategori, ...alan, tarih: k.tarih, odeme_yontemi: 'havale', kasa_hesap_id: k.kasa_hesap_id, cari_id: olustur.cari || null, aciklama: k.aciklama || 'Banka ekstresi' })
     if (r?.error) { setBusy(false); return toast.show(r.error, true) }
     await erp.from('banka_ekstre_kayitlari').update({ eslesme_islem_id: r.data?.[0]?.id, durum: 'eslesti' }).eq('id', k.id)
     setBusy(false); setOlustur(null); toast.show('İşlem oluşturuldu ve eşleştirildi'); load()

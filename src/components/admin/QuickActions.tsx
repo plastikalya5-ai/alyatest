@@ -38,7 +38,7 @@ export default function QuickActions() {
   async function refData() {
     const [{data:c},{data:k},{data:kat}] = await Promise.all([
       muh.from('cari_hesaplar').select('id,ad,tip').order('ad',{ascending:true}),
-      erp.from('kasa_banka_hesaplari').select('id,ad').order('ad',{ascending:true}),
+      erp.from('kasa_banka_hesaplari').select('id,ad').eq('para_birimi','TRY').order('ad',{ascending:true}),
       muh.from('muhasebe_kategoriler').select('*'),
     ])
     setCariList(c||[]); setKasaList(k||[]); setKategoriler(kat||[])

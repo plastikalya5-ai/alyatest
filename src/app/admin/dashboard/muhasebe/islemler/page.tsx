@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
 import { muh } from '@/lib/muhasebe-client'
+import { kasaPb, kurlariYukle, islemAlan, paraGoster, PB_SIM } from '@/lib/doviz'
 import { fmt, fmtDate, fmtK, fmtInt, todayISO } from '@/lib/fmt'
 import { DONEMLER, donemAralik, NON_PNL, type Donem } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, InfoRow, Divider, useToast } from '@/components/admin/erp/ui'
@@ -9,7 +10,7 @@ import { DataGrid, type Col, type ServerMode } from '@/components/admin/erp/Data
 import { Plus, ArrowUpRight, ArrowDownRight, Scale, Hash, Pencil, Trash2, Copy } from 'lucide-react'
 
 const ODEME: Record<string, string> = { nakit: 'Nakit', havale: 'Havale/EFT', kredi_karti: 'Kredi Kartı', cek: 'Çek', diger: 'Diğer' }
-const bosForm = () => ({ tip: 'gelir' as 'gelir' | 'gider', kategori: '', tutar: '', aciklama: '', tarih: todayISO(), odeme_yontemi: 'nakit', cari_id: '', kasa_hesap_id: '' })
+const bosForm = () => ({ tip: 'gelir' as 'gelir' | 'gider', kategori: '', tutar: '', aciklama: '', tarih: todayISO(), odeme_yontemi: 'nakit', cari_id: '', kasa_hesap_id: '', kur: '' })
 
 // Defter sunucu tarafında sayfalanır (v_islemler_liste); toplamlar veritabanında hesaplanır (rpc_islem_ozet).
 export default function IslemlerPage() {
@@ -33,10 +34,12 @@ export default function IslemlerPage() {
   const [editing, setEditing] = useState<any>(null)
   const [form, setForm] = useState(bosForm())
   const [busy, setBusy] = useState(false)
+  const [kurlar, setKurlar] = useState<Record<string, number>>({ TRY: 1 })
 
   useEffect(() => {
-    Promise.all([muh.from('muhasebe_kategoriler').select('*').order('ad', { ascending: true }), muh.all('cari_hesaplar', 'id,ad,tip'), muh.all('kasa_banka_hesaplari', 'id,ad,tip,bakiye,aktif')])
+    Promise.all([muh.from('muhasebe_kategoriler').select('*').order('ad', { ascending: true }), muh.all('cari_hesaplar', 'id,ad,tip'), muh.all('kasa_banka_hesaplari', 'id,ad,tip,bakiye,aktif,para_birimi')])
       .then(([k, c, h]) => { setKats(k.data || []); setCariler(c); setKasalar(h) })
+    kurlariYukle().then(setKurlar)
   }, [])
 
   const cariAd = useMemo(() => Object.fromEntries(cariler.map(c => [c.id, c.ad])), [cariler])
@@ -68,23 +71,28 @@ export default function IslemlerPage() {
   function openNew(t: 'gelir' | 'gider' = 'gelir', prefill?: any) { setEditing(null); setForm({ ...bosForm(), tip: t, ...prefill }); setModal(true) }
   function openEdit(r: any) {
     setEditing(r)
-    setForm({ tip: r.tip, kategori: r.kategori || '', tutar: String(r.tutar), aciklama: r.aciklama || '', tarih: r.tarih, odeme_yontemi: r.odeme_yontemi || 'nakit', cari_id: r.cari_id || '', kasa_hesap_id: r.kasa_hesap_id || '' })
+    setForm({ tip: r.tip, kategori: r.kategori || '', tutar: String(r.doviz_tutari ?? r.tutar), aciklama: r.aciklama || '', tarih: r.tarih, odeme_yontemi: r.odeme_yontemi || 'nakit', cari_id: r.cari_id || '', kasa_hesap_id: r.kasa_hesap_id || '', kur: r.kur ? String(r.kur) : '' })
     setModal(true)
   }
 
   async function save(e: React.FormEvent) {
     e.preventDefault(); if (busy) return
-    const tutar = +form.tutar
-    if (!(tutar > 0)) { toast.show('Tutar 0’dan büyük olmalı', true); return }
+    const girilen = +form.tutar
+    if (!(girilen > 0)) { toast.show('Tutar 0’dan büyük olmalı', true); return }
+    const kasaSec = form.kasa_hesap_id ? kasalar.find(k => k.id === form.kasa_hesap_id) : null
+    const kurGirilen = +String(form.kur).replace(',', '.') || (kasaSec ? kurlar[kasaPb(kasaSec)] : 0) || 0
+    if (kasaSec && kasaPb(kasaSec) !== 'TRY' && !(kurGirilen > 0)) { toast.show(`${kasaPb(kasaSec)} kurunu girin`, true); return }
+    const al = kasaSec ? islemAlan(kasaSec, girilen, kurGirilen) : { tutar: girilen }
+    const tutar = al.tutar
     setBusy(true)
-    const payload = { tip: form.tip, kategori: form.kategori.trim(), tutar, aciklama: form.aciklama || null, tarih: form.tarih, odeme_yontemi: form.odeme_yontemi, cari_id: form.cari_id || null, kasa_hesap_id: form.kasa_hesap_id || null }
+    const payload: any = { tip: form.tip, kategori: form.kategori.trim(), ...al, doviz_tutari: (al as any).doviz_tutari ?? null, kur: (al as any).kur ?? null, aciklama: form.aciklama || null, tarih: form.tarih, odeme_yontemi: form.odeme_yontemi, cari_id: form.cari_id || null, kasa_hesap_id: form.kasa_hesap_id || null }
     try {
       if (payload.kategori && !kats.some(k => k.ad === payload.kategori && k.tip === payload.tip)) {
         await muh.from('muhasebe_kategoriler').insert({ tip: payload.tip, ad: payload.kategori, renk: '#64748b' })
         muh.from('muhasebe_kategoriler').select('*').order('ad', { ascending: true }).then((k: any) => setKats(k.data || []))
       }
       if (editing) {
-        const finansal = editing.tip !== payload.tip || +editing.tutar !== payload.tutar || (editing.cari_id || null) !== payload.cari_id || (editing.kasa_hesap_id || null) !== payload.kasa_hesap_id
+        const finansal = editing.tip !== payload.tip || +editing.tutar !== payload.tutar || (+editing.doviz_tutari || 0) !== (payload.doviz_tutari || 0) || (+editing.kur || 0) !== (payload.kur || 0) || (editing.cari_id || null) !== payload.cari_id || (editing.kasa_hesap_id || null) !== payload.kasa_hesap_id
         if (finansal) {
           const ins: any = await muh.from('islemler').insert({ ...payload, fatura_id: editing.fatura_id || null })
           if (ins?.error) throw new Error(ins.error)
@@ -125,7 +133,7 @@ export default function IslemlerPage() {
     { key: 'cari', sortKey: 'cari_ad', label: 'Cari', render: r => r.cari_ad || <span style={{ color: 'var(--adm-tx3)' }}>—</span>, csv: r => r.cari_ad, hideSm: true },
     { key: 'hesap', sortKey: 'kasa_ad', label: 'Hesap', render: r => r.kasa_ad || <span style={{ color: 'var(--adm-tx3)' }}>—</span>, csv: r => r.kasa_ad, hideSm: true },
     { key: 'odeme', sortKey: 'odeme_yontemi', label: 'Ödeme', render: r => ODEME[r.odeme_yontemi] || r.odeme_yontemi, hidden: true },
-    { key: 'tutar', sortKey: 'tutar', label: 'Tutar', align: 'right', render: r => <Money v={+r.tutar} tone={r.tip === 'gelir' ? 'green' : 'red'} sign={r.tip === 'gelir'} />, csv: r => (r.tip === 'gelir' ? 1 : -1) * +r.tutar },
+    { key: 'tutar', sortKey: 'tutar', label: 'Tutar', align: 'right', render: r => <div><Money v={+(r.doviz_tutari ?? r.tutar)} tone={r.tip === 'gelir' ? 'green' : 'red'} sign={r.tip === 'gelir'} cur={r.doviz_tutari != null ? r.kasa_pb : 'TRY'} />{r.doviz_tutari != null && <div style={{ fontSize: 10.5, color: 'var(--adm-tx3)' }}>≈ {paraGoster(+r.tutar)}</div>}</div>, csv: r => (r.tip === 'gelir' ? 1 : -1) * +r.tutar },
     { key: 'act', label: '', width: 70, align: 'right', render: r => (
       <span style={{ display: 'inline-flex', gap: 4 }} onClick={e => e.stopPropagation()}>
         <button className="adm-btn-ghost" style={{ padding: '4px 7px' }} onClick={() => openEdit(r)}><Pencil size={12} /></button>
@@ -177,13 +185,13 @@ export default function IslemlerPage() {
         title={detay && <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Badge tone={detay.tip === 'gelir' ? 'green' : 'red'}>{detay.tip === 'gelir' ? 'Gelir' : 'Gider'}</Badge>{detay.kategori}</span>}
         sub={detay && fmtDate(detay.tarih)}
         footer={detay && <>
-          <button className="adm-btn-ghost" onClick={() => openNew(detay.tip, { kategori: detay.kategori, tutar: String(detay.tutar), aciklama: detay.aciklama || '', odeme_yontemi: detay.odeme_yontemi, cari_id: detay.cari_id || '', kasa_hesap_id: detay.kasa_hesap_id || '' })}><Copy size={13} />Kopyala</button>
+          <button className="adm-btn-ghost" onClick={() => openNew(detay.tip, { kategori: detay.kategori, tutar: String(detay.doviz_tutari ?? detay.tutar), aciklama: detay.aciklama || '', odeme_yontemi: detay.odeme_yontemi, cari_id: detay.cari_id || '', kasa_hesap_id: detay.kasa_hesap_id || '' })}><Copy size={13} />Kopyala</button>
           <button className="adm-btn-ghost" onClick={() => openEdit(detay)}><Pencil size={13} />Düzenle</button>
           <button className="adm-btn-danger" onClick={() => del(detay)}><Trash2 size={13} />Sil</button>
         </>}>
         {detay && (
           <div style={{ padding: 20 }}>
-            <div style={{ textAlign: 'center', padding: '10px 0 18px' }}><Money v={+detay.tutar} tone={detay.tip === 'gelir' ? 'green' : 'red'} sign={detay.tip === 'gelir'} size={30} /></div>
+            <div style={{ textAlign: 'center', padding: '10px 0 18px' }}><Money v={+(detay.doviz_tutari ?? detay.tutar)} tone={detay.tip === 'gelir' ? 'green' : 'red'} sign={detay.tip === 'gelir'} size={30} cur={detay.doviz_tutari != null ? detay.kasa_pb : 'TRY'} />{detay.doviz_tutari != null && <div style={{ fontSize: 12, color: 'var(--adm-tx3)', marginTop: 4 }}>≈ {paraGoster(+detay.tutar)} (kur {(+detay.kur).toLocaleString('tr-TR', { maximumFractionDigits: 4 })})</div>}</div>
             <InfoRow k="Açıklama" v={detay.aciklama || '—'} />
             <InfoRow k="Ödeme yöntemi" v={ODEME[detay.odeme_yontemi] || detay.odeme_yontemi} />
             <InfoRow k="Cari" v={detay.cari_ad || '—'} />
@@ -208,16 +216,17 @@ export default function IslemlerPage() {
           </span></span>}
         footer={<><button type="button" className="adm-btn-ghost" onClick={() => setModal(false)}>İptal</button><button type="submit" className="adm-btn" disabled={busy} style={{ background: form.tip === 'gelir' ? 'var(--adm-green)' : 'var(--adm-red)' }}>{busy ? 'Kaydediliyor...' : 'Kaydet'}</button></>}>
         <FormGrid>
-          <Field label="Tutar (₺) *"><input type="number" step="0.01" min="0" className="adm-inp" required autoFocus value={form.tutar} onChange={e => setForm(f => ({ ...f, tutar: e.target.value }))} placeholder="0,00" style={{ fontSize: 16, fontWeight: 700 }} /></Field>
+          <Field label={`Tutar (${PB_SIM[etki ? kasaPb(etki) : 'TRY']}) *`}><input type="number" step="0.01" min="0" className="adm-inp" required autoFocus value={form.tutar} onChange={e => setForm(f => ({ ...f, tutar: e.target.value }))} placeholder="0,00" style={{ fontSize: 16, fontWeight: 700 }} /></Field>
           <Field label="Tarih *"><input type="date" className="adm-inp" required value={form.tarih} onChange={e => setForm(f => ({ ...f, tarih: e.target.value }))} /></Field>
           <Field label="Kategori *" hint="Listede yoksa yaz, otomatik oluşturulur">
             <input className="adm-inp" required list="kat-list" value={form.kategori} onChange={e => setForm(f => ({ ...f, kategori: e.target.value }))} placeholder="Seç veya yaz" />
             <datalist id="kat-list">{katList.map(k => <option key={k.id} value={k.ad} />)}</datalist>
           </Field>
           <Field label="Ödeme Yöntemi"><select className="adm-inp" value={form.odeme_yontemi} onChange={e => setForm(f => ({ ...f, odeme_yontemi: e.target.value }))}>{Object.entries(ODEME).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Field>
-          <Field label="Kasa / Banka Hesabı" hint={etki ? `Bakiye: ${fmt(etki.bakiye)} → ${fmt(+etki.bakiye + (form.tip === 'gelir' ? 1 : -1) * (+form.tutar || 0))}` : 'Seçmezsen hiçbir hesap bakiyesi değişmez'}>
-            <select className="adm-inp" value={form.kasa_hesap_id} onChange={e => setForm(f => ({ ...f, kasa_hesap_id: e.target.value }))}><option value="">— Hesap seçilmedi —</option>{kasalar.filter(k => k.aktif !== false).map(k => <option key={k.id} value={k.id}>{k.ad} ({k.tip})</option>)}</select>
+          <Field label="Kasa / Banka Hesabı" hint={etki ? `Bakiye: ${paraGoster(etki.bakiye, kasaPb(etki))} → ${paraGoster(+etki.bakiye + (form.tip === 'gelir' ? 1 : -1) * (+form.tutar || 0), kasaPb(etki))}` : 'Seçmezsen hiçbir hesap bakiyesi değişmez'}>
+            <select className="adm-inp" value={form.kasa_hesap_id} onChange={e => setForm(f => ({ ...f, kasa_hesap_id: e.target.value }))}><option value="">— Hesap seçilmedi —</option>{kasalar.filter(k => k.aktif !== false).map(k => <option key={k.id} value={k.id}>{k.ad} ({k.tip}{kasaPb(k) !== 'TRY' ? ` · ${kasaPb(k)}` : ''})</option>)}</select>
           </Field>
+          {etki && kasaPb(etki) !== 'TRY' && <Field label={`Kur (1 ${kasaPb(etki)} = ₺) *`} hint={`TL karşılığı: ${paraGoster((+form.tutar || 0) * (+String(form.kur).replace(',', '.') || kurlar[kasaPb(etki)] || 0))} — raporlar ve cari bakiye TL üzerinden işlenir`}><input type="number" step="0.0001" min="0" className="adm-inp" value={form.kur} placeholder={kurlar[kasaPb(etki)] ? String(kurlar[kasaPb(etki)]) : 'Kasa/Banka → Döviz Kurları'} onChange={e => setForm(f => ({ ...f, kur: e.target.value }))} /></Field>}
           <Field label="Cari Hesap" hint={form.cari_id ? (form.tip === 'gelir' ? 'Tahsilat: cari bakiyesi düşer' : 'Ödeme: cari bakiyesi artar') : 'Opsiyonel'}>
             <select className="adm-inp" value={form.cari_id} onChange={e => setForm(f => ({ ...f, cari_id: e.target.value }))}><option value="">— Yok —</option>{cariler.map(c => <option key={c.id} value={c.id}>{c.ad}</option>)}</select>
           </Field>

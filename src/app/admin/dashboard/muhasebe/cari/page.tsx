@@ -43,10 +43,10 @@ export default function CariPage() {
     // Cari başına fatura/işlem özetleri veritabanı görünümünden (v_cari_ozet); ekstre/fatura/çek detayı yalnızca seçili cari için çekilir.
     const [c, oz, k, fl] = await Promise.all([
       muh.all('cari_hesaplar', '*', q => q.order('ad', { ascending: true })),
-      muh.all('v_cari_ozet'), muh.all('kasa_banka_hesaplari', 'id,ad,tip,aktif'),
+      muh.all('v_cari_ozet'), muh.all('kasa_banka_hesaplari', 'id,ad,tip,aktif,para_birimi'),
       erp.from('fiyat_listeleri').select('id,ad').order('ad', { ascending: true }),
     ])
-    setList(c); setOzetRows(oz); setKasalar(k); setFiyatListeleri(fl.data || []); setLoading(false)
+    setList(c); setOzetRows(oz); setKasalar(k.filter((x: any) => (x.para_birimi || 'TRY') === 'TRY')); setFiyatListeleri(fl.data || []); setLoading(false)
     setDetay((d: any) => (d ? c.find((x: any) => x.id === d.id) || null : null))
   }, [])
   useEffect(() => { load() }, [load])

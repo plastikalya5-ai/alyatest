@@ -229,11 +229,12 @@ export async function kayitOner(sb: SupabaseClient, belge: any) {
   const [c, k, h] = await Promise.all([
     sb.from('cari_hesaplar').select('id,ad,tip').limit(400),
     sb.from('muhasebe_kategoriler').select('tip,ad'),
-    sb.from('kasa_banka_hesaplari').select('id,ad,tip,aktif').limit(60),
+    sb.from('kasa_banka_hesaplari').select('id,ad,tip,aktif,para_birimi').limit(60),
   ])
   const cariler = (c.data || []) as { id: string; ad: string; tip: string }[]
   const kategoriler = { gelir: (k.data || []).filter((x: any) => x.tip === 'gelir').map((x: any) => x.ad), gider: (k.data || []).filter((x: any) => x.tip === 'gider').map((x: any) => x.ad) }
-  const kasalar = ((h.data || []) as any[]).filter(x => x.aktif !== false).map(x => ({ id: x.id, ad: x.ad, tip: x.tip }))
+  // Belgeden kayıt önerisi yalnızca TL hesaplara yazılır (döviz hesapları için kur/döviz tutarı gerekir)
+  const kasalar = ((h.data || []) as any[]).filter(x => x.aktif !== false && (x.para_birimi || 'TRY') === 'TRY').map(x => ({ id: x.id, ad: x.ad, tip: x.tip }))
 
   const belgeMetni = JSON.stringify({ belge_turu: belge?.belge_turu, ozet: belge?.ozet, alanlar: (belge?.alanlar || []).slice(0, 60), tablolar: (belge?.tablolar || []).slice(0, 3).map((t: any) => ({ baslik: t.baslik, kolonlar: t.kolonlar, satirlar: (t.satirlar || []).slice(0, 60) })), uyarilar: belge?.uyarilar })
   const o = await aiJson<KayitOneri>([

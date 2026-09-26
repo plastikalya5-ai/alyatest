@@ -29,7 +29,7 @@ export default function MuhasebeGenelPage() {
       const [ozet, s, k] = await Promise.all([
         muh.rpc('rpc_finans_ozet', { p_from: R.from, p_to: R.to, p_pfrom: R.pFrom, p_pto: R.pTo }),
         muh.from('islemler').select('id,tip,kategori,aciklama,tarih,tutar').order('tarih', { ascending: false }).order('created_at', { ascending: false }).limit(7),
-        muh.all('kasa_banka_hesaplari', 'id,ad,tip,bakiye,aktif'),
+        muh.all('kasa_banka_hesaplari', 'id,ad,tip,bakiye,aktif,para_birimi'),
       ])
       setO(ozet); setSon(s.data || []); setKasalar(k)
     } catch (e: any) { setHata(e.message || 'Özet alınamadı') }
@@ -61,7 +61,7 @@ export default function MuhasebeGenelPage() {
     if (+cek.gecmis_adet) uyarilar.push({ tone: 'red', text: `${cek.gecmis_adet} çek/senetin vadesi geçmiş, portföyde bekliyor`, href: '/admin/dashboard/muhasebe/cek-senet' })
     if (+cek.karsiliksiz_adet) uyarilar.push({ tone: 'red', text: `${cek.karsiliksiz_adet} karşılıksız çek/senet kaydı var`, href: '/admin/dashboard/muhasebe/cek-senet' })
     if (+cek.yedi_adet) uyarilar.push({ tone: 'amber', text: `${cek.yedi_adet} çek/senet 7 gün içinde vadesi doluyor (${fmtK(+cek.yedi_tutar)})`, href: '/admin/dashboard/muhasebe/cek-senet' })
-    ;(o.negatif_kasa || []).forEach((k: any) => uyarilar.push({ tone: 'red', text: `${k.ad} hesabı eksi bakiyede (${fmt(k.bakiye)})`, href: '/admin/dashboard/muhasebe/kasa-banka' }))
+    ;(o.negatif_kasa || []).forEach((k: any) => uyarilar.push({ tone: 'red', text: `${k.ad} hesabı eksi bakiyede (${fmt(k.bakiye, k.pb || 'TRY')})`, href: '/admin/dashboard/muhasebe/kasa-banka' }))
     if (+f.taslak) uyarilar.push({ tone: 'blue', text: `${f.taslak} taslak fatura onay bekliyor`, href: '/admin/dashboard/muhasebe/faturalar' })
     if (+o.kasa_iliskisiz) uyarilar.push({ tone: 'blue', text: `${o.kasa_iliskisiz} işlem kasa/banka hesabına bağlı değil — bakiyeleri etkilemiyor`, href: '/admin/dashboard/muhasebe/islemler' })
   }
@@ -85,7 +85,7 @@ export default function MuhasebeGenelPage() {
               <Kpi label="Gelir" value={fmtK(gelir)} Icon={TrendingUp} color="var(--adm-green)" delta={cmp ? pctDelta(gelir, pGelir) : null} sub={cmp} spark={gelirSeri} />
               <Kpi label="Gider" value={fmtK(gider)} Icon={TrendingDown} color="var(--adm-red)" delta={cmp ? -pctDelta(gider, pGider) : null} sub={cmp} spark={giderSeri} />
               <Kpi label="Net Kâr / Zarar" value={fmtK(net)} Icon={Scale} color={net >= 0 ? 'var(--adm-green)' : 'var(--adm-red)'} delta={cmp ? pctDelta(net, pNet) : null} sub={`Marj ${fmtPct(marj)}`} />
-              <Kpi label="Nakit Pozisyonu" value={fmtK(+o.kasa?.toplam)} Icon={Wallet} color="var(--adm-blue)" sub={`${o.kasa?.adet || 0} kasa/banka hesabı`} />
+              <Kpi label="Nakit Pozisyonu" value={fmtK(+o.kasa?.toplam)} Icon={Wallet} color="var(--adm-blue)" sub={o.kasa?.kur_eksik ? '⚠ döviz kuru girilmemiş (Kasa/Banka)' : `${o.kasa?.adet || 0} kasa/banka hesabı · TL karşılığı`} />
               <Kpi label="Toplam Alacak" value={fmtK(+cari.alacak)} Icon={HandCoins} color="var(--adm-amber)" sub={`${cari.alacak_adet || 0} müşteri/cari`} />
               <Kpi label="Toplam Borç" value={fmtK(+cari.borc)} Icon={Receipt} color="#8b5cf6" sub={`${cari.borc_adet || 0} tedarikçi/cari`} />
             </KpiGrid>
@@ -154,7 +154,7 @@ export default function MuhasebeGenelPage() {
                 {kasalar.length === 0 ? <Empty title="Hesap tanımlı değil" sub="Kasa/Banka sayfasından hesap ekle" /> : kasalar.map(k => (
                   <div key={k.id} className="adm-row" style={{ padding: '10px 16px' }}>
                     <Badge tone={k.tip === 'banka' ? 'blue' : 'amber'}>{k.tip === 'banka' ? 'Banka' : 'Kasa'}</Badge>
-                    <span style={{ flex: 1, fontSize: 12.5, fontWeight: 600 }}>{k.ad}</span><Money v={+k.bakiye} tone="auto" size={12.5} />
+                    <span style={{ flex: 1, fontSize: 12.5, fontWeight: 600 }}>{k.ad}</span><Money v={+k.bakiye} tone="auto" size={12.5} cur={k.para_birimi || 'TRY'} />
                   </div>
                 ))}
               </Card>

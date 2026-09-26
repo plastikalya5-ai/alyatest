@@ -7,7 +7,7 @@ import { encryptField, decryptField } from '@/lib/field-crypto'
 // Gerçek yetki kontrolü RLS (private.has_module) tarafından yapılır; bu allowlist ek bir savunma katmanı.
 const TABLES = new Set([
   'cari_hesaplar','faturalar','fatura_kalemleri','islemler','muhasebe_kategoriler',
-  'kasa_banka_hesaplari','cek_senet','product_variants','products',
+  'kasa_banka_hesaplari','doviz_kurlari','cek_senet','product_variants','products',
 ])
 
 // Salt-okunur görünümler — sadece GET (yetki alttaki tabloların RLS'inden gelir)

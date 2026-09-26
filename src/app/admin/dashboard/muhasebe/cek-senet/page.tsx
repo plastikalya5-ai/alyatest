@@ -32,9 +32,9 @@ export default function CekSenetPage() {
   const load = useCallback(async () => {
     const [c, cr, k] = await Promise.all([
       muh.all('cek_senet', '*', q => q.order('vade_tarihi', { ascending: true })),
-      muh.all('cari_hesaplar', 'id,ad,tip'), muh.all('kasa_banka_hesaplari', 'id,ad,tip,aktif'),
+      muh.all('cari_hesaplar', 'id,ad,tip'), muh.all('kasa_banka_hesaplari', 'id,ad,tip,aktif,para_birimi'),
     ])
-    setList(c); setCariler(cr); setKasalar(k.filter((x: any) => x.aktif !== false)); setLoading(false)
+    setList(c); setCariler(cr); setKasalar(k.filter((x: any) => x.aktif !== false && (x.para_birimi || 'TRY') === 'TRY')); setLoading(false)
   }, [])
   useEffect(() => { load() }, [load])
 
