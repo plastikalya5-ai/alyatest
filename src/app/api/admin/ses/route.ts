@@ -33,27 +33,34 @@ export async function POST(req: NextRequest) {
 
   const kim = String(y.user.email || 'panel kullanıcısı').split('@')[0]
   const key = process.env.OPENAI_API_KEY!, base = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '')
-  const model = MODEL()
+  const kalite = body?.kalite === 'ekonomik' ? 'ekonomik' : 'yuksek'
+  const model = kalite === 'ekonomik' ? MODEL() : (process.env.OPENAI_REALTIME_MODEL_YUKSEK || 'gpt-realtime-2.1')
+  const talimat = await birimTalimati(y.sb, birim, kim), tools = realtimeAraclar(birimAraclari(birim, y.moduller))
+  // Konuşma bitişini anlamsal algılama (cümle bitmeden lafı kesmez); reddedilirse klasik ses etkinliği algılamaya düşer.
+  const SEMANTIK = { type: 'semantic_vad', eagerness: 'low', create_response: true, interrupt_response: true }
+  const KLASIK = { type: 'server_vad', threshold: 0.55, prefix_padding_ms: 300, silence_duration_ms: 900, create_response: true, interrupt_response: true }
+  const istek = (turn: Record<string, unknown>) => fetch(`${base}/realtime/client_secrets`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(15000),
+    body: JSON.stringify({
+      expires_after: { anchor: 'created_at', seconds: 120 },
+      session: {
+        type: 'realtime', model, instructions: talimat, output_modalities: ['audio'],
+        audio: {
+          input: {
+            // Not: bu yalnızca ekrandaki yazıyı üretir; model sesi kendisi duyar. Alan sözlüğü yazının doğruluğunu artırır.
+            transcription: { model: 'gpt-4o-transcribe', language: 'tr', prompt: 'Türkçe iş konuşması. Alya Plastik; saksı, sepet, sandık, hammadde, kasa, banka, cari, fatura, tedarikçi, KDV, TL, dolar, euro, LinkedIn, Instagram, Facebook. Ürün kodları: ALY-601.' },
+            turn_detection: turn, noise_reduction: { type: 'far_field' },
+          },
+          output: { voice: SES() },
+        },
+        tools, tool_choice: 'auto', max_output_tokens: 700,
+      },
+    }),
+  })
   let res: Response
   try {
-    res = await fetch(`${base}/realtime/client_secrets`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(15000),
-      body: JSON.stringify({
-        expires_after: { anchor: 'created_at', seconds: 120 },
-        session: {
-          type: 'realtime', model, instructions: await birimTalimati(y.sb, birim, kim), output_modalities: ['audio'],
-          audio: {
-            input: {
-              transcription: { model: 'gpt-4o-mini-transcribe', language: 'tr' },
-              turn_detection: { type: 'server_vad', threshold: 0.6, prefix_padding_ms: 300, silence_duration_ms: 650, create_response: true, interrupt_response: true },
-              noise_reduction: { type: 'near_field' },
-            },
-            output: { voice: SES() },
-          },
-          tools: realtimeAraclar(birimAraclari(birim, y.moduller)), tool_choice: 'auto', max_output_tokens: 700,
-        },
-      }),
-    })
+    res = await istek(SEMANTIK)
+    if (res.status === 400) res = await istek(KLASIK)
   } catch { return NextResponse.json({ error: 'OpenAI’a ulaşılamadı, tekrar deneyin.' }, { status: 504 }) }
   const j: any = await res.json().catch(() => ({}))
   const token: string | null = j?.value ?? j?.client_secret?.value ?? j?.client_secret?.token ?? (typeof j?.client_secret === 'string' ? j.client_secret : null)

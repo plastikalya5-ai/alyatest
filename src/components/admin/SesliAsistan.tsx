@@ -17,6 +17,8 @@ export default function SesliAsistan({ birim: sabitBirim, baslik = 'Sesli Asista
   const [satirlar, setSatirlar] = useState<Satir[]>([])
   const [hata, setHata] = useState('')
   const [sessiz, setSessiz] = useState(false)
+  const [kalite, setKalite] = useState<'yuksek' | 'ekonomik'>('yuksek')
+  useEffect(() => { try { const k = localStorage.getItem('ses_kalite'); if (k === 'yuksek' || k === 'ekonomik') setKalite(k) } catch { /* */ } }, [])
   const R = useRef<{ pc?: RTCPeerConnection; dc?: RTCDataChannel; stream?: MediaStream; audio?: HTMLAudioElement; timer?: any; basla?: number; son?: number; oturum?: string | null; arac: number; bekleyen: number; maxSn: number; bosSn: number; birim: string }>({ arac: 0, bekleyen: 0, maxSn: 600, bosSn: 90, birim: '' })
   const alt = useRef<HTMLDivElement>(null)
 
@@ -82,7 +84,7 @@ export default function SesliAsistan({ birim: sabitBirim, baslik = 'Sesli Asista
     setHata(''); setSatirlar([]); setDurum('baglaniyor')
     try {
       if (!navigator.mediaDevices?.getUserMedia || typeof RTCPeerConnection === 'undefined') throw new Error('Bu tarayıcı sesli görüşmeyi desteklemiyor.')
-      const res = await fetch('/api/admin/ses', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ birim }) })
+      const res = await fetch('/api/admin/ses', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ birim, kalite }) })
       const j = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(j.error || 'Sesli asistan başlatılamadı.')
       R.current.oturum = j.oturum_id; R.current.basla = Date.now()   // sonraki adım (mikrofon vb.) başarısız olsa da oturum kaydı kapatılır
@@ -125,9 +127,10 @@ export default function SesliAsistan({ birim: sabitBirim, baslik = 'Sesli Asista
         </div>
         <div style={{ flex: 1, minWidth: 180 }}>
           <div style={{ fontWeight: 700, fontSize: 14 }}>{baslik}</div>
-          <div style={{ fontSize: 12, color: 'var(--adm-tx3)' }}>{acik ? DURUM_YAZI[durum] + (sessiz ? ' · mikrofon kapalı' : '') : 'Bir kez başlatın, sonra normal konuşun — bas-konuş yok; sözünüzü kesebilirsiniz.'}</div>
+          <div style={{ fontSize: 12, color: 'var(--adm-tx3)' }}>{acik ? DURUM_YAZI[durum] + (sessiz ? ' · mikrofon kapalı' : '') : 'Bir kez başlatın, sonra normal konuşun — bas-konuş yok; sözünüzü kesebilirsiniz. En iyi tanıma için kulaklık/mikrofonlu kulaklık kullanın.'}</div>
         </div>
         {!sabitBirim && bilgi.birimler.length > 1 && <select className="adm-sel" disabled={acik} value={birim} onChange={e => setBirim(e.target.value)}>{bilgi.birimler.map(b => <option key={b.k} value={b.k}>{b.ad}</option>)}</select>}
+        <select className="adm-sel" disabled={acik} value={kalite} title="Anlama kalitesi" onChange={e => { const k = e.target.value as 'yuksek' | 'ekonomik'; setKalite(k); try { localStorage.setItem('ses_kalite', k) } catch { /* */ } }}><option value="yuksek">Yüksek doğruluk</option><option value="ekonomik">Ekonomik</option></select>
         {acik && <button className="adm-btn-ghost" onClick={sessizeAl} title="Mikrofonu sessize al" disabled={durum === 'baglaniyor'}>{sessiz ? <MicOff size={14} /> : <Mic size={14} />}{sessiz ? 'Sesi aç' : 'Sessize al'}</button>}
         {acik ? <button className="adm-btn-danger" onClick={() => durdur()}><PhoneOff size={14} />Bitir</button> : <button className="adm-btn" onClick={baslat}><Mic size={14} />Sesli sohbeti başlat</button>}
       </div>
