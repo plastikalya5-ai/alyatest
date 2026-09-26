@@ -10,8 +10,8 @@ export type EslesmeSecim = { siparisId: string; siparisNo: string; otoFatura: { 
 
 // Belgeden okunan ALIŞ faturasını, aynı tedarikçinin satınalma siparişleriyle karşılaştırır. Yalnızca öneri/uyarı üretir;
 // kullanıcı bir siparişi seçerse fatura taslağı o siparişe bağlanır. Hiçbir kayıt kendiliğinden değiştirilmez.
-export default function SiparisEslestir({ cariId, araToplamTRY, tarih, kalemler, paraBirimi, secim, onChange }: {
-  cariId: string; araToplamTRY: number; tarih: string; kalemler: FKalem[]; paraBirimi: string; secim: EslesmeSecim | null; onChange: (s: EslesmeSecim | null) => void
+export default function SiparisEslestir({ cariId, araToplamTRY, tarih, kalemler, paraBirimi, kur = 1, secim, onChange }: {
+  cariId: string; araToplamTRY: number; tarih: string; kalemler: FKalem[]; paraBirimi: string; kur?: number; secim: EslesmeSecim | null; onChange: (s: EslesmeSecim | null) => void
 }) {
   const [adaylar, setAdaylar] = useState<Aday[] | null>(null)
   const [hata, setHata] = useState('')
@@ -40,7 +40,7 @@ export default function SiparisEslestir({ cariId, araToplamTRY, tarih, kalemler,
           const t = ks.map((k: any) => sonTeslim[k.id]).filter(Boolean).sort()
           return {
             id: s.id, no: s.no, tarih: s.tarih, durum: s.durum, teslimTarihi: t.length ? t[t.length - 1] : null,
-            kalemler: ks.map((k: any) => ({ ad: hAd[k.hammadde_id] || 'Hammadde', miktar: +k.miktar || 0, teslim: +k.teslim_alinan_miktar || 0, birim_fiyat: +k.birim_fiyat || 0 })),
+            kalemler: ks.map((k: any) => ({ ad: hAd[k.hammadde_id] || 'Hammadde', miktar: +k.miktar || 0, teslim: +k.teslim_alinan_miktar || 0, birim_fiyat: (+k.birim_fiyat || 0) * (+s.kur || 1) })),   // siparişin para birimi TL'ye çevrilir
             otoFatura: fat.find((f: any) => f.no === 'ALIS-' + s.no) || null,
             bagliFaturalar: bagli.filter((b: any) => b.satinalma_siparis_id === s.id),
           }
@@ -51,7 +51,7 @@ export default function SiparisEslestir({ cariId, araToplamTRY, tarih, kalemler,
     return () => { iptal = true }
   }, [cariId])
 
-  const sonuclar = useMemo(() => adaylar ? eslestir({ araToplam: araToplamTRY, tarih, kalemler: kalemler.filter(k => k.urun_adi && k.miktar > 0), paraBirimi }, adaylar) : [], [adaylar, araToplamTRY, tarih, kalemler, paraBirimi])
+  const sonuclar = useMemo(() => adaylar ? eslestir({ araToplam: araToplamTRY, tarih, kalemler: kalemler.filter(k => k.urun_adi && k.miktar > 0).map(k => ({ ...k, birim_fiyat: k.birim_fiyat * (kur || 1) })), paraBirimi }, adaylar) : [], [adaylar, araToplamTRY, tarih, kalemler, paraBirimi, kur])
   const aktif = secim ? sonuclar.find(s => s.aday.id === secim.siparisId) : null
 
   if (!cariId) return <p style={{ fontSize: 12, color: 'var(--adm-tx3)' }}>Siparişle eşleştirmek için yukarıda tedarikçi carisini seçin.</p>

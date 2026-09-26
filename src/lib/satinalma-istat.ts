@@ -7,7 +7,8 @@ export function tedarikciIstatistik(d: { satinalma: any[]; satinalmaKalemleri: a
   const sonTeslim: Record<string, string> = {}   // kalem id → son teslim zamanı
   hareket.forEach(h => { if (h.kaynak_id && (!sonTeslim[h.kaynak_id] || h.tarih > sonTeslim[h.kaynak_id])) sonTeslim[h.kaynak_id] = h.tarih })
   const sip = d.satinalma.filter(s => s.tedarikci_id).map(s => {
-    const ks = kalemBy[s.id] || [], tutar = ks.reduce((a, k) => a + (+k.miktar || 0) * (+k.birim_fiyat || 0), 0)
+    const kur = +s.kur || 1   // döviz siparişleri TL'ye çevrilerek toplanır
+    const ks = (kalemBy[s.id] || []).map(k => ({ ...k, birim_fiyat: (+k.birim_fiyat || 0) * kur })), tutar = ks.reduce((a, k) => a + (+k.miktar || 0) * (+k.birim_fiyat || 0), 0)
     const t = ks.map(k => sonTeslim[k.id]).filter(Boolean).sort()
     const teslim: string | null = t.length ? t[t.length - 1] : null
     const acik = ['beklemede', 'onaylandi', 'yolda'].includes(s.durum)

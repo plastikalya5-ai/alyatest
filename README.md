@@ -31,6 +31,9 @@ Yönetici uçları `/api/admin/ai` altındadır; kullanıcı başına saatte 80 
 ## Satınalma
 Panel: Satış / Lojistik → Satınalma Siparişleri (sipariş, kısmi teslim, stok girişi, alış faturası), Talepler / Teklifler (talep → tedarikçi teklifleri → karşılaştırma → `rpc_satinalma_teklif_siparise_cevir` ile tek işlemde siparişe çevirme) ve Tedarikçiler (cari “tedarikçi” kartları için zamanında teslim, ortalama termin, fiyat geçmişi). Teslim alma `rpc_satinalma_teslim_al` ile tek işlemde yapılır. Muhasebe AI'da okunan alış faturası, `SiparisEslestir` ile tedarikçinin siparişleriyle karşılaştırılır (tutar/miktar/fiyat, teslim alınan mal esas; sistemin oluşturduğu `ALIS-…` faturasıyla çifte kayıt uyarısı) ve `faturalar.satinalma_siparis_id` ile bağlanır.
 
+**Satınalma v2:** çok kalemli talep (kritik stoktan tek tıkla talep, teklif karşılaştırma matrisi), sipariş onay kuralı (Onay kuralı düğmesi; varsayılan kapalı, limit üstü siparişleri yalnızca `satinalma_onay` modülü onaylar), döviz/ithalat (para birimi + kur + masraf; landed cost sipariş değeri oranında dağıtılır), teslimde ret ve tedarikçiye iade (`rpc_satinalma_iade`, İade / Ret sayfası), alış faturasının teslimle atomik oluşması, tedarikçiye e-posta (SMTP_HOST/USER/PASS gerekir) ve WhatsApp (wa.me) gönderimi (`/api/admin/satinalma-gonder`), günlük özette yaklaşan teslimler ve onay bekleyenler.
+
+
 ## Sosyal medya + n8n
 Panel: Ürün Yönetimi → Sosyal Medya (AI içerik, takvim, görsel şablonlar). Otomatik paylaşım n8n'de kurulur:
 - **n8n → site** (çekme): `GET /api/webhooks/sosyal` tarihi gelmiş "planlandı" gönderileri verir; paylaşım sonrası `POST /api/webhooks/sosyal` `{"id","durum":"paylasildi","paylasim_url"}` ile işaretlenir (hata için `{"id","durum":"hata","mesaj"}`). Başlık: `Authorization: Bearer <N8N_SOSYAL_API_TOKEN>`.

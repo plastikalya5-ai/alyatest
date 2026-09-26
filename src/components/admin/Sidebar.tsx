@@ -60,6 +60,7 @@ const NAV = [
     { href:'/admin/dashboard/satis/teklifler', label:'Fiyat Teklifleri', Icon:FileSignature, mod:['satis'] },
     { href:'/admin/dashboard/satis/ihracat-evraklari', label:'İhracat Evrakları', Icon:FileText, mod:['satis','sevkiyat'] },
     { href:'/admin/dashboard/satinalma/siparisler',   label:'Satınalma Siparişleri',Icon:PackageSearch, mod:['satinalma'] },
+    { href:'/admin/dashboard/satinalma/iade-ret', label:'İade / Ret', Icon:PackageSearch, mod:['satinalma'] },
     { href:'/admin/dashboard/satinalma/talepler',     label:'Talepler / Teklifler',Icon:Scale, mod:['satinalma'] },
     { href:'/admin/dashboard/satinalma/tedarikciler',  label:'Tedarikçiler',        Icon:Building2, mod:['satinalma'] },
     { href:'/admin/dashboard/sevkiyat',               label:'Sevkiyat / İhracat',   Icon:Truck,         mod:['sevkiyat','stok'] },

@@ -153,7 +153,7 @@ export default function KayitOner({ belge, onClose, toast }: { belge: { ad: stri
             <button type="button" className="adm-btn-ghost" style={{ fontSize: 12 }} onClick={() => setKalemler(ks => [...ks, { urun_adi: '', miktar: 1, birim: 'adet', birim_fiyat: 0, kdv_orani: 20 }])}><Plus size={12} />Kalem ekle</button>
             <span style={{ fontSize: 13 }}>Ara {fmt(ara)} · KDV {fmt(kdv)} · <b>Toplam {fmt(ara + kdv)} {f.para_birimi}</b></span>
           </div>
-          {f.tip === 'alis' && <SiparisEslestir cariId={cariId} araToplamTRY={ara * kur} tarih={f.tarih} kalemler={kalemler} paraBirimi={f.para_birimi} secim={eslesme} onChange={setEslesme} />}
+          {f.tip === 'alis' && <SiparisEslestir cariId={cariId} araToplamTRY={ara * kur} tarih={f.tarih} kalemler={kalemler} paraBirimi={f.para_birimi} kur={kur} secim={eslesme} onChange={setEslesme} />}
         </>}
 
         {tur === 'islem' && <FormGrid cols={3}>

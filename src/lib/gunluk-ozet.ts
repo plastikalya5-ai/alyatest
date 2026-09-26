@@ -16,6 +16,7 @@ const ILK = 6   // bölüm başına gösterilen satır
 export type Veri = {
   faturalar: any[]; cariler: any[]; cekler: any[]; kritikHam: any[]; kritikUrun: any[]
   satinalma: any[]; satis: any[]; basvurular: any[]; talepler: any[]
+  satinalmaYaklasan?: any[]; onayBekleyen?: { no: string; tedarikci_id: string | null; tl: number }[]; onayAyar?: { aktif: boolean; limit: number } | null
 }
 
 /** Saf fonksiyon: ham kayıtlardan bölümleri ve gönderilecek metni üretir. */
@@ -72,6 +73,12 @@ export function ozetOlustur(v: Veri, bugun: string): Ozet {
       satirlar: [...ss.slice(0, 4).map(s => `Satış ${s.no} — ${ad(s.cari_id)} (${gunFarki(s.teslim_tarihi, bugun)} gün gecikmiş)`), ...sg.slice(0, 4).map(s => `Satınalma ${s.no} — ${ad(s.tedarikci_id)} (${gunFarki(s.beklenen_teslim, bugun)} gün gecikmiş)`)] })
   }
 
+  // 5b) Yaklaşan satınalma teslimleri (3 gün içinde) ve onay bekleyen siparişler
+  const yak = (v.satinalmaYaklasan || []).filter(s => ['beklemede', 'onaylandi', 'yolda'].includes(s.durum) && s.beklenen_teslim && s.beklenen_teslim >= bugun && s.beklenen_teslim <= gunEkle(bugun, 3)).sort((a, b) => a.beklenen_teslim.localeCompare(b.beklenen_teslim))
+  if (yak.length) ekle({ anahtar: 'yaklasan', baslik: 'Yaklaşan satınalma teslimleri', ton: 'bilgi', sayi: yak.length, ozet: `${yak.length} sipariş 3 gün içinde teslim edilecek`, satirlar: yak.slice(0, ILK).map(s => `${s.no} — ${ad(s.tedarikci_id)} (${s.beklenen_teslim === bugun ? 'bugün' : `${gunFarki(bugun, s.beklenen_teslim)} gün sonra`})`) })
+  const ob = v.onayAyar?.aktif ? (v.onayBekleyen || []).filter(x => x.tl > (v.onayAyar?.limit || 0)) : []
+  if (ob.length) ekle({ anahtar: 'onay', baslik: 'Onay bekleyen siparişler', ton: 'sari', sayi: ob.length, ozet: `${ob.length} sipariş limit üstünde; yönetici onayı bekliyor (toplam ${TL(ob.reduce((t, x) => t + x.tl, 0))})`, satirlar: ob.slice(0, ILK).map(x => `${x.no} — ${ad(x.tedarikci_id)}: ${TL(x.tl)}`) })
+
   // 6) Cevapsız başvurular (24 saatten eski, spam değil)
   const eski = v.basvurular.filter(b => !b.ai_spam)
   if (eski.length) {
@@ -97,7 +104,7 @@ export async function gunlukOzet(sb: SupabaseClient, bugun = bugunTR()): Promise
     try { const r = await f(); if (r.error) { atlanan.push(ad); return [] as any[] } return r.data || [] } catch { atlanan.push(ad); return [] as any[] }
   }
   const son7 = gunEkle(bugun, 7), dun = new Date(Date.now() - 24 * 3600e3).toISOString()
-  const [faturalar, cariler, cekler, kritikHam, kritikUrun, satinalma, satis, basvurular, talepler] = await Promise.all([
+  const [faturalar, cariler, cekler, kritikHam, kritikUrun, satinalma, satis, basvurular, talepler, satinalmaYaklasan, onayHam, onayAyarSatir] = await Promise.all([
     al('faturalar', () => sb.from('faturalar').select('tip,durum,cari_id,vade,toplam,odenen_tutar').eq('durum', 'onaylandi').in('tip', ['satis', 'alis']).lte('vade', son7).limit(3000)),
     al('cariler', () => sb.from('cari_hesaplar').select('id,ad').limit(5000)),
     al('cek_senet', () => sb.from('cek_senet').select('tip,yon,cari_id,no,tutar,vade_tarihi,durum').eq('durum', 'portfoyde').lte('vade_tarihi', son7).limit(1000)),
@@ -107,6 +114,12 @@ export async function gunlukOzet(sb: SupabaseClient, bugun = bugunTR()): Promise
     al('satis', () => sb.from('satis_siparisleri').select('no,cari_id,durum,teslim_tarihi').in('durum', ['beklemede', 'uretimde', 'kismen_hazir', 'hazir']).lt('teslim_tarihi', bugun).limit(500)),
     al('basvurular', () => sb.from('contact_submissions').select('name,company,subject,created_at,ai_spam,ai_oncelik,status').or('status.is.null,status.in.(new,read)').lt('created_at', dun).order('created_at', { ascending: true }).limit(200)),
     al('talepler', () => sb.from('satinalma_talepleri').select('id').eq('durum', 'beklemede').limit(500)),
+    al('satinalma_yaklasan', () => sb.from('satinalma_siparisleri').select('no,tedarikci_id,durum,beklenen_teslim').in('durum', ['beklemede', 'onaylandi', 'yolda']).gte('beklenen_teslim', bugun).lte('beklenen_teslim', gunEkle(bugun, 3)).limit(300)),
+    al('onay', () => sb.from('satinalma_siparisleri').select('no,tedarikci_id,kur,satinalma_siparisi_kalemleri(miktar,birim_fiyat)').eq('durum', 'beklemede').limit(300)),
+    al('onay_ayar', () => sb.from('settings').select('value').eq('key', 'satinalma_onay').limit(1)),
   ])
-  return { ...ozetOlustur({ faturalar, cariler, cekler, kritikHam, kritikUrun, satinalma, satis, basvurular, talepler }, bugun), atlanan }
+  const onayBekleyen = onayHam.map((o: any) => ({ no: o.no, tedarikci_id: o.tedarikci_id, tl: (o.satinalma_siparisi_kalemleri || []).reduce((t: number, k: any) => t + (+k.miktar || 0) * (+k.birim_fiyat || 0), 0) * (+o.kur || 1) }))
+  const av = onayAyarSatir[0]?.value
+  const onayAyar = av ? { aktif: !!av.aktif, limit: +av.limit || 0 } : null
+  return { ...ozetOlustur({ faturalar, cariler, cekler, kritikHam, kritikUrun, satinalma, satis, basvurular, talepler, satinalmaYaklasan, onayBekleyen, onayAyar }, bugun), atlanan }
 }

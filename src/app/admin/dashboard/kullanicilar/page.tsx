@@ -17,6 +17,7 @@ const MODULLER: { k: string; l: string; grup: string }[] = [
   { k: 'kalite', l: 'Kalite Kontrol ve Fire Yönetimi', grup: 'Operasyon' },
   { k: 'satis', l: 'Satış Siparişleri', grup: 'Satış / Lojistik' },
   { k: 'satinalma', l: 'Satınalma Siparişleri', grup: 'Satış / Lojistik' },
+  { k: 'satinalma_onay', l: 'Satınalma sipariş onayı (limit üstü siparişleri onaylayabilir)', grup: 'Satış / Lojistik' },
   { k: 'sevkiyat', l: 'Sevkiyat / İhracat', grup: 'Satış / Lojistik' },
   { k: 'yonetim', l: 'Site Yönetimi — ürünler, kullanıcılar, ayarlar, bildirimler (tam yetki)', grup: 'Yönetim' },
 ]
