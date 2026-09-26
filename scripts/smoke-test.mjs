@@ -67,6 +67,11 @@ await check('sesli asistan uçları oturumsuz 401 dönüyor', async () => {
   return a.status === 401 && b.status === 401 && c.status === 401
 })
 
+await check('Permissions-Policy mikrofon/kameraya kendi sitesinde izin veriyor (sesli asistan, kiosk, barkod)', async () => {
+  const r = await fetch(base + '/'); const h = r.headers.get('permissions-policy') || ''
+  return /microphone=\(self\)/.test(h) && /camera=\(self\)/.test(h)
+})
+
 await check('dil sayfaları (en/ru/zh) açılıyor, tanımsız dil 404 dönüyor, sitemap hreflang içeriyor', async () => {
   const [en, ru, zh, de, sm] = await Promise.all(['/en', '/ru', '/zh', '/de', '/sitemap.xml'].map(p => fetch(base + p)))
   const [tEn, tRu, tZh, tSm] = await Promise.all([en.text(), ru.text(), zh.text(), sm.text()])
