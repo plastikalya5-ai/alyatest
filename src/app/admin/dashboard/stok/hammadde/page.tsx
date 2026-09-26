@@ -123,6 +123,7 @@ export default function HammaddePage() {
   }
 
   async function aktifToggle(h: any) { await erp.from('hammaddeler').update({ aktif: h.aktif === false }).eq('id', h.id); toast.show(h.aktif === false ? 'Aktif yapıldı' : 'Pasife alındı'); reload() }
+  const fkMesaj = (e: string) => /foreign key|violates|23503|referenced/i.test(String(e)) ? 'Bu hammaddenin sipariş, lot veya başka kayıtları var — silinemez. Pasife alabilirsiniz.' : e
   async function del(h: any) {
     const cn: any = await erp.from('stok_hareketleri').select('id', { count: 'exact', head: true }).eq('hammadde_id', h.id)
     const n = cn?.count || 0
@@ -130,8 +131,21 @@ export default function HammaddePage() {
     if (rc) return toast.show(`Bu hammadde ${rc} reçetede kullanılıyor — silinemez, pasife alabilirsin`, true)
     if (!confirm(`${h.ad} silinsin mi?${n ? `\n\n${n} stok hareketi kaydı var; geçmiş kayıtlar kalemsiz kalır. Pasife almak daha güvenli.` : ''}`)) return
     const r: any = await erp.from('hammaddeler').delete().eq('id', h.id)
-    if (r?.error) return toast.show(r.error, true)
+    if (r?.error) return toast.show(fkMesaj(r.error), true)
     toast.show('Hammadde silindi'); setDetay(null); reload()
+  }
+  async function topluSil(rows: any[], clear: () => void) {
+    const kullanilan = new Set(d.receteKalemleri.map((k: any) => k.hammadde_id))
+    const silinecek = rows.filter(h => !kullanilan.has(h.id)), atlanan = rows.length - silinecek.length
+    if (!silinecek.length) return toast.show('Seçilenlerin hepsi reçetede kullanılıyor — silinemez, pasife alabilirsiniz', true)
+    if (!confirm(`${silinecek.length} hammadde kalıcı silinsin mi?${atlanan ? `\n(${atlanan} tanesi reçetede kullanıldığı için atlanacak)` : ''}\n\nStok hareketi/sipariş kaydı olanlar silinemez; onları pasife alın.`)) return
+    let ok = 0, hata = 0
+    for (const h of silinecek) { const r: any = await erp.from('hammaddeler').delete().eq('id', h.id); r?.error ? hata++ : ok++ }
+    toast.show(`${ok} silindi${hata ? `, ${hata} tanesi kayıtlı olduğu için silinemedi (pasife alın)` : ''}${atlanan ? `, ${atlanan} reçetede kullanılıyor` : ''}`, !ok); clear(); reload()
+  }
+  async function topluPasif(rows: any[], clear: () => void) {
+    for (const h of rows) await erp.from('hammaddeler').update({ aktif: false }).eq('id', h.id)
+    toast.show(`${rows.length} hammadde pasife alındı`); clear(); reload()
   }
   async function lotEkle(e: React.FormEvent) {
     e.preventDefault(); if (!detayH) return
@@ -193,7 +207,7 @@ export default function HammaddePage() {
             footerNote={<span>· Satılabilir = fiziksel stok − açık siparişlerde sevk edilmemiş miktar</span>} />
           : <DataGrid rows={liste} cols={cols} rowKey={h => h.id} loading={loading} csvName="hammaddeler" storageKey="hammadde" onRowClick={h => { setDetay(h); setDTab('ozet') }} activeKey={detay?.id}
             searchText={h => `${h.ad} ${h.kod} ${h.barkod || ''} ${cari[h.tedarikci_id]?.ad || ''}`} searchPlaceholder="Ad, kod, barkod, tedarikçi..." selectable
-            bulkActions={(sel, clear) => <button className="adm-btn" style={{ padding: '3px 12px', fontSize: 12 }} disabled={busy} onClick={async () => { await satinalmaAc(sel); clear() }}><ShoppingCart size={12} />Seçilenler için satınalma siparişi</button>}
+            bulkActions={(sel, clear) => <><button className="adm-btn" style={{ padding: '3px 12px', fontSize: 12 }} disabled={busy} onClick={async () => { await satinalmaAc(sel); clear() }}><ShoppingCart size={12} />Seçilenler için satınalma siparişi</button><button className="adm-btn-ghost" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => topluPasif(sel, clear)}><Power size={12} />Pasife al</button><button className="adm-btn-danger" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => topluSil(sel, clear)}><Trash2 size={12} />Sil</button></>}
             actions={kritik.length > 0 ? <button className="adm-btn-ghost" style={{ fontSize: 12, color: 'var(--adm-red)' }} disabled={busy} onClick={() => satinalmaAc(kritik)}><ShoppingCart size={13} />Kritikler için sipariş aç</button> : undefined}
             emptyTitle="Hammadde bulunamadı" emptySub="Hammadde Ekle ile stok kartı aç; açılış stoğu defterde hareket olarak görünür." />}
       </Page>
@@ -201,7 +215,7 @@ export default function HammaddePage() {
       <Drawer open={!!detayH} onClose={() => setDetay(null)} width={580}
         title={detayH && <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>{detayH.ad}<Badge tone={DURUM[durumu(detayH)].tone}>{DURUM[durumu(detayH)].l}</Badge></span>}
         sub={detayH && `${detayH.kod} · ${depo[detayH.depo_id]?.ad || 'Depo yok'}`}
-        footer={detayH && <><button className="adm-btn-danger" onClick={() => del(detayH)}><Trash2 size={13} /></button><button className="adm-btn-ghost" onClick={() => aktifToggle(detayH)}><Power size={13} />{detayH.aktif === false ? 'Aktifleştir' : 'Pasife al'}</button><button className="adm-btn-ghost" onClick={() => openEdit(detayH)}><Pencil size={13} />Düzenle</button>
+        footer={detayH && <><button className="adm-btn-danger" onClick={() => del(detayH)}><Trash2 size={13} />Sil</button><button className="adm-btn-ghost" onClick={() => aktifToggle(detayH)}><Power size={13} />{detayH.aktif === false ? 'Aktifleştir' : 'Pasife al'}</button><button className="adm-btn-ghost" onClick={() => openEdit(detayH)}><Pencil size={13} />Düzenle</button>
           <button className="adm-btn" onClick={() => setIslem({ h: detayH, tur: 'giris', miktar: '', maliyet: '', not: '', depo: detayH.depo_id || '' })}><ArrowDownCircle size={14} />Stok Hareketi</button></>}>
         {detayH && (() => {
           const hm = hmHareket
