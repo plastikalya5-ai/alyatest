@@ -64,3 +64,10 @@ Ortam değişkenleri `.env.example` içinde açıklanmıştır. Bildirimler (SMT
 - Next.js 16: `middleware` yerine `proxy.ts` kullanılır (`/admin/dashboard` oturum koruması).
 - Tüm ERP/muhasebe istekleri `/api/erp` ve `/api/muhasebe` proxy'leri üzerinden gider; tablo izin listesi + RLS ile korunur.
 - `FIELD_ENCRYPTION_KEY` kaybedilirse şifreli alanlar (cari vergi no) çözülemez; güvenli bir yerde yedekleyin.
+
+
+## Çok dilli site (TR · EN · RU · ZH)
+Ana sayfa `/` Türkçe; `/en`, `/ru`, `/zh` aynı içeriğin çevirileridir (`src/app/[lang]/page.tsx`, ortak gövde `src/components/Anasayfa.tsx`). Arayüz metinleri tek dosyada: `src/lib/site-metin.ts` (yeni dil eklemek için `src/lib/diller.ts` içindeki `DILLER` + bu sözlük). Ürün adları/kodları çevrilmez; ürün açıklamaları `products.description_i18n` içinden gelir (panelde Ürünler → "AI ile doldur" en/ru/zh çevirisini üretir; çevirisi olmayan üründe kart Türkçe sayfaya gider). Kategori adları sözlükteki `kategori` haritasından çevrilir (yeni kategori için ekleyin, yoksa veritabanındaki ad gösterilir). Sağ üstteki dil seçici, `hreflang` bağlantıları ve sitemap otomatik. Not: kök layout tek olduğundan `<html lang>` istemcide ayarlanır.
+
+## n8n bağlantıları
+Panel → Bildirimler sayfasındaki "n8n / Webhook bağlantıları" kartı, n8n'e girilecek adresleri (kopyalanabilir) ve her bağlantının hazır/eksik durumunu gösterir. Gizli değerler yalnızca Vercel ortam değişkenlerinde tutulur.

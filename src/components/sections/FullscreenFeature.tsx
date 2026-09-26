@@ -1,11 +1,14 @@
 import { IMG } from "@/data/images";
+import type { Dil } from "@/lib/urun-sayfasi";
+import { M } from "@/lib/site-metin";
 
-export default function FullscreenFeature() {
+export default function FullscreenFeature({ dil = "tr" }: { dil?: Dil }) {
+  const f = M[dil].felsefe;
   return (
     <section className="relative grain overflow-hidden flex items-center bg-[#0b0e0b] min-h-[85svh]"
       data-bg="#0b0e0b">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={IMG.hero2} alt="Alya Plastik üretim tesisi"
+      <img src={IMG.hero2} alt="Alya Plastik"
         className="absolute inset-0 w-full h-full object-cover opacity-30"
         style={{ objectPosition: "center 35%" }} />
       <div className="absolute inset-0"
@@ -14,34 +17,33 @@ export default function FullscreenFeature() {
       <div className="relative z-10 w-full"
         style={{ paddingInline: "clamp(20px,5vw,80px)", paddingBlock: "clamp(80px,10vw,140px)" }}>
 
-        <p className="anim-eyebrow eyebrow text-[#e55f28] mb-5">Üretim Felsefemiz</p>
+        <p className="anim-eyebrow eyebrow text-[#e55f28] mb-5">{f.etiket}</p>
 
         <h2 className="anim-split-heading heading text-[#eae6dd] mb-8"
           style={{ fontSize: "clamp(48px,8vw,110px)", maxWidth: "72%", lineHeight: 0.95 }}>
-          FİKİRDEN <span style={{ color: "#e55f28" }}>FORMA.</span>
+          {f.baslik[0]} <span style={{ color: "#e55f28" }}>{f.baslik[1]}</span>
         </h2>
 
         <p className="anim-up font-light leading-loose text-[#6b7366] mb-10"
           style={{ maxWidth: 400, fontSize: "clamp(14px,1.5vw,16px)" }}>
-          CAD tasarımdan enjeksiyona, kalite kontrolden sevkiyata —
-          her adım İstanbul OSB&apos;deki tesisimizde gerçekleşir.
+          {f.aciklama}
         </p>
 
         <div className="flex flex-wrap gap-3 anim-up" data-delay="0.12">
           <a href="#why"
             className="anim-magnetic inline-flex items-center gap-2 bg-[#e55f28] hover:bg-[#c94f1e] text-white text-[11px] font-semibold tracking-[0.14em] uppercase px-7 py-3.5 transition-colors">
-            Üretim Sürecimiz →
+            {f.surec}
           </a>
           <a href="#contact"
             className="anim-magnetic inline-flex items-center gap-2 border border-white/20 hover:border-white/50 text-[#eae6dd] text-[11px] font-semibold tracking-[0.14em] uppercase px-7 py-3.5 transition-colors">
-            Teklif Al
+            {f.teklif}
           </a>
         </div>
       </div>
 
       <div className="absolute right-0 top-0 bottom-0 hidden xl:flex flex-col justify-center"
         style={{ paddingRight: "clamp(20px,5vw,80px)", paddingLeft: 40 }}>
-        {[["ISO","Sertifikalı"],["72h","Teklif Dönüşü"],["B2B","Toplu Sipariş"]].map(([n,l],i) => (
+        {f.stat.map(([n,l],i) => (
           <div key={i} className="anim-up py-6 pl-6 border-l border-[#e55f28]/30"
             data-delay={String(i * 0.1)}>
             <div className="heading text-[#e55f28] text-[34px] mb-1">{n}</div>

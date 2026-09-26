@@ -57,6 +57,12 @@ await check('/api/admin/satinalma-gonder oturumsuz istekte 401 dönüyor', async
   return r.status === 401
 })
 
+await check('dil sayfaları (en/ru/zh) açılıyor, tanımsız dil 404 dönüyor, sitemap hreflang içeriyor', async () => {
+  const [en, ru, zh, de, sm] = await Promise.all(['/en', '/ru', '/zh', '/de', '/sitemap.xml'].map(p => fetch(base + p)))
+  const [tEn, tRu, tZh, tSm] = await Promise.all([en.text(), ru.text(), zh.text(), sm.text()])
+  return en.status === 200 && ru.status === 200 && zh.status === 200 && de.status === 404 && /Manufacturer/.test(tEn) && /Производитель/.test(tRu) && /塑料/.test(tZh) && /\/zh</.test(tSm)
+})
+
 await check('ürün sayfası açılıyor ve geçersiz adres 404 dönüyor', async () => {
   const [a, b] = await Promise.all([fetch(base + '/urun/ufo-saksi'), fetch(base + '/urun/olmayan-bir-urun-xyz')])
   return a.status === 200 && b.status === 404

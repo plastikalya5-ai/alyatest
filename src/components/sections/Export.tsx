@@ -1,7 +1,10 @@
 "use client";
 import { useEffect, useRef } from "react";
+import type { Dil } from "@/lib/urun-sayfasi";
+import { M } from "@/lib/site-metin";
 
-export default function Export({ countries }: { countries: string[] }) {
+export default function Export({ countries, dil = "tr" }: { countries: string[]; dil?: Dil }) {
+  const x_ = M[dil].ihracat;
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = ref.current; if(!el) return;
@@ -17,17 +20,17 @@ export default function Export({ countries }: { countries: string[] }) {
       <div className="mb-12" style={{ paddingInline:"clamp(20px,5vw,80px)" }}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-20 items-end">
           <div>
-            <p className="anim-eyebrow eyebrow text-[#e55f28] mb-3">Global Erişim</p>
+            <p className="anim-eyebrow eyebrow text-[#e55f28] mb-3">{x_.etiket}</p>
             <h2 className="anim-split-heading heading text-[#0b0e0b]" style={{ fontSize:"clamp(44px,7vw,96px)" }}>
-              {countries.length}+ ÜLKE.
+              {countries.length}+ {x_.ulke}
             </h2>
           </div>
           <div className="anim-up">
             <p className="font-light leading-loose text-[#6b7366] mb-6" style={{ fontSize:"clamp(14px,1.4vw,16px)" }}>
-              Avrupa&apos;dan Orta Doğu&apos;ya, Afrika&apos;dan Orta Asya&apos;ya. Tüm lojistik ve gümrük dokümantasyon desteği.
+              {x_.aciklama}
             </p>
             <a href="#contact" className="eyebrow text-[#6b7366] hover:text-[#0b0e0b] transition-colors border-b border-[#0b0e0b]/15 pb-1.5 inline-block text-[10px]">
-              İhracat hakkında bilgi al →
+              {x_.bilgi}
             </a>
           </div>
         </div>

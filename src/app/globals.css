@@ -27,18 +27,21 @@ html, body { scrollbar-width: none; }
 body {
   background-color: #eae6dd;
   color: #0b0e0b;
-  font-family: 'Inter', Arial, sans-serif;
+  font-family: 'Inter', Arial, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', 'Hiragino Sans GB', sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }
 ::selection { background: #e55f28; color: #fff; }
-a { color: inherit; text-decoration: none; }
-button { cursor: pointer; border: 0; background: none; font: inherit; color: inherit; padding: 0; }
+/* Katmanlı: Tailwind yardımcı sınıfları (text-white vb.) bu varsayılanları ezebilsin diye @layer base içinde. */
+@layer base {
+  a { color: inherit; text-decoration: none; }
+  button { cursor: pointer; border: 0; background: none; font: inherit; color: inherit; padding: 0; }
+}
 img { max-width: 100%; display: block; }
 
 /* ── Custom classes ──────────────────────── */
 .heading {
-  font-family: 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
+  font-family: 'Barlow Condensed', 'Arial Narrow', Arial, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: -0.02em;
@@ -187,3 +190,9 @@ img { max-width: 100%; display: block; }
 .section-dark { background: #0b0e0b; color: #eae6dd; }
 .section-dark .eyebrow { color: #e55f28; }
 .section-dark .heading { color: #eae6dd; }
+
+/* Çok dilli düzeltmeler: Çince başlıklarda satır aralığı, Rusça uzun kelimelerde taşma */
+html:lang(zh-Hans) .heading { line-height: 1.15 !important; letter-spacing: 0 !important; }
+html:lang(ru) .heading { overflow-wrap: anywhere; }
+html:lang(ru) #hero h1 { font-size: clamp(30px, 8.4vw, 56px) !important; }
+@media (min-width: 768px) { html:lang(ru) #hero h1 { font-size: clamp(44px, 5.2vw, 84px) !important; } }

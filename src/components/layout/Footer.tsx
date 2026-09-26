@@ -1,11 +1,12 @@
 import { guvenliUrl, type Settings } from "@/lib/supabase";
+import type { Dil } from "@/lib/urun-sayfasi";
+import { M } from "@/lib/site-metin";
 
-export default function Footer({ settings }: { settings: Settings | null }) {
-  const s = settings;
+export default function Footer({ settings, dil = "tr" }: { settings: Settings | null; dil?: Dil }) {
+  const s = settings, m = M[dil].altbilgi;
   const cols = [
-    { title:"Ürünler",  items:["Saksı Modelleri","Sepet Ürünleri","Depolama Sandığı","Ev Gereçleri","Özel Sipariş"] },
-    { title:"Firma",    items:["Hakkımızda","Üretim Süreci","İhracat","Sertifikalar","KVKK"] },
-    { title:"İletişim", items:[s?.email ?? "info@alyaplastik.com", s?.export_email ?? "export@alyaplastik.com", s?.phone ?? "+90 212 671 85 65", "Başakşehir / İstanbul"] },
+    ...m.kolonlar.map(k => ({ title: k.baslik, items: k.ogeler })),
+    { title: m.iletisimBaslik, items:[s?.email ?? "info@alyaplastik.com", s?.export_email ?? "export@alyaplastik.com", s?.phone ?? "+90 212 671 85 65", m.adres] },
   ];
   const wa = s?.whatsapp ? `https://wa.me/${s.whatsapp.replace(/\D/g,"")}` : "https://wa.me/905357616524";
 
@@ -24,10 +25,10 @@ export default function Footer({ settings }: { settings: Settings | null }) {
               ALYA<span className="text-[#e55f28]">PLASTİK</span>
             </div>
             <p className="text-[#6b7366] font-light leading-loose text-sm mb-2">
-              {s?.founded ?? 1968}&apos;den bu yana plastik ürün üretiminde lider.
+              {m.lider(s?.founded ?? 1968)}
             </p>
             <p className="text-[#6b7366] font-light text-sm mb-6">
-              {s?.address?.split(",")[1]?.trim() ?? "İstanbul Başakşehir OSB"}&apos;den dünyaya.
+              {m.dunyaya(dil === "tr" ? (s?.address?.split(",")[1]?.trim() ?? m.varsayilanYer) : m.varsayilanYer)}
             </p>
             <a href={wa} target="_blank" rel="noopener noreferrer nofollow"
               className="inline-flex items-center gap-2 bg-[#e55f28] hover:bg-[#c94f1e] text-white text-[10px] font-semibold tracking-[0.14em] uppercase px-5 py-2.5 transition-colors">
@@ -57,9 +58,9 @@ export default function Footer({ settings }: { settings: Settings | null }) {
 
         <div className="border-t border-[#0b0e0b]/10 pt-6 flex flex-wrap justify-between items-center gap-3">
           <p className="eyebrow text-[#0b0e0b]/40 text-[10px]">
-            © {new Date().getFullYear()} {s?.company ?? "Alya Plastik San. Tic. Ltd. Şti."} — Tüm hakları saklıdır.
+            © {new Date().getFullYear()} {s?.company ?? "Alya Plastik San. Tic. Ltd. Şti."} — {m.haklar}
           </p>
-          <p className="eyebrow text-[#0b0e0b]/40 text-[10px]">İstanbul OSB · Made in Türkiye 🇹🇷</p>
+          <p className="eyebrow text-[#0b0e0b]/40 text-[10px]">{m.yerel}</p>
         </div>
       </div>
     </footer>

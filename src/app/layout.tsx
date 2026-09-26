@@ -41,6 +41,10 @@ export const metadata: Metadata = {
     canonical: SITE_URL,
     languages: {
       "tr-TR": SITE_URL,
+      en: `${SITE_URL}/en`,
+      ru: `${SITE_URL}/ru`,
+      "zh-Hans": `${SITE_URL}/zh`,
+      "x-default": SITE_URL,
     },
   },
 

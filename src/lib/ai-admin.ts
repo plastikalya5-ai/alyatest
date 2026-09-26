@@ -8,7 +8,7 @@ export type UrunMetin = {
   aciklama_tr: string
   seo_baslik: string
   seo_aciklama: string
-  ceviriler: { en: string; de: string; fr: string; ar: string; ru: string }
+  ceviriler: { en: string; ru: string; zh: string }
 }
 
 export async function urunMetniUret(u: { name: string; code?: string; category?: string; subcategory?: string; specs?: Record<string, string>; tags?: string[]; description?: string; image_url?: string }): Promise<UrunMetin> {
@@ -27,11 +27,11 @@ export async function urunMetniUret(u: { name: string; code?: string; category?:
 Kurallar: SADECE verilen bilgi ve görselde görünenlere dayan; ölçü, hacim, malzeme, renk, garanti gibi bilgileri verilmemişse UYDURMA. Abartılı reklam dili kullanma; net, profesyonel, alıcıya yararı anlatan bir dil kullan.
 - aciklama_tr: Türkçe, 50-90 kelime, düz metin.
 - seo_baslik: en fazla 60 karakter, Türkçe. seo_aciklama: en fazla 155 karakter, Türkçe.
-- ceviriler: aciklama_tr'nin sadık çevirisi (en=İngilizce, de=Almanca, fr=Fransızca, ar=Arapça, ru=Rusça). Yeni bilgi ekleme.` },
+- ceviriler: aciklama_tr'nin sadık çevirisi (en=İngilizce, ru=Rusça, zh=Basitleştirilmiş Çince). Yeni bilgi ekleme.` },
     { role: 'user', content: icerik },
   ], 'urun_metin', S.obj({
     aciklama_tr: S.str, seo_baslik: S.str, seo_aciklama: S.str,
-    ceviriler: S.obj({ en: S.str, de: S.str, fr: S.str, ar: S.str, ru: S.str }),
+    ceviriler: S.obj({ en: S.str, ru: S.str, zh: S.str }),
   }), { maxTokens: 1800, timeoutMs: 60000 })
 }
 

@@ -1,11 +1,12 @@
 import type { MetadataRoute } from "next";
-import { HREFLANG, SITE_URL, getTumUrunler, mevcutDiller, urunUrl } from "@/lib/urun-sayfasi";
+import { DILLER, HREFLANG, SITE_URL, getTumUrunler, mevcutDiller, urunUrl } from "@/lib/urun-sayfasi";
 
 export const revalidate = 3600;
 
 // Ana sayfa + her ürün sayfası. Yabancı dil adresleri yalnızca çevirisi girilmiş ürünler için listelenir (hreflang karşılıklı).
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const kok: MetadataRoute.Sitemap = [{ url: SITE_URL, lastModified: new Date(), changeFrequency: "weekly", priority: 1 }];
+  const anaDiller = Object.fromEntries(DILLER.map(d => [HREFLANG[d], d === "tr" ? SITE_URL : `${SITE_URL}/${d}`]));
+  const kok: MetadataRoute.Sitemap = DILLER.map(d => ({ url: d === "tr" ? SITE_URL : `${SITE_URL}/${d}`, lastModified: new Date(), changeFrequency: "weekly" as const, priority: d === "tr" ? 1 : 0.9, alternates: { languages: anaDiller } }));
   try {
     const urunler = await getTumUrunler();
     const liste: MetadataRoute.Sitemap = [];

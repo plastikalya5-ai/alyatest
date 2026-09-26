@@ -5,7 +5,7 @@ import { getSettings } from "@/lib/supabase";
 import { getKategoriAdlari, HREFLANG, SITE_URL, aciklama, getBenzer, getTumUrunler, getUrun, isDil, kisalt, mevcutDiller, urunUrl, type Dil } from "@/lib/urun-sayfasi";
 
 export const revalidate = 300;
-const LOCALE: Record<string, string> = { en: "en_US", de: "de_DE", fr: "fr_FR", ar: "ar_AR", ru: "ru_RU" };
+const LOCALE: Record<string, string> = { en: "en_US", ru: "ru_RU", zh: "zh_CN" };
 
 // Yalnızca ÇEVİRİSİ girilmiş ürünler için yabancı dil sayfası üretilir (çevirisiz içeriği başka dilde yayınlamak kopya içerik olur).
 export async function generateStaticParams() {

@@ -2,15 +2,24 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import type { Settings } from "@/lib/supabase";
+import { DILLER, DIL_AD, HREFLANG, type Dil } from "@/lib/diller";
+import { M, dilYolu } from "@/lib/site-metin";
 
-const NAV = [
-  { href: "#products",   label: "Ürünler"    },
-  { href: "#collection", label: "Koleksiyon" },
-  { href: "#why",        label: "Neden Alya" },
-  { href: "#contact",    label: "İletişim"   },
-];
-
-export default function Header({ settings }: { settings: Settings | null }) {
+export default function Header({ settings, dil = "tr" }: { settings: Settings | null; dil?: Dil }) {
+  const m = M[dil];
+  const NAV = [
+    { href: "#products",   label: m.nav.urunler },
+    { href: "#collection", label: m.nav.koleksiyon },
+    { href: "#why",        label: m.nav.neden },
+    { href: "#contact",    label: m.nav.iletisim },
+  ];
+  const DilSecici = ({ cls }: { cls: string }) => (
+    <div className={cls} aria-label={m.dil}>
+      {DILLER.map(d => d === dil
+        ? <span key={d} className="text-white font-semibold" aria-current="true">{DIL_AD[d]}</span>
+        : <Link key={d} href={dilYolu(d)} hrefLang={HREFLANG[d]} lang={HREFLANG[d]} className="text-[#6b7366] hover:text-white transition-colors">{DIL_AD[d]}</Link>)}
+    </div>
+  );
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const wa = settings?.whatsapp ? `https://wa.me/${settings.whatsapp.replace(/\D/g,"")}` : "https://wa.me/905357616524";
@@ -32,7 +41,7 @@ export default function Header({ settings }: { settings: Settings | null }) {
         scrolled || open ? "shadow-[0_8px_24px_rgba(11,14,11,0.18)] border-b border-white/8" : "border-b border-transparent"
       }`} style={{ paddingInline: "clamp(20px,5vw,80px)" }}>
 
-        <Link href="/" className="flex items-baseline shrink-0">
+        <Link href={dilYolu(dil)} className="flex items-baseline shrink-0">
           <span className="heading text-white" style={{ fontSize: "clamp(17px,2.5vw,22px)" }}>ALYA</span>
           <span className="heading text-[#e55f28]" style={{ fontSize: "clamp(17px,2.5vw,22px)" }}>PLASTİK</span>
         </Link>
@@ -45,12 +54,13 @@ export default function Header({ settings }: { settings: Settings | null }) {
           ))}
         </nav>
 
+        <DilSecici cls="hidden md:flex items-center gap-3 ms-auto me-5 text-[11px]" />
         <a href={wa} target="_blank" rel="noopener noreferrer nofollow"
           className="hidden md:inline-flex items-center gap-2 bg-[#e55f28] hover:bg-[#c94f1e] text-white text-[10px] font-semibold tracking-[0.14em] uppercase px-5 py-2.5 transition-colors shrink-0">
-          Teklif Al →
+          {m.nav.teklif}
         </a>
 
-        <button onClick={() => setOpen(p => !p)} aria-label="Menü"
+        <button onClick={() => setOpen(p => !p)} aria-label={m.nav.menu}
           className="md:hidden flex flex-col items-end justify-center gap-1.5 w-10 h-10 shrink-0">
           {[0,1,2].map(i => (
             <span key={i} className="block h-[1.5px] bg-[#eae6dd] rounded-sm transition-all duration-300"
@@ -73,9 +83,10 @@ export default function Header({ settings }: { settings: Settings | null }) {
           ))}
         </nav>
         <div className="flex flex-col gap-3">
+          <DilSecici cls="flex items-center justify-center gap-5 text-[13px] pb-2" />
           <a href={wa} target="_blank" rel="noopener noreferrer nofollow"
             className="flex items-center justify-center gap-2 bg-[#e55f28] text-white text-[10px] font-semibold tracking-[0.14em] uppercase py-4">
-            WhatsApp ile Teklif Al →
+            {m.nav.waTeklif}
           </a>
           <a href={`tel:${settings?.phone?.replace(/\D/g,"") ?? "902126718565"}`}
             className="flex items-center justify-center border border-white/20 text-[#eae6dd] text-[10px] font-semibold tracking-[0.14em] uppercase py-4">

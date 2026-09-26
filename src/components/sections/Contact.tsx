@@ -1,8 +1,11 @@
 "use client";
 import { useState } from "react";
 import type { Settings } from "@/lib/supabase";
+import type { Dil } from "@/lib/urun-sayfasi";
+import { M } from "@/lib/site-metin";
 
-export default function Contact({ settings }: { settings: Settings | null }) {
+export default function Contact({ settings, dil = "tr" }: { settings: Settings | null; dil?: Dil }) {
+  const c = M[dil].iletisim;
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sub, setSub] = useState("");
@@ -12,10 +15,10 @@ export default function Contact({ settings }: { settings: Settings | null }) {
   const wa = s?.whatsapp ? `https://wa.me/${s.whatsapp.replace(/\D/g,"")}` : "https://wa.me/905357616524";
 
   const CONTACTS = [
-    { l:"E-posta",  v: s?.email ?? "info@alyaplastik.com",          h:`mailto:${s?.email ?? "info@alyaplastik.com"}` },
-    { l:"İhracat",  v: s?.export_email ?? "export@alyaplastik.com",  h:`mailto:${s?.export_email ?? "export@alyaplastik.com"}` },
-    { l:"Telefon",  v: s?.phone ?? "+90 212 671 85 65",              h:`tel:${s?.phone?.replace(/\D/g,"") ?? "902126718565"}` },
-    { l:"WhatsApp", v: s?.whatsapp ?? "+90 535 761 65 24",           h: wa },
+    { l:c.eposta,  v: s?.email ?? "info@alyaplastik.com",          h:`mailto:${s?.email ?? "info@alyaplastik.com"}` },
+    { l:c.ihracat,  v: s?.export_email ?? "export@alyaplastik.com",  h:`mailto:${s?.export_email ?? "export@alyaplastik.com"}` },
+    { l:c.telefon,  v: s?.phone ?? "+90 212 671 85 65",              h:`tel:${s?.phone?.replace(/\D/g,"") ?? "902126718565"}` },
+    { l:c.whatsapp, v: s?.whatsapp ?? "+90 535 761 65 24",           h: wa },
   ];
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -36,7 +39,7 @@ export default function Contact({ settings }: { settings: Settings | null }) {
     });
     const { error: err } = await res.json();
     setLoading(false);
-    if (err) { setError("Bir hata oluştu, lütfen tekrar deneyin."); }
+    if (err) { setError(c.hata); }
     else { setSent(true); }
   };
 
@@ -45,9 +48,9 @@ export default function Contact({ settings }: { settings: Settings | null }) {
       <div style={{ paddingInline:"clamp(20px,5vw,80px)" }}>
 
         <div className="mb-12">
-          <p className="anim-eyebrow eyebrow text-[#e55f28] mb-3">— İletişim</p>
+          <p className="anim-eyebrow eyebrow text-[#e55f28] mb-3">{c.etiket}</p>
           <h2 className="anim-split-heading heading text-[#0b0e0b]" style={{ fontSize:"clamp(44px,7vw,96px)" }}>
-            BİRLİKTE<br />ÜRETELIM.
+            {c.baslik[0]}<br />{c.baslik[1]}
           </h2>
         </div>
 
@@ -55,7 +58,7 @@ export default function Contact({ settings }: { settings: Settings | null }) {
           {/* Sol */}
           <div>
             <p className="anim-up font-light leading-loose text-[#6b7366] text-sm max-w-[360px] mb-10">
-              B2B toplu sipariş, özel kalıp talebi, ihracat ve katalog için bize ulaşın. 72 saat garantisi.
+              {c.aciklama}
             </p>
             {CONTACTS.map((c, i) => (
               <a key={c.l} href={c.h}
@@ -78,35 +81,30 @@ export default function Contact({ settings }: { settings: Settings | null }) {
             {sent ? (
               <div className="flex flex-col justify-center min-h-[300px]">
                 <div className="heading text-[#e55f28] text-[72px] mb-3">✓</div>
-                <h3 className="heading text-[#0b0e0b] text-4xl mb-3">ALINDI.</h3>
-                <p className="text-[#6b7366] text-[15px] leading-relaxed">En kısa sürede dönüş yapılacaktır.</p>
+                <h3 className="heading text-[#0b0e0b] text-4xl mb-3">{c.alindi}</h3>
+                <p className="text-[#6b7366] text-[15px] leading-relaxed">{c.alindiMesaj}</p>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="flex flex-col gap-5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <Field label="Ad Soyad *" name="name" type="text" required />
-                  <Field label="Firma" name="company" type="text" />
+                  <Field label={c.ad} name="name" type="text" required />
+                  <Field label={c.firma} name="company" type="text" />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <Field label="E-posta *" name="email" type="email" required />
-                  <Field label="Telefon" name="phone" type="tel" />
+                  <Field label={c.epostaAlan} name="email" type="email" required />
+                  <Field label={c.telAlan} name="phone" type="tel" />
                 </div>
                 <div>
-                  <label className="eyebrow text-[#6b7366] text-[10px] block mb-2.5">Konu</label>
+                  <label className="eyebrow text-[#6b7366] text-[10px] block mb-2.5">{c.konu}</label>
                   <select value={sub} onChange={e => setSub(e.target.value)}
                     className="w-full bg-transparent border-b border-[#0b0e0b]/15 py-3 text-sm outline-none appearance-none"
                     style={{ color: sub ? "#0b0e0b" : "#6b7366" }}>
-                    <option value="" disabled>Seçin</option>
-                    <option value="Ürün Bilgisi">Ürün Bilgisi</option>
-                    <option value="Fiyat Talebi">Fiyat Talebi</option>
-                    <option value="İhracat">İhracat / Export</option>
-                    <option value="Katalog">Katalog Talebi</option>
-                    <option value="Özel Kalıp">Özel Kalıp</option>
-                    <option value="Diğer">Diğer</option>
+                    <option value="" disabled>{c.sec}</option>
+                    {c.konular.map(k => <option key={k.v} value={k.v}>{k.l}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="eyebrow text-[#6b7366] text-[10px] block mb-2.5">Mesajınız *</label>
+                  <label className="eyebrow text-[#6b7366] text-[10px] block mb-2.5">{c.mesaj}</label>
                   <textarea name="message" required rows={4}
                     className="w-full bg-transparent border-b border-[#0b0e0b]/15 py-3 text-sm text-[#0b0e0b] outline-none resize-none focus:border-[#e55f28] transition-colors" />
                 </div>
@@ -114,14 +112,14 @@ export default function Contact({ settings }: { settings: Settings | null }) {
                 <div className="flex flex-wrap gap-3 pt-2">
                   <button type="submit" disabled={loading}
                     className="inline-flex items-center gap-2 bg-[#e55f28] hover:bg-[#c94f1e] text-white text-[11px] font-semibold tracking-[0.14em] uppercase px-7 py-3.5 transition-colors disabled:opacity-60">
-                    {loading ? "Gönderiliyor..." : "Gönder →"}
+                    {loading ? c.gonderiliyor : c.gonder}
                   </button>
                   <a href={wa} target="_blank" rel="noopener noreferrer nofollow"
                     className="inline-flex items-center gap-2 border border-[#0b0e0b]/20 hover:border-[#0b0e0b]/50 text-[#0b0e0b] text-[11px] font-semibold tracking-[0.14em] uppercase px-7 py-3.5 transition-colors">
                     WhatsApp
                   </a>
                 </div>
-                <p className="eyebrow text-[#0b0e0b]/35 text-[10px]">KVKK kapsamında kişisel verileriniz işlenir.</p>
+                <p className="eyebrow text-[#0b0e0b]/35 text-[10px]">{c.kvkk}</p>
               </form>
             )}
           </div>

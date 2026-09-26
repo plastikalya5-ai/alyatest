@@ -1,7 +1,11 @@
 import type { Product } from "@/lib/supabase";
+import type { Dil } from "@/lib/diller";
+import { urunLinki } from "@/lib/diller";
+import { M, kategoriGoster } from "@/lib/site-metin";
 
-export default function HorizontalPin({ products }: { products: Product[] }) {
+export default function HorizontalPin({ products, dil = "tr" }: { products: Product[]; dil?: Dil }) {
   const items = products.slice(0, 6);
+  const p_ = M[dil].pin;
 
   return (
     <>
@@ -13,12 +17,12 @@ export default function HorizontalPin({ products }: { products: Product[] }) {
         {/* Sol sabit başlık */}
         <div className="absolute left-0 top-0 bottom-0 z-10 flex flex-col justify-center bg-[#eae6dd]"
           style={{ width: "clamp(200px,22vw,320px)", paddingLeft: "clamp(20px,5vw,80px)", paddingRight: 40 }}>
-          <p className="anim-eyebrow eyebrow text-[#6b7366] mb-4">Sürükle</p>
+          <p className="anim-eyebrow eyebrow text-[#6b7366] mb-4">{p_.surukle}</p>
           <h2 className="heading text-[#0b0e0b]" style={{ fontSize: "clamp(40px,5vw,72px)" }}>
-            TÜM<br />FORM<br />LAR.
+            {p_.baslik.map((x, i) => <span key={i}>{i > 0 && <br />}{x}</span>)}
           </h2>
           <div className="mt-8 w-full h-px bg-[#0b0e0b]/20" />
-          <p className="mt-4 text-[#6b7366] font-light text-sm">{items.length}+ ürün</p>
+          <p className="mt-4 text-[#6b7366] font-light text-sm">{items.length}+ {p_.urun}</p>
         </div>
 
         {/* Track */}
@@ -42,7 +46,7 @@ export default function HorizontalPin({ products }: { products: Product[] }) {
                 <h3 className="heading text-[#eae6dd]" style={{ fontSize: "clamp(20px,3vw,32px)" }}>
                   {p.name.toUpperCase()}
                 </h3>
-                {p.is_new && <span className="inline-block mt-2 eyebrow bg-[#e55f28] text-white px-2 py-0.5 text-[8px]">YENİ</span>}
+                {p.is_new && <span className="inline-block mt-2 eyebrow bg-[#e55f28] text-white px-2 py-0.5 text-[8px]">{p_.yeni}</span>}
               </div>
               <div className="absolute top-5 right-5">
                 <span className="eyebrow text-white/20 text-[9px]">{String(i+1).padStart(2,"0")}</span>
@@ -53,12 +57,12 @@ export default function HorizontalPin({ products }: { products: Product[] }) {
           <a href="#contact"
             className="relative flex-none flex flex-col items-start justify-end p-8 bg-[#e55f28]"
             style={{ width: "clamp(200px,22vw,300px)", height: "70svh" }}>
-            <p className="eyebrow text-white/60 mb-3 text-[10px]">B2B Teklif</p>
+            <p className="eyebrow text-white/60 mb-3 text-[10px]">{p_.b2b}</p>
             <h3 className="heading text-white mb-6" style={{ fontSize: "clamp(28px,4vw,44px)" }}>
-              KATALOG<br />İSTE
+              {p_.katalog[0]}<br />{p_.katalog[1]}
             </h3>
             <span className="eyebrow text-white border-b border-white/50 pb-1 text-[10px]">
-              Formu Doldur →
+              {p_.form}
             </span>
           </a>
         </div>
@@ -67,14 +71,14 @@ export default function HorizontalPin({ products }: { products: Product[] }) {
       {/* Mobil: normal grid */}
       <section className="md:hidden bg-[#eae6dd]" data-bg="#eae6dd"
         style={{ paddingBlock: "clamp(56px,8vw,100px)", paddingInline: "clamp(20px,5vw,80px)" }}>
-        <p className="anim-eyebrow eyebrow text-[#6b7366] mb-3">Koleksiyon</p>
+        <p className="anim-eyebrow eyebrow text-[#6b7366] mb-3">{p_.mobEtiket}</p>
         <h2 className="anim-split-heading heading text-[#0b0e0b] mb-8"
           style={{ fontSize: "clamp(44px,10vw,72px)" }}>
-          TÜM FORMLAR.
+          {p_.mobBaslik}
         </h2>
         <div className="anim-stagger-parent grid grid-cols-2 gap-3">
           {items.map((p, i) => (
-            <a key={p.id} href={`/urun/${p.slug}`}
+            <a key={p.id} href={urunLinki(p, dil)}
               className="anim-stagger-child relative overflow-hidden aspect-[3/4]"
               style={{ background: i % 2 === 0 ? "#0b0e0b" : "#111511" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}

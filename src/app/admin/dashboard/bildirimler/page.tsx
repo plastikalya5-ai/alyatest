@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { erp } from '@/lib/erp-client'
 import { muh } from '@/lib/muhasebe-client'
 import AdminTopBar from '@/components/admin/TopBar'
-import { Mail, Phone, Save, Info, AlertTriangle, Boxes, Wrench, FileSignature } from 'lucide-react'
+import { Mail, Phone, Save, Info, AlertTriangle, Boxes, Wrench, FileSignature, Webhook, Copy } from 'lucide-react'
 
 const sb = createClient()
 
@@ -22,7 +22,7 @@ export default function AdminBildirimlerPage() {
   const [toast, setToast] = useState('')
   const [uyarilar, setUyarilar] = useState<any[]>([])
   const [uyariYuklendi, setUyariYuklendi] = useState(false)
-  const [durum, setDurum] = useState<{email:{ok:boolean;missing:string[]};whatsapp:{ok:boolean;missing:string[]}}|null>(null)
+  const [durum, setDurum] = useState<Record<'email'|'whatsapp'|'sosyalGelen'|'sosyalGiden',{ok:boolean;missing:string[]}>|null>(null)
   const [testing, setTesting] = useState('')
 
   useEffect(() => {
@@ -94,6 +94,11 @@ export default function AdminBildirimlerPage() {
   const upd = (event:string, field:string, val:any) =>
     setSettings(s => ({...s, [event]: {...(s[event]||{}), [field]:val}}))
 
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  const kopyala = (t:string) => { navigator.clipboard?.writeText(t).then(()=>{ setToast('Kopyalandı'); setTimeout(()=>setToast(''),2500) }).catch(()=>{}) }
+  const Durum = ({d}:{d?:{ok:boolean;missing:string[]}}) => !d ? <span>…</span> : d.ok ? <b style={{color:'var(--adm-green)'}}>hazır ✓</b> : <b style={{color:'var(--adm-red)'}}>Vercel'de eksik: {d.missing.join(', ')}</b>
+  const Kod = ({t}:{t:string}) => <span style={{display:'inline-flex',alignItems:'center',gap:6,background:'var(--adm-s2)',border:'1px solid var(--adm-bdr)',borderRadius:6,padding:'3px 8px',fontFamily:'monospace',fontSize:12,wordBreak:'break-all'}}>{t}<button type="button" onClick={()=>kopyala(t)} aria-label="Kopyala" style={{background:'none',border:0,cursor:'pointer',color:'var(--adm-tx3)',padding:0}}><Copy size={12}/></button></span>
+
   const ICONS: Record<string,any> = { stok: Boxes, bakim: Wrench, cek: FileSignature }
 
   return (
@@ -129,6 +134,27 @@ export default function AdminBildirimlerPage() {
               <div>E-posta (SMTP): {durum.email.ok ? <b style={{color:'var(--adm-green)'}}>hazır ✓</b> : <b style={{color:'var(--adm-red)'}}>kurulmamış — Vercel env: {durum.email.missing.join(', ')}</b>}</div>
               <div>WhatsApp (n8n): {durum.whatsapp.ok ? <b style={{color:'var(--adm-green)'}}>hazır ✓</b> : <b style={{color:'var(--adm-red)'}}>kurulmamış — Vercel env: {durum.whatsapp.missing.join(', ')}</b>}</div>
             </>}
+          </div>
+        </div>
+
+        <div className="adm-card" style={{ marginBottom:20 }}>
+          <div className="adm-card-h"><span style={{display:'flex',alignItems:'center',gap:8,fontWeight:700}}><Webhook size={15}/>n8n / Webhook bağlantıları</span></div>
+          <div style={{ padding:18, fontSize:12.5, color:'var(--adm-tx3)', lineHeight:1.8 }}>
+            <p style={{marginBottom:12}}>Güvenlik gereği gizli anahtarlar ve giden adresler panelde değil, <b>Vercel → Settings → Environment Variables</b> içinde tutulur (değiştirince yeniden deploy gerekir). Aşağıda n8n tarafına girmeniz gereken adresler ve her bağlantının durumu var.</p>
+
+            <p style={{color:'var(--adm-tx)',fontWeight:700,marginTop:10}}>1) n8n → Site (n8n paylaşımı çeker / sonucu bildirir) — Sosyal medya</p>
+            <div>Adres (n8n HTTP Request düğmesine): <Kod t={`${origin}/api/webhooks/sosyal`}/></div>
+            <div>Yetkilendirme: <b>Header Auth</b> → <Kod t="Authorization: Bearer <N8N_SOSYAL_API_TOKEN değeri>"/></div>
+            <div>GET: tarihi gelmiş "planlandı" gönderileri verir · POST: paylaşım sonucunu yazar</div>
+            <div>Durum: <Durum d={durum?.sosyalGelen}/></div>
+
+            <p style={{color:'var(--adm-tx)',fontWeight:700,marginTop:14}}>2) Site → n8n (Takvim'deki "n8n" düğmesi gönderiyi iter) — Sosyal medya</p>
+            <div>n8n'de bir <b>Webhook</b> düğmesi oluşturun, "Production URL"i Vercel'e <Kod t="N8N_SOSYAL_WEBHOOK_URL"/> olarak, kendi belirlediğiniz gizli değeri <Kod t="N8N_SOSYAL_WEBHOOK_SECRET"/> olarak girin (n8n bunu <code>x-alya-secret</code> başlığında doğrular).</div>
+            <div>Durum: <Durum d={durum?.sosyalGiden}/></div>
+
+            <p style={{color:'var(--adm-tx)',fontWeight:700,marginTop:14}}>3) Site → n8n (WhatsApp bildirimleri)</p>
+            <div>n8n Webhook adresini Vercel'e <Kod t="N8N_WHATSAPP_WEBHOOK_URL"/> olarak girin (isteğe bağlı gizli değer: <Kod t="N8N_WEBHOOK_SECRET"/>, başlık <code>x-webhook-secret</code>).</div>
+            <div>Durum: <Durum d={durum?.whatsapp}/></div>
           </div>
         </div>
 

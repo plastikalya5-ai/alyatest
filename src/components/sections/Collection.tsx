@@ -1,8 +1,12 @@
 "use client";
 import { useRef, useState } from "react";
 import type { Product } from "@/lib/supabase";
+import type { Dil } from "@/lib/diller";
+import { urunLinki } from "@/lib/diller";
+import { M, kategoriGoster } from "@/lib/site-metin";
 
-export default function Collection({ products }: { products: Product[] }) {
+export default function Collection({ products, dil = "tr" }: { products: Product[]; dil?: Dil }) {
+  const c = M[dil].koleksiyon;
   const ref  = useRef<HTMLDivElement>(null);
   const [idx, setIdx] = useState(0);
   const drag = useRef({ on:false, sx:0, sl:0 });
@@ -19,10 +23,10 @@ export default function Collection({ products }: { products: Product[] }) {
       <div className="flex flex-wrap items-end justify-between gap-4 mb-10" style={{ paddingInline:"clamp(20px,5vw,80px)" }}>
         <div>
           <h2 className="anim-split-heading heading text-[#0b0e0b]" style={{ fontSize:"clamp(44px,7vw,96px)" }}>
-            {products.length}+ MODEL
+            {products.length}+ {c.model}
           </h2>
         </div>
-        <p className="anim-up eyebrow text-[#6b7366]">Sürükle veya kaydır</p>
+        <p className="anim-up eyebrow text-[#6b7366]">{c.surukleKaydir}</p>
       </div>
 
       <div ref={ref} className="flex overflow-x-auto" onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}
@@ -30,7 +34,7 @@ export default function Collection({ products }: { products: Product[] }) {
         onScroll={() => { if(!ref.current) return; setIdx(Math.round(ref.current.scrollLeft/(ref.current.clientWidth*0.68))); }}>
 
         {products.map((item, i) => (
-          <a key={item.id} href={`/urun/${item.slug}`} onClick={e => { if (moved.current) e.preventDefault(); }} draggable={false}
+          <a key={item.id} href={urunLinki(item, dil)} onClick={e => { if (moved.current) e.preventDefault(); }} draggable={false}
             className="group relative flex-none overflow-hidden"
             style={{ width:"clamp(220px,65vw,380px)", aspectRatio:"0.72", scrollSnapAlign:"start", background:BG[i%4], display:"block" }}>
 
@@ -44,10 +48,10 @@ export default function Collection({ products }: { products: Product[] }) {
             <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-6">
               <div className="flex gap-1.5 mb-2">
                 <p className="eyebrow text-[#e55f28] text-[9px]">{item.code}</p>
-                {item.is_new && <span className="eyebrow text-white bg-[#e55f28] text-[9px] px-1.5">Yeni</span>}
+                {item.is_new && <span className="eyebrow text-white bg-[#e55f28] text-[9px] px-1.5">{c.yeni}</span>}
               </div>
               <h3 className="heading text-[#eae6dd]" style={{ fontSize:"clamp(22px,5vw,36px)", marginBottom:3 }}>{item.name.toUpperCase()}</h3>
-              <p className="text-[#6b7366] text-xs">{item.category}</p>
+              <p className="text-[#6b7366] text-xs">{kategoriGoster(dil, item.category)}</p>
             </div>
 
             <div className="absolute top-4 right-4">
@@ -58,9 +62,9 @@ export default function Collection({ products }: { products: Product[] }) {
 
         <a href="#contact" className="relative flex-none flex flex-col justify-end p-6 sm:p-8 bg-[#e55f28]"
           style={{ width:"clamp(160px,48vw,260px)", aspectRatio:"0.72", scrollSnapAlign:"start" }}>
-          <p className="eyebrow text-white/60 mb-3">Tüm Katalog</p>
-          <h3 className="heading text-white mb-5" style={{ fontSize:"clamp(26px,5vw,40px)" }}>KATALOG<br />İSTE</h3>
-          <span className="eyebrow text-white border-b border-white/50 pb-1 inline-block text-[10px]">Formu Doldur →</span>
+          <p className="eyebrow text-white/60 mb-3">{c.tumKatalog}</p>
+          <h3 className="heading text-white mb-5" style={{ fontSize:"clamp(26px,5vw,40px)" }}>{c.katalog[0]}<br />{c.katalog[1]}</h3>
+          <span className="eyebrow text-white border-b border-white/50 pb-1 inline-block text-[10px]">{c.form}</span>
         </a>
       </div>
 

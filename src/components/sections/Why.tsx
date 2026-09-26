@@ -1,21 +1,16 @@
 "use client";
 import type { Stats } from "@/lib/supabase";
 import { IMG } from "@/data/images";
+import type { Dil } from "@/lib/urun-sayfasi";
+import { M } from "@/lib/site-metin";
 
-const FEATURES = [
-  "ISO sertifikalı üretim tesisi",
-  "Kalıptan rafa tam tedarik zinciri",
-  "72 saat içinde teklif dönüşü garantisi",
-  "Özel kalıp ve sipariş imkânı",
-  "Tüm lojistik ve gümrük dokümantasyon desteği",
-];
-
-export default function Why({ stats }: { stats: Stats | null }) {
+export default function Why({ stats, dil = "tr" }: { stats: Stats | null; dil?: Dil }) {
+  const w = M[dil].neden, FEATURES = w.ozellikler, y = stats?.years ?? 55, u = stats?.countries ?? 20;
   const st = [
-    { n: stats?.years ?? 55,             s: "+", label:"Yıl Deneyim",   desc:"1968'den bu yana" },
-    { n: stats?.models ?? 200,           s: "+", label:"Ürün Modeli",    desc:"Geniş portföy"    },
-    { n: stats?.countries ?? 20,         s: "+", label:"İhracat Ülkesi", desc:"Global erişim"    },
-    { n: stats?.local_production ?? 100, s: "%", label:"Yerli Üretim",   desc:"Made in Türkiye"  },
+    { n: y,                              s: "+", ...w.stat[0] },
+    { n: stats?.models ?? 200,           s: "+", ...w.stat[1] },
+    { n: u,                              s: "+", ...w.stat[2] },
+    { n: stats?.local_production ?? 100, s: "%", ...w.stat[3] },
   ];
 
   return (
@@ -25,12 +20,12 @@ export default function Why({ stats }: { stats: Stats | null }) {
         style={{ paddingBlock: "clamp(80px,10vw,140px)", paddingInline: "clamp(20px,5vw,80px)" }}>
         <div className="anim-line-expand absolute top-0 left-[clamp(20px,5vw,80px)] right-[clamp(20px,5vw,80px)] h-px bg-[#0b0e0b]/15" />
 
-        <p className="anim-eyebrow eyebrow text-[#6b7366] mb-8">55 Yıllık Miras</p>
+        <p className="anim-eyebrow eyebrow text-[#6b7366] mb-8">{w.miras(y)}</p>
         <blockquote className="anim-split-heading heading"
           style={{ fontSize: "clamp(36px,6vw,90px)", maxWidth: "80%", lineHeight: 0.92, color: "#0b0e0b" }}>
-          &ldquo;KALIPTAN SEVKİYATA,<br />
-          <span style={{ color: "#e55f28" }}>TEK ÇATI ALTINDA</span><br />
-          ÜRETİYORUZ.&rdquo;
+          &ldquo;{w.alinti[0]}<br />
+          <span style={{ color: "#e55f28" }}>{w.alinti[1]}</span><br />
+          {w.alinti[2]}&rdquo;
         </blockquote>
       </section>
 
@@ -41,14 +36,14 @@ export default function Why({ stats }: { stats: Stats | null }) {
 
           <div className="flex flex-wrap items-end justify-between gap-4 mb-14">
             <div>
-              <p className="anim-eyebrow eyebrow text-[#e55f28] mb-3">— Neden Alya Plastik</p>
+              <p className="anim-eyebrow eyebrow text-[#e55f28] mb-3">{w.etiket}</p>
               <h2 className="anim-split-heading heading text-[#0b0e0b]"
                 style={{ fontSize: "clamp(44px,7vw,96px)" }}>
-                {stats?.years ?? 55} YILLIK<br />BİRİKİM.
+                {w.baslik(y)[0]}<br />{w.baslik(y)[1]}
               </h2>
             </div>
             <p className="anim-up font-light leading-relaxed text-[#6b7366] text-sm max-w-[260px]">
-              {stats?.years ?? 55} yıldır İstanbul&apos;dan dünyaya. {stats?.countries ?? 20}+ ülkeye ihracat.
+              {w.alt(y, u)}
             </p>
           </div>
 
@@ -65,14 +60,14 @@ export default function Why({ stats }: { stats: Stats | null }) {
               </div>
               <a href="#contact"
                 className="anim-magnetic anim-up inline-flex items-center gap-2 bg-[#e55f28] hover:bg-[#c94f1e] text-white text-[11px] font-semibold tracking-[0.14em] uppercase px-7 py-3.5 transition-colors">
-                Teklif Al →
+                {w.teklif}
               </a>
             </div>
 
             <div className="flex flex-col gap-3">
               <div className="anim-img-reveal relative overflow-hidden bg-[#e3ddcf] aspect-[4/3]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={IMG.ufo} alt="UFO Saksı"
+                <img src={IMG.ufo} alt="UFO"
                   className="absolute inset-0 w-full h-full object-contain"
                   style={{ padding: "clamp(20px,4vw,48px)" }} />
                 <div className="absolute bottom-0 left-0 right-0 flex items-end justify-between p-4 pt-12"
@@ -81,7 +76,7 @@ export default function Why({ stats }: { stats: Stats | null }) {
                     <p className="eyebrow text-[#e55f28] text-[9px] mb-1">ALY-601</p>
                     <p className="font-semibold text-[#eae6dd] text-sm">UFO Saksı</p>
                   </div>
-                  <span className="eyebrow text-white bg-[#e55f28] px-2 py-1 text-[9px]">Yeni</span>
+                  <span className="eyebrow text-white bg-[#e55f28] px-2 py-1 text-[9px]">{w.yeni}</span>
                 </div>
               </div>
 

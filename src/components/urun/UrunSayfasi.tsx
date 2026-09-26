@@ -1,12 +1,14 @@
 import Link from "next/link";
 import Footer from "@/components/layout/Footer";
+import { bolumYolu, dilYolu, kategoriGoster } from "@/lib/site-metin";
 import type { Settings } from "@/lib/supabase";
 import { DILLER, DIL_AD, HREFLANG, UI, aciklama, jsonLdMetni, kategoriAdi, mevcutDiller, ozellikEtiketi, urunJsonLd, urunYolu, type Dil, type UrunKaydi } from "@/lib/urun-sayfasi";
 
 // Sunucu bileşeni: ürün detay sayfası (tüm diller için ortak). İçerik yalnızca veritabanındaki ürün kaydından gelir.
 export default function UrunSayfasi({ urun, dil, settings, benzer, kategoriler = {} }: { urun: UrunKaydi; dil: Dil; settings: Settings | null; benzer: UrunKaydi[]; kategoriler?: Record<string, string> }) {
-  const T = UI[dil], rtl = dil === "ar";
-  const kat = kategoriAdi(urun.category, kategoriler), altKat = urun.subcategory && kategoriAdi(urun.subcategory, kategoriler).toLocaleLowerCase("tr-TR") !== kat.toLocaleLowerCase("tr-TR") ? kategoriAdi(urun.subcategory, kategoriler) : "";
+  const T = UI[dil], rtl = false;
+  const kn = (x: string) => (dil === "tr" ? kategoriAdi(x, kategoriler) : kategoriGoster(dil, x, kategoriler));
+  const kat = kn(urun.category), altKat = urun.subcategory && kn(urun.subcategory).toLocaleLowerCase("tr-TR") !== kat.toLocaleLowerCase("tr-TR") ? kn(urun.subcategory) : "";
   const resimler = [urun.image_url, ...(urun.images || [])].filter((x, i, a) => typeof x === "string" && x.startsWith("https://") && a.indexOf(x) === i);
   const metin = aciklama(urun, dil);
   const ozellikler = Object.entries(urun.specs || {});
@@ -18,21 +20,21 @@ export default function UrunSayfasi({ urun, dil, settings, benzer, kategoriler =
     <div lang={HREFLANG[dil]} dir={rtl ? "rtl" : "ltr"}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdMetni(urunJsonLd(urun, dil, kat)) }} />
       <header className="fixed inset-x-0 top-0 z-50 flex items-center justify-between h-[68px] bg-[#0b0e0b] border-b border-white/10" style={{ paddingInline: "clamp(20px,5vw,80px)" }}>
-        <Link href="/" className="flex items-baseline shrink-0" dir="ltr" aria-label="Alya Plastik">
+        <Link href={dilYolu(dil)} className="flex items-baseline shrink-0" dir="ltr" aria-label="Alya Plastik">
           <span className="heading text-white" style={{ fontSize: "clamp(17px,2.5vw,22px)" }}>ALYA</span>
           <span className="heading text-[#e55f28]" style={{ fontSize: "clamp(17px,2.5vw,22px)" }}>PLASTİK</span>
         </Link>
         <nav className="flex items-center gap-6">
-          <Link href="/#collection" className="eyebrow text-[#9aa294] hover:text-white transition-colors">{T.urunler}</Link>
-          <Link href="/#contact" className="eyebrow text-white bg-[#e55f28] px-4 py-2">{T.teklif}</Link>
+          <Link href={bolumYolu(dil, "collection")} className="eyebrow text-[#9aa294] hover:text-white transition-colors">{T.urunler}</Link>
+          <Link href={bolumYolu(dil, "contact")} className="eyebrow text-white bg-[#e55f28] px-4 py-2">{T.teklif}</Link>
         </nav>
       </header>
 
       <main className="pt-[68px]">
         <div style={{ paddingInline: "clamp(20px,5vw,80px)", paddingBlock: "clamp(24px,4vw,56px)" }}>
           <nav aria-label="breadcrumb" className="eyebrow text-[#6b7366] mb-6 flex flex-wrap gap-2">
-            <Link href="/" className="hover:text-[#0b0e0b]">{T.anasayfa}</Link><span>/</span>
-            <Link href="/#collection" className="hover:text-[#0b0e0b]">{T.urunler}</Link><span>/</span>
+            <Link href={dilYolu(dil)} className="hover:text-[#0b0e0b]">{T.anasayfa}</Link><span>/</span>
+            <Link href={bolumYolu(dil, "collection")} className="hover:text-[#0b0e0b]">{T.urunler}</Link><span>/</span>
             <span className="text-[#0b0e0b]">{urun.name}</span>
           </nav>
 
@@ -72,7 +74,7 @@ export default function UrunSayfasi({ urun, dil, settings, benzer, kategoriler =
               <div className="mt-10 p-5 bg-[#0b0e0b] text-[#eae6dd]">
                 <p className="text-sm mb-4 opacity-80">{T.b2b}</p>
                 <div className="flex flex-wrap gap-3">
-                  <Link href="/#contact" className="eyebrow text-white bg-[#e55f28] hover:bg-[#c94f1e] px-5 py-3 transition-colors">{T.teklif}</Link>
+                  <Link href={bolumYolu(dil, "contact")} className="eyebrow text-white bg-[#e55f28] hover:bg-[#c94f1e] px-5 py-3 transition-colors">{T.teklif}</Link>
                   <a href={waUrl} target="_blank" rel="noopener noreferrer nofollow" className="eyebrow text-white border border-white/30 hover:border-white px-5 py-3 transition-colors">{T.whatsapp}</a>
                 </div>
               </div>
@@ -102,7 +104,7 @@ export default function UrunSayfasi({ urun, dil, settings, benzer, kategoriler =
             </section>)}
         </div>
       </main>
-      <Footer settings={settings} />
+      <Footer settings={settings} dil={dil} />
     </div>
   );
 }
