@@ -22,7 +22,7 @@ export default function AdminBildirimlerPage() {
   const [toast, setToast] = useState('')
   const [uyarilar, setUyarilar] = useState<any[]>([])
   const [uyariYuklendi, setUyariYuklendi] = useState(false)
-  const [durum, setDurum] = useState<Record<'email'|'whatsapp'|'sosyalGelen'|'sosyalGiden',{ok:boolean;missing:string[]}>|null>(null)
+  const [durum, setDurum] = useState<Record<'email'|'whatsapp'|'sosyalGelen'|'sosyalGiden'|'potansiyel',{ok:boolean;missing:string[]}>|null>(null)
   const [testing, setTesting] = useState('')
 
   useEffect(() => {
@@ -152,7 +152,13 @@ export default function AdminBildirimlerPage() {
             <div>n8n'de bir <b>Webhook</b> düğmesi oluşturun, "Production URL"i Vercel'e <Kod t="N8N_SOSYAL_WEBHOOK_URL"/> olarak, kendi belirlediğiniz gizli değeri <Kod t="N8N_SOSYAL_WEBHOOK_SECRET"/> olarak girin (n8n bunu <code>x-alya-secret</code> başlığında doğrular).</div>
             <div>Durum: <Durum d={durum?.sosyalGiden}/></div>
 
-            <p style={{color:'var(--adm-tx)',fontWeight:700,marginTop:14}}>3) Site → n8n (WhatsApp bildirimleri)</p>
+            <p style={{color:'var(--adm-tx)',fontWeight:700,marginTop:14}}>3) n8n → Site (potansiyel müşteri verisi → Potansiyel Müşteriler tablosu)</p>
+            <div>Adres (HTTP Request, POST, JSON): <Kod t={`${origin}/api/webhooks/potansiyel`}/></div>
+            <div>Yetkilendirme: <Kod t="Authorization: Bearer <N8N_LEAD_API_TOKEN değeri>"/> (tanımlı değilse N8N_SOSYAL_API_TOKEN kullanılır)</div>
+            <div>Gövde: <Kod t="title, phone, emails, website, address, categoryName, url"/> alanlarını olduğu gibi gönderin; tek kayıt, dizi ya da {'{'}items:[…]{'}'} olabilir (en çok 500). Aynı işletme ikinci kez gelirse atlanır.</div>
+            <div>Durum: <Durum d={durum?.potansiyel}/></div>
+
+            <p style={{color:'var(--adm-tx)',fontWeight:700,marginTop:14}}>4) Site → n8n (WhatsApp bildirimleri)</p>
             <div>n8n Webhook adresini Vercel'e <Kod t="N8N_WHATSAPP_WEBHOOK_URL"/> olarak girin (isteğe bağlı gizli değer: <Kod t="N8N_WEBHOOK_SECRET"/>, başlık <code>x-webhook-secret</code>).</div>
             <div>Durum: <Durum d={durum?.whatsapp}/></div>
           </div>

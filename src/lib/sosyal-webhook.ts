@@ -7,8 +7,7 @@ import crypto from 'crypto'
 const sha = (s: string) => crypto.createHash('sha256').update(s).digest()
 
 /** Authorization: Bearer <secret> başlığını zamanlama saldırısına dayanıklı biçimde doğrular. */
-export function n8nYetkili(authorization: string | null): 'ok' | 'yok' | 'kapali' {
-  const secret = process.env.N8N_SOSYAL_API_TOKEN
+export function n8nYetkili(authorization: string | null, secret: string | undefined = process.env.N8N_SOSYAL_API_TOKEN): 'ok' | 'yok' | 'kapali' {
   if (!secret || secret.length < 32) return 'kapali'
   const m = /^Bearer (.+)$/.exec(authorization || '')
   if (!m) return 'yok'

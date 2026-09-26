@@ -57,6 +57,11 @@ await check('/api/admin/satinalma-gonder oturumsuz istekte 401 dönüyor', async
   return r.status === 401
 })
 
+await check('/api/webhooks/potansiyel tokensız istekte 401/503 dönüyor (veri sızmıyor)', async () => {
+  const r = await fetch(base + '/api/webhooks/potansiyel', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: 'x' }) })
+  return r.status === 401 || r.status === 503
+})
+
 await check('dil sayfaları (en/ru/zh) açılıyor, tanımsız dil 404 dönüyor, sitemap hreflang içeriyor', async () => {
   const [en, ru, zh, de, sm] = await Promise.all(['/en', '/ru', '/zh', '/de', '/sitemap.xml'].map(p => fetch(base + p)))
   const [tEn, tRu, tZh, tSm] = await Promise.all([en.text(), ru.text(), zh.text(), sm.text()])

@@ -71,3 +71,6 @@ Ana sayfa `/` Türkçe; `/en`, `/ru`, `/zh` aynı içeriğin çevirileridir (`sr
 
 ## n8n bağlantıları
 Panel → Bildirimler sayfasındaki "n8n / Webhook bağlantıları" kartı, n8n'e girilecek adresleri (kopyalanabilir) ve her bağlantının hazır/eksik durumunu gösterir. Gizli değerler yalnızca Vercel ortam değişkenlerinde tutulur.
+
+## Potansiyel müşteriler (gelenveriler)
+n8n'in (ör. Google Maps tarayıcısı) topladığı işletme kayıtları `gelenveriler` tablosunda tutulur ve panelde **Müşteri → Potansiyel Müşteriler** sayfasında listelenir (arama, durum takibi, notlar, CSV, tek tıkla cariye dönüştürme; yetki: `satis` veya `yonetim`). n8n → `POST /api/webhooks/potansiyel` (`Authorization: Bearer <N8N_LEAD_API_TOKEN>`, tanımlı değilse `N8N_SOSYAL_API_TOKEN`); gövde `title, phone, emails, website, address, categoryName, url` alanlarını olduğu gibi kabul eder (tek kayıt / dizi / `{items:[...]}`, en çok 500). Tekilleştirme: harita adresi > web sitesi > telefon > ad+adres; mevcut kayıt değiştirilmez.

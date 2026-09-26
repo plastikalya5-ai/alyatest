@@ -25,6 +25,7 @@ export function channelStatus() {
     whatsapp: { ok: !!process.env.N8N_WHATSAPP_WEBHOOK_URL, missing: process.env.N8N_WHATSAPP_WEBHOOK_URL ? [] : ['N8N_WHATSAPP_WEBHOOK_URL'] },
     // Sosyal medya n8n bağlantısı (yalnızca 'tanımlı mı' bilgisi; değerler hiçbir zaman istemciye gönderilmez)
     sosyalGelen: { ok: (process.env.N8N_SOSYAL_API_TOKEN || '').length >= 32, missing: (process.env.N8N_SOSYAL_API_TOKEN || '').length >= 32 ? [] : ['N8N_SOSYAL_API_TOKEN (en az 32 karakter)'] },
+    potansiyel: { ok: (process.env.N8N_LEAD_API_TOKEN || process.env.N8N_SOSYAL_API_TOKEN || '').length >= 32, missing: (process.env.N8N_LEAD_API_TOKEN || process.env.N8N_SOSYAL_API_TOKEN || '').length >= 32 ? [] : ['N8N_LEAD_API_TOKEN (en az 32 karakter)'] },
     sosyalGiden: (() => { const m = ['N8N_SOSYAL_WEBHOOK_URL', 'N8N_SOSYAL_WEBHOOK_SECRET'].filter(k => !process.env[k]); return { ok: m.length === 0, missing: m } })(),
   }
 }

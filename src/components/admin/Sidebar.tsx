@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import SifreDegistir from './SifreDegistir'
 import MfaAyar from './MfaAyar'
 import { useEffect, useState } from 'react'
-import { Scale, Building2, Share2, LayoutDashboard, Package, Tag, MessageSquare, Settings, BarChart2, TrendingUp, Eye, Image, LogOut, ExternalLink, FileText, Bell, Activity, Layers, DollarSign, Receipt, Users2, PieChart, Landmark, FileSignature, Warehouse, Boxes, ArrowLeftRight, Cog, Wrench, FlaskConical, Factory, Zap, ClipboardList, PackageSearch, Truck, ShieldCheck, FlameKindling, UserCog, ScanLine, Sparkles, KeyRound } from 'lucide-react'
+import { Target, Scale, Building2, Share2, LayoutDashboard, Package, Tag, MessageSquare, Settings, BarChart2, TrendingUp, Eye, Image, LogOut, ExternalLink, FileText, Bell, Activity, Layers, DollarSign, Receipt, Users2, PieChart, Landmark, FileSignature, Warehouse, Boxes, ArrowLeftRight, Cog, Wrench, FlaskConical, Factory, Zap, ClipboardList, PackageSearch, Truck, ShieldCheck, FlameKindling, UserCog, ScanLine, Sparkles, KeyRound } from 'lucide-react'
 
 const NAV = [
   { g:'Genel', mod:['dashboard'], items:[
@@ -23,8 +23,9 @@ const NAV = [
     { href:'/admin/dashboard/gorseller',    label:'Görseller',       Icon:Image,   mod:['yonetim'] },
     { href:'/admin/dashboard/sosyal-medya', label:'Sosyal Medya',    Icon:Share2,  mod:['yonetim'] },
   ]},
-  { g:'Müşteri', mod:['dashboard'], items:[
+  { g:'Müşteri', mod:['dashboard','satis','yonetim'], items:[
     { href:'/admin/dashboard/basvurular',   label:'Başvurular',      Icon:MessageSquare, mod:['dashboard'] },
+    { href:'/admin/dashboard/potansiyel-musteriler', label:'Potansiyel Müşteriler', Icon:Target, mod:['satis','yonetim'] },
     { href:'/admin/dashboard/ziyaretciler', label:'Ziyaretçiler',    Icon:Eye,           mod:['dashboard'] },
   ]},
   { g:'Muhasebe', mod:['muhasebe','muhasebe_cari'], items:[
