@@ -27,7 +27,7 @@ export default function TedarikcilerPage() {
   const yorum = (x: any) => x.terminli < MIN_VERI ? { l: 'Yetersiz veri', tone: 'muted' as const } : x.oran >= 0.9 ? { l: 'Güvenilir', tone: 'green' as const } : x.oran >= 0.7 ? { l: 'Orta', tone: 'amber' as const } : { l: 'Riskli', tone: 'red' as const }
 
   const cols: Col<any>[] = [
-    { key: 'ad', label: 'Tedarikçi', sort: x => x.c.ad, render: x => <div><b>{x.c.ad}</b><div style={{ fontSize: 11, color: 'var(--adm-tx3)' }}>{[x.c.telefon, x.c.email].filter(Boolean).join(' · ')}</div></div> },
+    { key: 'ad', label: 'Tedarikçi', sort: x => x.c.ad, render: x => <div><b>{x.c.ad}</b><div style={{ fontSize: 11, color: 'var(--adm-tx3)' }}>{[x.c.kod, x.c.telefon, x.c.email].filter(Boolean).join(' · ')}</div></div> },
     { key: 'sayi', label: 'Sipariş', width: 80, align: 'right', sort: x => x.sayi, render: x => x.sayi },
     { key: 'acik', label: 'Açık', width: 70, align: 'right', sort: x => x.acik, render: x => x.acik ? <span style={{ color: x.geciken ? 'var(--adm-red)' : undefined, fontWeight: x.geciken ? 700 : 400 }}>{x.acik}{x.geciken ? ` (${x.geciken} geç)` : ''}</span> : '' },
     { key: 'tutar', label: 'Toplam alım', width: 130, align: 'right', sort: x => x.tutar, render: x => fmt(x.tutar) },
@@ -51,12 +51,12 @@ export default function TedarikcilerPage() {
         </KpiGrid>
         <div style={{ marginTop: 14 }}>
           <DataGrid rows={istat} cols={cols} rowKey={(x: any) => x.c.id} loading={loading} csvName="tedarikci-performans" storageKey="tedarikci-performans" onRowClick={(x: any) => setSecili(x.c.id)}
-            searchText={(x: any) => `${x.c.ad} ${x.c.vergi_no || ''}`} searchPlaceholder="Tedarikçi adı…" emptyTitle="Tedarikçi yok" emptySub="Muhasebe → Cari Hesaplar’da türü “Tedarikçi” olan bir kart ekleyin" />
+            searchText={(x: any) => `${x.c.kod || ''} ${x.c.ad} ${x.c.vergi_no || ''}`} searchPlaceholder="Tedarikçi kodu veya adı…" emptyTitle="Tedarikçi yok" emptySub="Muhasebe → Cari Hesaplar’da türü “Tedarikçi” olan bir kart ekleyin" />
         </div>
         <p style={{ fontSize: 11.5, color: 'var(--adm-tx3)', marginTop: 10 }}>Zamanında teslim: son teslim tarihi beklenen teslimi geçmeyen tamamlanmış siparişlerin oranı. “Değerlendirme” en az {MIN_VERI} tamamlanmış ve tarihli sipariş olunca gösterilir; daha azında yorum yapılmaz.</p>
       </Page>
 
-      <Drawer open={!!aktif} onClose={() => setSecili(null)} width={620} title={aktif?.c.ad} sub={aktif ? [aktif.c.vergi_no && `VKN ${aktif.c.vergi_no}`, aktif.c.telefon, aktif.c.email].filter(Boolean).join(' · ') : ''}
+      <Drawer open={!!aktif} onClose={() => setSecili(null)} width={620} title={aktif?.c.ad} sub={aktif ? [aktif.c.kod, aktif.c.vergi_no && `VKN ${aktif.c.vergi_no}`, aktif.c.telefon, aktif.c.email].filter(Boolean).join(' · ') : ''}
         footer={aktif && <><Link href={`/admin/dashboard/satinalma/siparisler?yeni=${aktif.c.id}`} className="adm-btn" style={{ textDecoration: 'none' }}><Plus size={13} />Yeni sipariş</Link></>}>
         {aktif && <div style={{ padding: 20, display: 'grid', gap: 16 }}>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

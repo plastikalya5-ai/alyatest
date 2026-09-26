@@ -15,7 +15,7 @@ const TIP: Record<string, { l: string; tone: any; Icon: any }> = {
   musteri: { l: 'Müşteri', tone: 'blue', Icon: User }, tedarikci: { l: 'Tedarikçi', tone: 'amber', Icon: Building2 }, diger: { l: 'Diğer', tone: 'muted', Icon: User },
 }
 const DURUM: Record<string, { l: string; tone: any }> = { taslak: { l: 'Taslak', tone: 'muted' }, onaylandi: { l: 'Açık', tone: 'blue' }, odendi: { l: 'Ödendi', tone: 'green' }, iptal: { l: 'İptal', tone: 'red' } }
-const bosForm = { tip: 'musteri', ad: '', vergi_no: '', telefon: '', email: '', adres: '', notlar: '', fiyat_listesi_id: '' }
+const bosForm = { tip: 'musteri', kod: '', ad: '', vergi_no: '', telefon: '', email: '', adres: '', notlar: '', fiyat_listesi_id: '' }
 
 const vergiGecerli = (v: string) => !v || /^\d{10}$|^\d{11}$/.test(v.replace(/\s/g, ''))
 const waNumara = (t: string) => { const d = (t || '').replace(/\D/g, ''); return d.startsWith('90') ? d : d.startsWith('0') ? '9' + d : d.length === 10 ? '90' + d : d }
@@ -106,7 +106,7 @@ export default function CariPage() {
 
   /* ── CRUD ── */
   function openNew() { setEditing(null); setForm(bosForm); setModal(true) }
-  function openEdit(c: any) { setEditing(c); setForm({ tip: c.tip, ad: c.ad, vergi_no: c.vergi_no || '', telefon: c.telefon || '', email: c.email || '', adres: c.adres || '', notlar: c.notlar || '', fiyat_listesi_id: c.fiyat_listesi_id || '' }); setModal(true) }
+  function openEdit(c: any) { setEditing(c); setForm({ tip: c.tip, kod: c.kod || '', ad: c.ad, vergi_no: c.vergi_no || '', telefon: c.telefon || '', email: c.email || '', adres: c.adres || '', notlar: c.notlar || '', fiyat_listesi_id: c.fiyat_listesi_id || '' }); setModal(true) }
 
   async function save(e: React.FormEvent) {
     e.preventDefault(); if (busy) return
@@ -114,10 +114,10 @@ export default function CariPage() {
     const dup = list.find(c => c.ad.trim().toLocaleLowerCase('tr') === form.ad.trim().toLocaleLowerCase('tr') && c.id !== editing?.id)
     if (dup && !confirm(`“${dup.ad}” adlı bir cari zaten var. Yine de kaydedilsin mi?`)) return
     setBusy(true)
-    const payload = { ...form, ad: form.ad.trim(), vergi_no: form.vergi_no.replace(/\s/g, '') || null, fiyat_listesi_id: form.fiyat_listesi_id || null }
+    const payload = { ...form, kod: form.kod.trim().toUpperCase() || undefined, ad: form.ad.trim(), vergi_no: form.vergi_no.replace(/\s/g, '') || null, fiyat_listesi_id: form.fiyat_listesi_id || null }
     const r: any = editing ? await muh.from('cari_hesaplar').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', editing.id) : await muh.from('cari_hesaplar').insert(payload)
     setBusy(false)
-    if (r?.error) { toast.show(r.error, true); return }
+    if (r?.error) { toast.show(/cari_hesaplar_kod_uq|duplicate key/i.test(String(r.error)) ? `“${payload.kod}” kodu başka bir carde kullanılıyor` : r.error, true); return }
     setModal(false); toast.show(editing ? 'Cari güncellendi' : 'Cari eklendi'); load()
   }
 
@@ -156,7 +156,7 @@ export default function CariPage() {
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 32, height: 32, borderRadius: 9, background: 'var(--adm-s2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><T.Icon size={15} style={{ color: 'var(--adm-tx2)' }} /></div>
-            <div style={{ minWidth: 0 }}><div style={{ fontWeight: 600 }}>{c.ad}</div><div style={{ fontSize: 11, color: 'var(--adm-tx3)' }}>{c.telefon || c.email || '—'}</div></div>
+            <div style={{ minWidth: 0 }}><div style={{ fontWeight: 600 }}>{c.ad}</div><div style={{ fontSize: 11, color: 'var(--adm-tx3)' }}>{c.kod && <span style={{ fontFamily: 'JetBrains Mono,monospace', marginRight: 6 }}>{c.kod}</span>}{c.telefon || c.email || '—'}</div></div>
           </div>)
       },
     },
@@ -211,7 +211,7 @@ export default function CariPage() {
         </div>
 
         <DataGrid rows={filtered} cols={cols} rowKey={c => c.id} loading={loading} csvName="cari-hesaplar" storageKey="cari"
-          searchText={c => `${c.ad} ${c.email || ''} ${c.telefon || ''} ${c.vergi_no || ''}`} searchPlaceholder="Ad, telefon, e-posta, vergi no..."
+          searchText={c => `${c.kod || ''} ${c.ad} ${c.email || ''} ${c.telefon || ''} ${c.vergi_no || ''}`} searchPlaceholder="Kod, ad, telefon, e-posta, vergi no..."
           onRowClick={c => { setDetay(c); setDTab('ozet') }} activeKey={detay?.id}
           emptyTitle="Cari bulunamadı" emptySub="Yeni Cari butonuyla ilk hesabı ekle" />
       </Page>
@@ -248,7 +248,7 @@ export default function CariPage() {
 
             {dTab === 'ozet' && (
               <div style={{ padding: 20 }}>
-                <InfoRow k="Vergi No / TC" v={detay.vergi_no || '—'} />
+                <InfoRow k="Cari kodu" v={detay.kod || '—'} /><InfoRow k="Vergi No / TC" v={detay.vergi_no || '—'} />
                 <InfoRow k="Telefon" v={detay.telefon || '—'} />
                 <InfoRow k="E-posta" v={detay.email || '—'} />
                 <InfoRow k="Adres" v={detay.adres || '—'} />
@@ -310,7 +310,8 @@ export default function CariPage() {
           {Object.entries(TIP).map(([k, v]) => <button key={k} type="button" onClick={() => setForm((f: any) => ({ ...f, tip: k }))} className={form.tip === k ? 'adm-btn' : 'adm-btn-ghost'} style={{ flex: 1, justifyContent: 'center' }}><v.Icon size={13} />{v.l}</button>)}
         </div>
         <FormGrid>
-          <Field label="Ad / Unvan *" span={2}><input className="adm-inp" required autoFocus value={form.ad} onChange={e => setForm((f: any) => ({ ...f, ad: e.target.value }))} /></Field>
+          <Field label="Cari Kodu" hint={editing ? 'Benzersiz olmalı; boşaltırsanız eski kod korunur' : 'Boş bırakırsanız otomatik verilir (müşteri MUS-0001, tedarikçi TED-0001)'}><input className="adm-inp" value={form.kod} maxLength={30} onChange={e => setForm((f: any) => ({ ...f, kod: e.target.value.toUpperCase() }))} placeholder={form.tip === 'tedarikci' ? 'TED-0001' : form.tip === 'musteri' ? 'MUS-0001' : 'CAR-0001'} style={{ fontFamily: 'JetBrains Mono,monospace' }} /></Field>
+          <Field label="Ad / Unvan *"><input className="adm-inp" required autoFocus value={form.ad} onChange={e => setForm((f: any) => ({ ...f, ad: e.target.value }))} /></Field>
           <Field label="Vergi No / TC" hint={form.vergi_no && !vergiGecerli(form.vergi_no) ? '10 (vergi no) veya 11 (TC) hane olmalı' : undefined}><input className="adm-inp" inputMode="numeric" value={form.vergi_no} onChange={e => setForm((f: any) => ({ ...f, vergi_no: e.target.value.replace(/[^\d\s]/g, '') }))} style={form.vergi_no && !vergiGecerli(form.vergi_no) ? { borderColor: 'var(--adm-red)' } : undefined} /></Field>
           <Field label="Telefon"><input className="adm-inp" value={form.telefon} onChange={e => setForm((f: any) => ({ ...f, telefon: e.target.value }))} placeholder="05xx xxx xx xx" /></Field>
           <Field label="E-posta"><input type="email" className="adm-inp" value={form.email} onChange={e => setForm((f: any) => ({ ...f, email: e.target.value }))} /></Field>
