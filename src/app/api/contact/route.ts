@@ -29,6 +29,7 @@ function temizle(body: unknown) {
       email,
       phone: str(b.phone, 40) || null,
       subject: SUBJECTS.has(subject) ? subject : null,
+      product: str(b.product, 160) || null,
       message,
     },
   }
@@ -79,6 +80,7 @@ export async function POST(req: NextRequest) {
         `E-posta: ${veri.email}`,
         `Telefon: ${veri.phone ?? '-'}`,
         `Konu: ${veri.subject ?? '-'}`,
+        ...(veri.product ? [`Ürün: ${veri.product}`] : []),
         `Mesaj: ${veri.message}`,
       ].join('\n'),
       { name: veri.name, email: veri.email, phone: veri.phone },

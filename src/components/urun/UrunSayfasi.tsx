@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Footer from "@/components/layout/Footer";
 import Donus360 from "@/components/urun/Donus360";
+import TeklifModal from "@/components/urun/TeklifModal";
 import { bolumYolu, dilYolu, kategoriGoster } from "@/lib/site-metin";
 import type { Settings } from "@/lib/supabase";
 import { DILLER, DIL_AD, HREFLANG, UI, aciklama, jsonLdMetni, kategoriAdi, mevcutDiller, ozellikEtiketi, urunJsonLd, urunYolu, type Dil, type UrunKaydi } from "@/lib/urun-sayfasi";
@@ -28,7 +29,7 @@ export default function UrunSayfasi({ urun, dil, settings, benzer, kategoriler =
         </Link>
         <nav className="flex items-center gap-6">
           <Link href={bolumYolu(dil, "collection")} className="eyebrow text-[#9aa294] hover:text-white transition-colors">{T.urunler}</Link>
-          <Link href={bolumYolu(dil, "contact")} className="eyebrow text-white bg-[#e55f28] px-4 py-2">{T.teklif}</Link>
+          <TeklifModal urun={urun} dil={dil} className="eyebrow text-white bg-[#e55f28] px-4 py-2">{T.teklif}</TeklifModal>
         </nav>
       </header>
 
@@ -81,7 +82,7 @@ export default function UrunSayfasi({ urun, dil, settings, benzer, kategoriler =
               <div className="mt-10 p-5 bg-[#0b0e0b] text-[#eae6dd]">
                 <p className="text-sm mb-4 opacity-80">{T.b2b}</p>
                 <div className="flex flex-wrap gap-3">
-                  <Link href={bolumYolu(dil, "contact")} className="eyebrow text-white bg-[#e55f28] hover:bg-[#c94f1e] px-5 py-3 transition-colors">{T.teklif}</Link>
+                  <TeklifModal urun={urun} dil={dil} className="eyebrow text-white bg-[#e55f28] hover:bg-[#c94f1e] px-5 py-3 transition-colors">{T.teklif}</TeklifModal>
                   <a href={waUrl} target="_blank" rel="noopener noreferrer nofollow" className="eyebrow text-white border border-white/30 hover:border-white px-5 py-3 transition-colors">{T.whatsapp}</a>
                 </div>
               </div>
