@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { applyQuery } from '@/lib/proxy-query'
 import { encryptField, decryptField } from '@/lib/field-crypto'
@@ -96,8 +96,9 @@ export async function POST(req: NextRequest) {
   if (r?.error) return NextResponse.json({ error: r.error.message }, { status: 500 })
 
   const recordId = id || r?.data?.[0]?.id
-  // Serverless ortamda yanıttan sonra yarım kalmaması için beklenir; log hatası işlemi bozmaz
-  await sb.from('admin_activity').insert({ action: op, table_name: table, record_id: recordId, user_id: user.id }).then(() => {}, () => {})
+  // Kullanıcıyı bekletmeden yanıt dönülür; log kaydı after() ile yanıttan SONRA yazılır
+  // (Vercel'de waitUntil ile fonksiyon log bitene kadar canlı tutulur, log hatası ana işlemi etkilemez).
+  after(async () => { try { await sb.from('admin_activity').insert({ action: op, table_name: table, record_id: recordId, user_id: user.id }) } catch {} })
 
   const decrypted = Array.isArray(r?.data) ? r.data.map((row:any)=>decryptRow(table,row)) : r?.data
   return NextResponse.json({ ok: true, data: decrypted })
