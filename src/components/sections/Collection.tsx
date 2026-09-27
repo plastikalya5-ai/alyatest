@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Product } from "@/lib/supabase";
 import type { Dil } from "@/lib/diller";
 import { urunLinki } from "@/lib/diller";
@@ -9,8 +9,29 @@ export default function Collection({ products, dil = "tr" }: { products: Product
   const c = M[dil].koleksiyon;
   const ref  = useRef<HTMLDivElement>(null);
   const [idx, setIdx] = useState(0);
+  const [kategori, setKategori] = useState("");
   const drag = useRef({ on:false, sx:0, sl:0 });
   const moved = useRef(false);   // sürükleme sonrası bırakılan tıklama sayfadan ayrılmasın
+
+  // Footer'daki kategori linkleriyle geldiğinde (?kategori=saksi) o kategori seçili açılır.
+  // setState çağrısı effect gövdesinden mikrotaska ertelenir (senkron cascading render uyarısını önlemek için).
+  useEffect(() => {
+    queueMicrotask(() => {
+      const k = new URLSearchParams(window.location.search).get("kategori");
+      if (k) setKategori(k);
+    });
+  }, []);
+
+  const kategoriler = Array.from(new Set(products.map(p => p.category).filter(Boolean))) as string[];
+  const gorunen = kategori ? products.filter(p => p.category === kategori) : products;
+
+  function kategoriSec(k: string) {
+    setKategori(k); setIdx(0);
+    if (ref.current) ref.current.scrollLeft = 0;
+    const url = new URL(window.location.href);
+    if (k) url.searchParams.set("kategori", k); else url.searchParams.delete("kategori");
+    window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+  }
 
   const onDown = (e: React.MouseEvent) => { moved.current = false; drag.current = { on:true, sx:e.pageX, sl:ref.current!.scrollLeft }; if(ref.current) ref.current.style.cursor="grabbing"; };
   const onMove = (e: React.MouseEvent) => { if(!drag.current.on||!ref.current) return; if(Math.abs(e.pageX-drag.current.sx)>5) moved.current = true; e.preventDefault(); ref.current.scrollLeft = drag.current.sl-(e.pageX-drag.current.sx); };
@@ -20,20 +41,37 @@ export default function Collection({ products, dil = "tr" }: { products: Product
 
   return (
     <section id="collection" className="bg-[#eae6dd]" data-bg="#eae6dd" style={{ paddingBlock:"clamp(72px,9vw,130px)" }}>
-      <div className="flex flex-wrap items-end justify-between gap-4 mb-10" style={{ paddingInline:"clamp(20px,5vw,80px)" }}>
+      <div className="flex flex-wrap items-end justify-between gap-4 mb-6" style={{ paddingInline:"clamp(20px,5vw,80px)" }}>
         <div>
           <h2 className="anim-split-heading heading text-[#0b0e0b]" style={{ fontSize:"clamp(44px,7vw,96px)" }}>
-            {products.length}+ {c.model}
+            {gorunen.length}+ {c.model}
           </h2>
         </div>
         <p className="anim-up eyebrow text-[#6b7366]">{c.surukleKaydir}</p>
       </div>
 
+      {kategoriler.length > 1 && (
+        <div className="flex flex-wrap gap-2 mb-6" style={{ paddingInline:"clamp(20px,5vw,80px)" }}>
+          <button type="button" onClick={() => kategoriSec("")}
+            className="eyebrow text-[10px] px-3 py-1.5 border transition-colors"
+            style={{ borderColor: kategori === "" ? "#e55f28" : "rgba(11,14,11,.15)", color: kategori === "" ? "#0b0e0b" : "#6b7366", background: kategori === "" ? "#e3ddcf" : "transparent" }}>
+            {c.tumu}
+          </button>
+          {kategoriler.map(k => (
+            <button key={k} type="button" onClick={() => kategoriSec(k)}
+              className="eyebrow text-[10px] px-3 py-1.5 border transition-colors"
+              style={{ borderColor: kategori === k ? "#e55f28" : "rgba(11,14,11,.15)", color: kategori === k ? "#0b0e0b" : "#6b7366", background: kategori === k ? "#e3ddcf" : "transparent" }}>
+              {kategoriGoster(dil, k)}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div ref={ref} className="flex overflow-x-auto" onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}
         style={{ paddingInline:"clamp(20px,5vw,80px)", gap:10, scrollSnapType:"x mandatory", WebkitOverflowScrolling:"touch", scrollbarWidth:"none", cursor:"grab" }}
         onScroll={() => { if(!ref.current) return; setIdx(Math.round(ref.current.scrollLeft/(ref.current.clientWidth*0.68))); }}>
 
-        {products.map((item, i) => (
+        {gorunen.map((item, i) => (
           <a key={item.id} href={urunLinki(item, dil)} onClick={e => { if (moved.current) e.preventDefault(); }} draggable={false}
             className="group relative flex-none overflow-hidden"
             style={{ width:"clamp(220px,65vw,380px)", aspectRatio:"0.72", scrollSnapAlign:"start", background:BG[i%4], display:"block" }}>
@@ -69,7 +107,7 @@ export default function Collection({ products, dil = "tr" }: { products: Product
       </div>
 
       <div className="flex justify-center gap-1.5 mt-6">
-        {products.map((_, i) => (
+        {gorunen.map((_, i) => (
           <button key={i} onClick={() => { setIdx(i); const el=ref.current?.children[i] as HTMLElement; el?.scrollIntoView({behavior:"smooth",inline:"start",block:"nearest"}); }}
             className="h-1.5 rounded-sm transition-all duration-300"
             style={{ width:i===idx?24:6, background:i===idx?"#e55f28":"rgba(255,255,255,0.15)" }} />

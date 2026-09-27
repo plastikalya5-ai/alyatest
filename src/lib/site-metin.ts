@@ -9,7 +9,7 @@ export type SiteMetin = {
   marquee: string[];
   featured: { etiket: string; baslik: string; tum: string; yeni: string };
   pin: { surukle: string; baslik: string[]; urun: string; b2b: string; katalog: [string, string]; form: string; mobEtiket: string; mobBaslik: string; yeni: string };
-  koleksiyon: { model: string; surukleKaydir: string; tumKatalog: string; katalog: [string, string]; form: string; yeni: string };
+  koleksiyon: { model: string; surukleKaydir: string; tumKatalog: string; katalog: [string, string]; form: string; yeni: string; tumu: string };
   felsefe: { etiket: string; baslik: [string, string]; aciklama: string; surec: string; teklif: string; stat: [string, string][] };
   neden: {
     miras: (y: number) => string; alinti: [string, string, string]; etiket: string; baslik: (y: number) => [string, string]; alt: (y: number, u: number) => string;
@@ -22,7 +22,7 @@ export type SiteMetin = {
     konular: { v: string; l: string }[]; mesaj: string; hata: string; gonderiliyor: string; gonder: string; kvkk: string;
   };
   altbilgi: {
-    kolonlar: { baslik: string; ogeler: string[] }[]; iletisimBaslik: string; adres: string; lider: (y: number) => string; dunyaya: (yer: string) => string;
+    kolonlar: { baslik: string; ogeler: { ad: string; href: string }[] }[]; iletisimBaslik: string; adres: string; lider: (y: number) => string; dunyaya: (yer: string) => string;
     haklar: string; yerel: string; varsayilanYer: string;
   };
   asistan: { selam: string; baslik: string; alt: string; kapat: string; ac: string; soru: string; yer: string; gonder: string; yaziyor: string; hata: string; baglanti: string; aria: string; mesajAria: string };
@@ -43,7 +43,7 @@ export const M: Record<Dil, SiteMetin> = {
     marquee: ["Plastik Saksı", "Sepet", "Sandık", "B2B", "İhracat", "1968", "Türkiye", "200+ Model", "20+ Ülke", "İstanbul OSB", "Yerli Üretim", "ISO Sertifikalı"],
     featured: { etiket: "— Öne Çıkan Ürünler", baslik: "KOLEKSİYON", tum: "Tüm Ürünler →", yeni: "Yeni" },
     pin: { surukle: "Sürükle", baslik: ["TÜM", "FORM", "LAR."], urun: "ürün", b2b: "B2B Teklif", katalog: ["KATALOG", "İSTE"], form: "Formu Doldur →", mobEtiket: "Koleksiyon", mobBaslik: "TÜM FORMLAR.", yeni: "YENİ" },
-    koleksiyon: { model: "MODEL", surukleKaydir: "Sürükle veya kaydır", tumKatalog: "Tüm Katalog", katalog: ["KATALOG", "İSTE"], form: "Formu Doldur →", yeni: "Yeni" },
+    koleksiyon: { model: "MODEL", surukleKaydir: "Sürükle veya kaydır", tumKatalog: "Tüm Katalog", katalog: ["KATALOG", "İSTE"], form: "Formu Doldur →", yeni: "Yeni", tumu: "Tümü" },
     felsefe: { etiket: "Üretim Felsefemiz", baslik: ["FİKİRDEN", "FORMA."], aciklama: "CAD tasarımdan enjeksiyona, kalite kontrolden sevkiyata — her adım İstanbul OSB'deki tesisimizde gerçekleşir.", surec: "Üretim Sürecimiz →", teklif: "Teklif Al", stat: [["ISO", "Sertifikalı"], ["72h", "Teklif Dönüşü"], ["B2B", "Toplu Sipariş"]] },
     neden: {
       miras: y => `${y} Yıllık Miras`, alinti: ["KALIPTAN SEVKİYATA,", "TEK ÇATI ALTINDA", "ÜRETİYORUZ."], etiket: "— Neden Alya Plastik", baslik: y => [`${y} YILLIK`, "BİRİKİM."],
@@ -61,7 +61,22 @@ export const M: Record<Dil, SiteMetin> = {
       mesaj: "Mesajınız *", hata: "Bir hata oluştu, lütfen tekrar deneyin.", gonderiliyor: "Gönderiliyor...", gonder: "Gönder →", kvkk: "KVKK kapsamında kişisel verileriniz işlenir.",
     },
     altbilgi: {
-      kolonlar: [{ baslik: "Ürünler", ogeler: ["Saksı Modelleri", "Sepet Ürünleri", "Depolama Sandığı", "Ev Gereçleri", "Özel Sipariş"] }, { baslik: "Firma", ogeler: ["Hakkımızda", "Üretim Süreci", "İhracat", "Sertifikalar", "KVKK"] }],
+      kolonlar: [
+        { baslik: "Ürünler", ogeler: [
+          { ad: "Saksı Modelleri", href: "/?kategori=saksi#collection" },
+          { ad: "Sepet Ürünleri", href: "/?kategori=sepet#collection" },
+          { ad: "Depolama Sandığı", href: "/?kategori=sandik#collection" },
+          { ad: "Ev Gereçleri", href: "/?kategori=ev#collection" },
+          { ad: "Özel Sipariş", href: "/#contact" },
+        ] },
+        { baslik: "Firma", ogeler: [
+          { ad: "Hakkımızda", href: "/hakkimizda" },
+          { ad: "Üretim Süreci", href: "/uretim-sureci" },
+          { ad: "İhracat", href: "/#export" },
+          { ad: "Sertifikalar", href: "/sertifikalar" },
+          { ad: "KVKK", href: "/kvkk" },
+        ] },
+      ],
       iletisimBaslik: "İletişim", adres: "Başakşehir / İstanbul", lider: y => `${y}'den bu yana plastik ürün üretiminde lider.`, dunyaya: yer => `${yer}'den dünyaya.`,
       haklar: "Tüm hakları saklıdır.", yerel: "İstanbul OSB · Made in Türkiye 🇹🇷", varsayilanYer: "İstanbul Başakşehir OSB",
     },
@@ -82,7 +97,7 @@ export const M: Record<Dil, SiteMetin> = {
     marquee: ["Plastic Pots", "Baskets", "Crates", "B2B", "Export", "1968", "Türkiye", "200+ Models", "20+ Countries", "Istanbul OSB", "Local Production", "ISO Certified"],
     featured: { etiket: "— Featured Products", baslik: "COLLECTION", tum: "All Products →", yeni: "New" },
     pin: { surukle: "Drag", baslik: ["ALL THE", "FORMS."], urun: "products", b2b: "B2B Quote", katalog: ["REQUEST", "CATALOGUE"], form: "Fill in the Form →", mobEtiket: "Collection", mobBaslik: "ALL THE FORMS.", yeni: "NEW" },
-    koleksiyon: { model: "MODELS", surukleKaydir: "Drag or swipe", tumKatalog: "Full Catalogue", katalog: ["REQUEST", "CATALOGUE"], form: "Fill in the Form →", yeni: "New" },
+    koleksiyon: { model: "MODELS", surukleKaydir: "Drag or swipe", tumKatalog: "Full Catalogue", katalog: ["REQUEST", "CATALOGUE"], form: "Fill in the Form →", yeni: "New", tumu: "All" },
     felsefe: { etiket: "Our Manufacturing Philosophy", baslik: ["FROM IDEA", "TO FORM."], aciklama: "From CAD design to injection, from quality control to shipping — every step takes place at our Istanbul OSB facility.", surec: "Our Production Process →", teklif: "Get a Quote", stat: [["ISO", "Certified"], ["72h", "Quote Turnaround"], ["B2B", "Bulk Orders"]] },
     neden: {
       miras: y => `${y} Years of Heritage`, alinti: ["FROM MOULD TO SHIPMENT,", "UNDER ONE ROOF", "WE MANUFACTURE."], etiket: "— Why Alya Plastik", baslik: y => [`${y} YEARS OF`, "EXPERTISE."],
@@ -100,7 +115,22 @@ export const M: Record<Dil, SiteMetin> = {
       mesaj: "Your message *", hata: "Something went wrong, please try again.", gonderiliyor: "Sending...", gonder: "Send →", kvkk: "Your personal data is processed in accordance with the applicable data protection law (KVKK).",
     },
     altbilgi: {
-      kolonlar: [{ baslik: "Products", ogeler: ["Flower Pot Models", "Baskets", "Storage Crates", "Household Items", "Custom Orders"] }, { baslik: "Company", ogeler: ["About Us", "Production Process", "Export", "Certificates", "Privacy (KVKK)"] }],
+      kolonlar: [
+        { baslik: "Products", ogeler: [
+          { ad: "Flower Pot Models", href: "/en?kategori=saksi#collection" },
+          { ad: "Baskets", href: "/en?kategori=sepet#collection" },
+          { ad: "Storage Crates", href: "/en?kategori=sandik#collection" },
+          { ad: "Household Items", href: "/en?kategori=ev#collection" },
+          { ad: "Custom Orders", href: "/en#contact" },
+        ] },
+        { baslik: "Company", ogeler: [
+          { ad: "About Us", href: "/hakkimizda" },
+          { ad: "Production Process", href: "/uretim-sureci" },
+          { ad: "Export", href: "/en#export" },
+          { ad: "Certificates", href: "/sertifikalar" },
+          { ad: "Privacy (KVKK)", href: "/kvkk" },
+        ] },
+      ],
       iletisimBaslik: "Contact", adres: "Başakşehir / Istanbul", lider: y => `A leader in plastic product manufacturing since ${y}.`, dunyaya: yer => `From ${yer} to the world.`,
       haklar: "All rights reserved.", yerel: "Istanbul OSB · Made in Türkiye 🇹🇷", varsayilanYer: "Istanbul Başakşehir OSB",
     },
@@ -121,7 +151,7 @@ export const M: Record<Dil, SiteMetin> = {
     marquee: ["Пластиковые горшки", "Корзины", "Ящики", "B2B", "Экспорт", "1968", "Турция", "200+ моделей", "20+ стран", "Стамбул OSB", "Собственное производство", "Сертификат ISO"],
     featured: { etiket: "— Рекомендуемая продукция", baslik: "КОЛЛЕКЦИЯ", tum: "Вся продукция →", yeni: "Новинка" },
     pin: { surukle: "Тяните", baslik: ["ВСЕ", "ФОРМЫ."], urun: "товаров", b2b: "Предложение B2B", katalog: ["ЗАПРОСИТЬ", "КАТАЛОГ"], form: "Заполнить форму →", mobEtiket: "Коллекция", mobBaslik: "ВСЕ ФОРМЫ.", yeni: "НОВИНКА" },
-    koleksiyon: { model: "МОДЕЛЕЙ", surukleKaydir: "Тяните или листайте", tumKatalog: "Весь каталог", katalog: ["ЗАПРОСИТЬ", "КАТАЛОГ"], form: "Заполнить форму →", yeni: "Новинка" },
+    koleksiyon: { model: "МОДЕЛЕЙ", surukleKaydir: "Тяните или листайте", tumKatalog: "Весь каталог", katalog: ["ЗАПРОСИТЬ", "КАТАЛОГ"], form: "Заполнить форму →", yeni: "Новинка", tumu: "Все" },
     felsefe: { etiket: "Наша философия производства", baslik: ["ОТ ИДЕИ", "К ФОРМЕ."], aciklama: "От CAD-проектирования до литья, от контроля качества до отгрузки — каждый этап проходит на нашем предприятии в Стамбуле (OSB).", surec: "Наш процесс производства →", teklif: "Запросить цену", stat: [["ISO", "Сертификат"], ["72h", "Срок ответа"], ["B2B", "Оптовые заказы"]] },
     neden: {
       miras: y => `${y} лет наследия`, alinti: ["ОТ ПРЕСС-ФОРМЫ ДО ОТГРУЗКИ", "ПОД ОДНОЙ КРЫШЕЙ", "МЫ ПРОИЗВОДИМ."], etiket: "— Почему Alya Plastik", baslik: y => [`${y} ЛЕТ`, "ОПЫТА."],
@@ -139,7 +169,22 @@ export const M: Record<Dil, SiteMetin> = {
       mesaj: "Ваше сообщение *", hata: "Произошла ошибка, попробуйте ещё раз.", gonderiliyor: "Отправка...", gonder: "Отправить →", kvkk: "Ваши персональные данные обрабатываются в соответствии с законом о защите данных (KVKK).",
     },
     altbilgi: {
-      kolonlar: [{ baslik: "Продукция", ogeler: ["Модели горшков", "Корзины", "Ящики для хранения", "Товары для дома", "Заказное производство"] }, { baslik: "Компания", ogeler: ["О нас", "Процесс производства", "Экспорт", "Сертификаты", "Конфиденциальность (KVKK)"] }],
+      kolonlar: [
+        { baslik: "Продукция", ogeler: [
+          { ad: "Модели горшков", href: "/ru?kategori=saksi#collection" },
+          { ad: "Корзины", href: "/ru?kategori=sepet#collection" },
+          { ad: "Ящики для хранения", href: "/ru?kategori=sandik#collection" },
+          { ad: "Товары для дома", href: "/ru?kategori=ev#collection" },
+          { ad: "Заказное производство", href: "/ru#contact" },
+        ] },
+        { baslik: "Компания", ogeler: [
+          { ad: "О нас", href: "/hakkimizda" },
+          { ad: "Процесс производства", href: "/uretim-sureci" },
+          { ad: "Экспорт", href: "/ru#export" },
+          { ad: "Сертификаты", href: "/sertifikalar" },
+          { ad: "Конфиденциальность (KVKK)", href: "/kvkk" },
+        ] },
+      ],
       iletisimBaslik: "Контакты", adres: "Башакшехир / Стамбул", lider: y => `Лидер в производстве пластиковых изделий с ${y} года.`, dunyaya: yer => `Из ${yer} — в мир.`,
       haklar: "Все права защищены.", yerel: "Стамбул OSB · Сделано в Турции 🇹🇷", varsayilanYer: "Стамбул, Башакшехир OSB",
     },
@@ -160,7 +205,7 @@ export const M: Record<Dil, SiteMetin> = {
     marquee: ["塑料花盆", "收纳篮", "周转箱", "B2B", "出口", "1968", "土耳其", "200+ 款式", "20+ 国家", "伊斯坦布尔工业区", "本土生产", "ISO 认证"],
     featured: { etiket: "— 精选产品", baslik: "产品系列", tum: "全部产品 →", yeni: "新品" },
     pin: { surukle: "拖动", baslik: ["百变", "造型。"], urun: "款产品", b2b: "B2B 报价", katalog: ["索取", "产品目录"], form: "填写表单 →", mobEtiket: "系列", mobBaslik: "百变造型。", yeni: "新品" },
-    koleksiyon: { model: "款产品", surukleKaydir: "拖动或滑动", tumKatalog: "完整目录", katalog: ["索取", "产品目录"], form: "填写表单 →", yeni: "新品" },
+    koleksiyon: { model: "款产品", surukleKaydir: "拖动或滑动", tumKatalog: "完整目录", katalog: ["索取", "产品目录"], form: "填写表单 →", yeni: "新品", tumu: "全部" },
     felsefe: { etiket: "我们的生产理念", baslik: ["从创意", "到成品。"], aciklama: "从CAD设计到注塑成型，从质量检验到发货——每一步都在我们位于伊斯坦布尔工业区的工厂内完成。", surec: "我们的生产流程 →", teklif: "获取报价", stat: [["ISO", "认证"], ["72h", "报价回复"], ["B2B", "批量订单"]] },
     neden: {
       miras: y => `${y}年传承`, alinti: ["从模具到发货，", "一站式", "自主生产。"], etiket: "— 为何选择 Alya Plastik", baslik: y => [`${y}年`, "行业积淀。"],
@@ -178,7 +223,22 @@ export const M: Record<Dil, SiteMetin> = {
       mesaj: "留言内容 *", hata: "出现错误，请重试。", gonderiliyor: "发送中...", gonder: "发送 →", kvkk: "我们将依据土耳其个人数据保护法（KVKK）处理您的个人信息。",
     },
     altbilgi: {
-      kolonlar: [{ baslik: "产品", ogeler: ["花盆系列", "收纳篮", "储物箱", "家居用品", "定制订单"] }, { baslik: "公司", ogeler: ["关于我们", "生产流程", "出口", "认证证书", "隐私政策（KVKK）"] }],
+      kolonlar: [
+        { baslik: "产品", ogeler: [
+          { ad: "花盆系列", href: "/zh?kategori=saksi#collection" },
+          { ad: "收纳篮", href: "/zh?kategori=sepet#collection" },
+          { ad: "储物箱", href: "/zh?kategori=sandik#collection" },
+          { ad: "家居用品", href: "/zh?kategori=ev#collection" },
+          { ad: "定制订单", href: "/zh#contact" },
+        ] },
+        { baslik: "公司", ogeler: [
+          { ad: "关于我们", href: "/hakkimizda" },
+          { ad: "生产流程", href: "/uretim-sureci" },
+          { ad: "出口", href: "/zh#export" },
+          { ad: "认证证书", href: "/sertifikalar" },
+          { ad: "隐私政策（KVKK）", href: "/kvkk" },
+        ] },
+      ],
       iletisimBaslik: "联系方式", adres: "伊斯坦布尔巴沙克舍希尔", lider: y => `自${y}年起，塑料制品制造领域的领先企业。`, dunyaya: yer => `从${yer}走向世界。`,
       haklar: "版权所有。", yerel: "伊斯坦布尔工业区 · 土耳其制造 🇹🇷", varsayilanYer: "伊斯坦布尔巴沙克舍希尔工业区",
     },

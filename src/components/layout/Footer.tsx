@@ -4,9 +4,15 @@ import { M } from "@/lib/site-metin";
 
 export default function Footer({ settings, dil = "tr" }: { settings: Settings | null; dil?: Dil }) {
   const s = settings, m = M[dil].altbilgi;
+  const email = s?.email ?? "info@alyaplastik.com", exportEmail = s?.export_email ?? "export@alyaplastik.com", phone = s?.phone ?? "+90 212 671 85 65";
   const cols = [
     ...m.kolonlar.map(k => ({ title: k.baslik, items: k.ogeler })),
-    { title: m.iletisimBaslik, items:[s?.email ?? "info@alyaplastik.com", s?.export_email ?? "export@alyaplastik.com", s?.phone ?? "+90 212 671 85 65", m.adres] },
+    { title: m.iletisimBaslik, items: [
+      { ad: email, href: `mailto:${email}` },
+      { ad: exportEmail, href: `mailto:${exportEmail}` },
+      { ad: phone, href: `tel:${phone.replace(/\D/g, "")}` },
+      { ad: m.adres, href: "" },
+    ] },
   ];
   const wa = s?.whatsapp ? `https://wa.me/${s.whatsapp.replace(/\D/g,"")}` : "https://wa.me/905357616524";
 
@@ -48,8 +54,10 @@ export default function Footer({ settings, dil = "tr" }: { settings: Settings | 
             {cols.map(col => (
               <div key={col.title}>
                 <p className="eyebrow text-[#e55f28] text-[10px] mb-4">{col.title}</p>
-                {col.items.map(item => (
-                  <p key={item} className="text-[#6b7366] hover:text-[#0b0e0b] transition-colors text-sm mb-2.5 leading-snug">{item}</p>
+                {col.items.map(item => item.href ? (
+                  <a key={item.ad} href={item.href} className="block text-[#6b7366] hover:text-[#0b0e0b] transition-colors text-sm mb-2.5 leading-snug">{item.ad}</a>
+                ) : (
+                  <p key={item.ad} className="text-[#6b7366] text-sm mb-2.5 leading-snug">{item.ad}</p>
                 ))}
               </div>
             ))}

@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import type { Settings } from "@/lib/supabase";
 import { DILLER, DIL_AD, HREFLANG, type Dil } from "@/lib/diller";
-import { M, dilYolu } from "@/lib/site-metin";
+import { M, dilYolu, bolumYolu } from "@/lib/site-metin";
 
 // Modül seviyesinde tanımlı: render içinde tanımlanırsa Header her state değişikliğinde
 // (scroll, menü aç/kapa) bu bileşeni yeniden yaratır ve React onu gereksiz yere unmount/remount eder.
@@ -20,10 +20,10 @@ function DilSecici({ cls, dil, ariaLabel }: { cls: string; dil: Dil; ariaLabel: 
 export default function Header({ settings, dil = "tr" }: { settings: Settings | null; dil?: Dil }) {
   const m = M[dil];
   const NAV = [
-    { href: "#products",   label: m.nav.urunler },
-    { href: "#collection", label: m.nav.koleksiyon },
-    { href: "#why",        label: m.nav.neden },
-    { href: "#contact",    label: m.nav.iletisim },
+    { href: bolumYolu(dil, "products"),   label: m.nav.urunler },
+    { href: bolumYolu(dil, "collection"), label: m.nav.koleksiyon },
+    { href: bolumYolu(dil, "why"),        label: m.nav.neden },
+    { href: bolumYolu(dil, "contact"),    label: m.nav.iletisim },
   ];
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);

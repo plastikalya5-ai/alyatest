@@ -16,7 +16,7 @@ export default function Export({ countries, dil = "tr" }: { countries: string[];
   }, []);
 
   return (
-    <section className="bg-[#eae6dd] overflow-hidden" data-bg="#eae6dd" style={{ paddingBlock:"clamp(72px,9vw,130px)" }}>
+    <section id="export" className="bg-[#eae6dd] overflow-hidden" data-bg="#eae6dd" style={{ paddingBlock:"clamp(72px,9vw,130px)" }}>
       <div className="mb-12" style={{ paddingInline:"clamp(20px,5vw,80px)" }}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-20 items-end">
           <div>
