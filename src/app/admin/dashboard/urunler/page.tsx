@@ -38,7 +38,7 @@ export default function AdminUrunlerPage() {
   const [aiBusy, setAiBusy] = useState('')
   const [gorselNot, setGorselNot] = useState<any>(null)
   const [gorselAi, setGorselAi] = useState<{ stil: GorselStil; b64: string | null; busy: boolean } | null>(null)
-  const [gorsel360, setGorsel360] = useState<{ kareSayisi: 4 | 8; kareler: string[] | null; busy: boolean } | null>(null)
+  const [gorsel360, setGorsel360] = useState<{ kareSayisi: 4 | 8 | 16; kareler: string[] | null; busy: boolean } | null>(null)
   const [topluAi, setTopluAi] = useState<{
     stil: GorselStil; urunler: any[]; clear: () => void; asama: 'ayar' | 'uretim' | 'onay'; calisiyor: boolean
     durum: Record<string, 'bekliyor' | 'isleniyor' | 'tamam' | 'hata'>; sonuc: Record<string, string>; secili: Record<string, boolean>
@@ -90,12 +90,13 @@ export default function AdminUrunlerPage() {
   }
   // AI: ürünün "360° döner galeri" karelerini üret — gerçek 3D model değil, farklı açılardan AI ile türetilmiş görsel dizisi.
   // Önce önizleme (sürükleyerek döndürülebilir), onaylanınca Supabase Storage'a kaydedilir.
-  async function uret360(kareSayisi: 4 | 8) {
+  async function uret360(kareSayisi: 4 | 8 | 16) {
     if (!form.image_url) return toast.show('Önce ana görsel URL\'si gir', true)
     setGorsel360({ kareSayisi, kareler: null, busy: true })
     try {
       const r: any = await aiIstek('urun_360_uret', { url: form.image_url, kareSayisi })
       setGorsel360({ kareSayisi, kareler: r.kareler, busy: false })
+      if (r.basarisiz > 0) toast.show(`${r.basarisiz} kare üretilemedi, ${r.kareler.length} kare ile devam ediliyor — istersen "Tekrar Dene"yi kullan`, true)
     } catch (e: any) { toast.show(e.message, true); setGorsel360(null) }
   }
   async function kaydet360() {
@@ -386,14 +387,15 @@ export default function AdminUrunlerPage() {
           <button type="button" className="adm-btn-ghost" onClick={() => setGorsel360(null)}>{gorsel360?.kareler ? 'Vazgeç' : 'İptal'}</button>
           {gorsel360?.kareler && <button type="button" className="adm-btn-ghost" disabled={gorsel360.busy} onClick={() => uret360(gorsel360.kareSayisi)}><RotateCcw size={13} />Tekrar Dene</button>}
           {gorsel360?.kareler ? <button type="button" className="adm-btn" disabled={busy} onClick={kaydet360}>{busy ? 'Kaydediliyor…' : 'Bu Görünümü Kullan'}</button>
-            : <button type="button" className="adm-btn" disabled={gorsel360?.busy} onClick={() => uret360(gorsel360!.kareSayisi)}><Wand2 size={13} />{gorsel360?.busy ? 'Oluşturuluyor… (~1 dk)' : 'Oluştur'}</button>}
+            : <button type="button" className="adm-btn" disabled={gorsel360?.busy} onClick={() => uret360(gorsel360!.kareSayisi)}><Wand2 size={13} />{gorsel360?.busy ? `Oluşturuluyor… (~${gorsel360?.kareSayisi === 16 ? '1.5' : '1'} dk)` : 'Oluştur'}</button>}
         </>}>
         <p style={{ fontSize: 12, color: 'var(--adm-tx3)', margin: '0 0 12px', lineHeight: 1.55 }}>
           Bu, gerçek bir 3D model değildir — mevcut fotoğraftan AI ile farklı açılardan çekilmiş gibi kareler türetilir ve ürün sayfasında sürükleyerek döndürülebilen bir galeri olarak gösterilir. Sonucu onaylarsan kaydedilir ve halka açık ürün sayfasında görünür.
         </p>
         {!gorsel360?.kareler && !gorsel360?.busy && (
-          <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-            <button type="button" className={gorsel360?.kareSayisi === 8 ? 'adm-chip on' : 'adm-chip'} onClick={() => setGorsel360(f => f && { ...f, kareSayisi: 8 })}>8 kare (daha akıcı)</button>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+            <button type="button" className={gorsel360?.kareSayisi === 16 ? 'adm-chip on' : 'adm-chip'} onClick={() => setGorsel360(f => f && { ...f, kareSayisi: 16 })}>16 kare (en akıcı, daha yavaş)</button>
+            <button type="button" className={gorsel360?.kareSayisi === 8 ? 'adm-chip on' : 'adm-chip'} onClick={() => setGorsel360(f => f && { ...f, kareSayisi: 8 })}>8 kare (dengeli)</button>
             <button type="button" className={gorsel360?.kareSayisi === 4 ? 'adm-chip on' : 'adm-chip'} onClick={() => setGorsel360(f => f && { ...f, kareSayisi: 4 })}>4 kare (daha hızlı)</button>
           </div>
         )}

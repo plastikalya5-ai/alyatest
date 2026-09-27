@@ -38,8 +38,7 @@ export default function HorizontalPin({ products, dil = "tr" }: { products: Prod
               }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={p.image_url} alt={p.name}
-                className="tilt-card-inner absolute inset-0 w-full h-full object-contain transition-transform duration-700 group-hover:scale-110"
-                style={{ padding: "clamp(20px,4vw,48px)" }} />
+                className="tilt-card-inner absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
               <div className="absolute bottom-0 left-0 right-0 p-6"
                 style={{ background: "linear-gradient(to top, rgba(11,14,11,0.95), transparent)" }}>
                 <p className="eyebrow text-[#e55f28] text-[9px] mb-1">{p.code}</p>
@@ -83,7 +82,7 @@ export default function HorizontalPin({ products, dil = "tr" }: { products: Prod
               style={{ background: i % 2 === 0 ? "#0b0e0b" : "#111511" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={p.image_url} alt={p.name}
-                className="absolute inset-0 w-full h-full object-contain p-4" />
+                className="absolute inset-0 w-full h-full object-cover" />
               <div className="absolute bottom-0 left-0 right-0 p-3"
                 style={{ background: "linear-gradient(to top, rgba(11,14,11,0.9), transparent)" }}>
                 <p className="eyebrow text-[#e55f28] text-[8px] mb-0.5">{p.code}</p>

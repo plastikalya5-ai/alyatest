@@ -68,8 +68,7 @@ export default function Why({ stats, dil = "tr", img = IMG }: { stats: Stats | n
               <div className="anim-img-reveal relative overflow-hidden bg-[#e3ddcf] aspect-[4/3]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={img.ufo} alt="UFO"
-                  className="absolute inset-0 w-full h-full object-contain"
-                  style={{ padding: "clamp(20px,4vw,48px)" }} />
+                  className="absolute inset-0 w-full h-full object-cover" />
                 <div className="absolute bottom-0 left-0 right-0 flex items-end justify-between p-4 pt-12"
                   style={{ background: "linear-gradient(to top, rgba(11,14,11,0.85), transparent)" }}>
                   <div>

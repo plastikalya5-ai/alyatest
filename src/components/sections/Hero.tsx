@@ -104,8 +104,7 @@ export default function Hero({ stats, settings, dil = "tr", img = IMG }: { stats
             <div key={i} className="relative overflow-hidden tilt-card" style={{ background: i % 2 === 0 ? "#c17849" : "#ab6740" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={src} alt={h.alt}
-                className="tilt-card-inner product-spin absolute inset-0 w-full h-full object-contain"
-                style={{ padding: "clamp(16px,3vw,36px)" }} />
+                className="tilt-card-inner product-spin absolute inset-0 w-full h-full object-cover" />
             </div>
           ))}
         </div>

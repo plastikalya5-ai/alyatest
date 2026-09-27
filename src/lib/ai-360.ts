@@ -8,22 +8,28 @@ import { AiHata } from '@/lib/ai'
 export const IMAGE_MODEL_360 = () => process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1'
 
 // Kare sayısı: çok fazlası hem maliyeti hem de tek istekte toplam süreyi arttırır (Vercel Hobby: 60sn fonksiyon sınırı).
-export const KARE_ACILARI = [0, 45, 90, 135, 180, 225, 270, 315] as const
-export type KareAcisi = (typeof KARE_ACILARI)[number]
+// Kareler yine de PARALEL üretildiği için (bkz. Promise.allSettled altta) toplam süre kare sayısıyla değil,
+// en yavaş tekil karenin süresiyle sınırlıdır — ama daha fazla eşzamanlı istek, OpenAI tarafında kuyruklanma/limit
+// riskini de arttırır; bu yüzden 16 kare seçeneği "daha yavaş/başarısızlık riski biraz daha yüksek" olarak işaretlenir.
+export type KareSayisi = 4 | 8 | 16
+export type KareAcisi = number
 
-const ACI_TANIM: Record<KareAcisi, string> = {
-  0: 'directly from the front',
-  45: 'rotated 45 degrees to the right on a turntable, three-quarter front view',
-  90: 'rotated 90 degrees to the right on a turntable, direct side view',
-  135: 'rotated 135 degrees to the right on a turntable, three-quarter back view',
-  180: 'rotated 180 degrees on a turntable, directly from the back',
-  225: 'rotated 225 degrees (135 degrees to the left), three-quarter back view from the other side',
-  270: 'rotated 270 degrees (90 degrees to the left), direct side view from the other side',
-  315: 'rotated 315 degrees (45 degrees to the left), three-quarter front view from the other side',
+/** Kare sayısına göre eşit aralıklı açı listesi üretir (0°, 360/n, 2*360/n, ...). */
+export const kareAcilariUret = (n: KareSayisi): KareAcisi[] => Array.from({ length: n }, (_, i) => Math.round((i * 360) / n * 10) / 10)
+
+/** Herhangi bir açı için doğal dilde (İngilizce) tutarlı bir kamera-konumu tarifi üretir. */
+function aciTanimla(derece: KareAcisi): string {
+  const d = ((derece % 360) + 360) % 360
+  if (d === 0) return 'directly from the front'
+  if (d === 180) return 'rotated 180 degrees on a turntable, directly from the back'
+  const sagdanMi = d < 180
+  const etkin = sagdanMi ? d : 360 - d
+  const konum = etkin === 90 ? 'a direct side view' : etkin < 90 ? 'a three-quarter front view' : 'a three-quarter back view'
+  return `rotated ${etkin} degrees to the ${sagdanMi ? 'right' : 'left'} on a turntable, ${konum}`
 }
 
 const promptUret = (acisi: KareAcisi) =>
-  `This is a product photography turntable sequence. Show the SAME physical product as if the camera had walked around it and it is now seen ${ACI_TANIM[acisi]}, sitting in the exact same spot on a clean neutral studio turntable background with soft consistent lighting and a subtle ground shadow. ` +
+  `This is a product photography turntable sequence. Show the SAME physical product as if the camera had walked around it and it is now seen ${aciTanimla(acisi)}, sitting in the exact same spot on a clean neutral studio turntable background with soft consistent lighting and a subtle ground shadow. ` +
   `Keep the product's exact shape, proportions, color, material, texture and every design detail completely consistent with the source photo — only the viewing angle changes. If a side or back cannot be seen in the source photo, infer a plausible, consistent continuation of the same product's design. Do not add any other objects, text, or watermarks.`
 
 async function karateUret(kaynak: ArrayBuffer, kaynakTip: string, acisi: KareAcisi, key: string, base: string): Promise<string> {
@@ -53,8 +59,12 @@ async function karateUret(kaynak: ArrayBuffer, kaynakTip: string, acisi: KareAci
   return b64
 }
 
-/** Kaynak görseli indirir, seçilen açı sayısı kadar kareyi PARALEL üretir (Vercel süre sınırı nedeniyle). Kaydetmez. */
-export async function gorunum360Uret(imageUrl: string, kareSayisi: 4 | 8 = 8): Promise<string[]> {
+export type Gorunum360Sonuc = { kareler: string[]; istenenKareSayisi: number; basarisiz: number }
+
+/** Kaynak görseli indirir, seçilen açı sayısı kadar kareyi PARALEL üretir (Vercel süre sınırı nedeniyle). Kaydetmez.
+ *  Bazı kareler başarısız olursa (zaman aşımı, geçici hata) tüm işlemi iptal ETMEZ — başarılı kareleri döndürür;
+ *  yarıdan azı başarılıysa hata verir. */
+export async function gorunum360Uret(imageUrl: string, kareSayisi: KareSayisi = 8): Promise<Gorunum360Sonuc> {
   const key = process.env.OPENAI_API_KEY
   if (!key) throw new AiHata('AI özelliği yapılandırılmamış (OPENAI_API_KEY tanımlı değil).', 503)
   if (!/^https:\/\//.test(imageUrl)) throw new AiHata('Görsel adresi https olmalı.', 400)
@@ -73,10 +83,22 @@ export async function gorunum360Uret(imageUrl: string, kareSayisi: 4 | 8 = 8): P
   if (!/^image\//.test(kaynakTip)) throw new AiHata('Kaynak dosya bir görsel değil.', 400)
 
   const base = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '')
-  const acilar = kareSayisi === 4 ? [0, 90, 180, 270] as const : KARE_ACILARI
+  const acilar = kareAcilariUret(kareSayisi)
   // 0° kareyi tekrar üretmek yerine kaynak görselin kendisini ilk kare olarak kullanıyoruz (tutarlılık + maliyet).
   const digerleri = acilar.filter(a => a !== 0)
-  const uretilenler = await Promise.all(digerleri.map(a => karateUret(kaynak, kaynakTip, a as KareAcisi, key, base)))
+  // allSettled: tek bir karenin zaman aşımına uğraması/başarısız olması tüm galeriyi iptal etmesin —
+  // başarılı kareler açıya göre sıralanıp döndürülür, kaynak görsel her zaman ilk kare olur.
+  const sonuclar = await Promise.allSettled(digerleri.map(a => karateUret(kaynak, kaynakTip, a, key, base)))
+  const basariliListe: { aci: number; b64: string }[] = []
+  let basarisiz = 0
+  sonuclar.forEach((s, i) => {
+    if (s.status === 'fulfilled') basariliListe.push({ aci: digerleri[i], b64: s.value })
+    else { basarisiz++; console.error('[ai-360] kare başarısız', digerleri[i], s.reason?.message || s.reason) }
+  })
+  if (basariliListe.length < Math.ceil(digerleri.length / 2)) {
+    throw new AiHata(`360° karelerin çoğu üretilemedi (${basarisiz}/${digerleri.length} başarısız), lütfen tekrar deneyin.`, 502)
+  }
+  basariliListe.sort((a, b) => a.aci - b.aci)
   const ilkKareB64 = Buffer.from(kaynak).toString('base64')
-  return [ilkKareB64, ...uretilenler]
+  return { kareler: [ilkKareB64, ...basariliListe.map(b => b.b64)], istenenKareSayisi: kareSayisi, basarisiz }
 }

@@ -31,8 +31,7 @@ export default function FeaturedProducts({ products, dil = "tr" }: { products: P
 
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={p.image_url} alt={p.name}
-                className="tilt-card-inner product-spin absolute inset-0 w-full h-full object-contain transition-transform duration-700"
-                style={{ padding: "clamp(12px,4vw,36px)" }} />
+                className="tilt-card-inner product-spin absolute inset-0 w-full h-full object-cover transition-transform duration-700" />
 
               <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-400"
                 style={{ background: "linear-gradient(to top, rgba(11,14,11,0.95) 0%, transparent 55%)" }} />

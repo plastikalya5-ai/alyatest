@@ -128,11 +128,11 @@ export async function POST(req: NextRequest) {
       }
       case 'urun_360_uret': {
         if (typeof body.url !== 'string') return NextResponse.json({ error: 'Görsel adresi gerekli' }, { status: 400 })
-        const kareSayisi = body.kareSayisi === 4 ? 4 : 8
-        // 7-8 kareyi tek istekte paralel üretmek görsel üretiminden de maliyetli — daha dar bir saatlik sınır
+        const kareSayisi = body.kareSayisi === 4 ? 4 : body.kareSayisi === 16 ? 16 : 8
+        // 7-15 kareyi tek istekte paralel üretmek görsel üretiminden de maliyetli — daha dar bir saatlik sınır
         if (!(await oranSiniri(`ai_360:${y.user.id}`, 6, 3600, false))) return NextResponse.json({ error: '360° görünüm üretimi için saatlik sınıra ulaştın, biraz sonra tekrar dene.' }, { status: 429 })
-        const kareler = await gorunum360Uret(body.url, kareSayisi)
-        return NextResponse.json({ ok: true, kareler })
+        const sonuc = await gorunum360Uret(body.url, kareSayisi)
+        return NextResponse.json({ ok: true, kareler: sonuc.kareler, basarisiz: sonuc.basarisiz })
       }
       case 'urun_360_kaydet': {
         if (typeof body.urun_id !== 'string' || !/^[0-9a-f-]{36}$/.test(body.urun_id)) return NextResponse.json({ error: 'Ürün geçersiz' }, { status: 400 })

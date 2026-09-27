@@ -78,8 +78,7 @@ export default function Collection({ products, dil = "tr" }: { products: Product
 
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={item.image_url} alt={item.name}
-              className="absolute inset-0 w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"
-              style={{ padding:"clamp(20px,5vw,48px)" }} />
+              className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
 
             <div className="absolute inset-0" style={{ background:"linear-gradient(to top, rgba(11,14,11,0.95) 0%, rgba(11,14,11,0.25) 45%, transparent 100%)" }} />
 
