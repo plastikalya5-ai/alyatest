@@ -12,12 +12,9 @@ export default function Hero({ stats, settings, dil = "tr", img = IMG }: { stats
   ];
 
   return (
-    <section id="hero" className="relative grain overflow-hidden bg-[#eae6dd] min-h-svh"
+    <section id="hero" className="relative grain overflow-hidden bg-[#eae6dd] min-h-svh grid grid-cols-1 md:grid-cols-2"
       data-bg="#eae6dd"
-      style={{ display: "grid", gridTemplateColumns: "1fr" }}
       >
-      {/* Desktop: 2 kolon */}
-      <style>{`@media(min-width:768px){#hero{grid-template-columns:1fr 1fr}}`}</style>
 
       {/* ── Sol: İçerik ────────────────────────────────── */}
       <div className="relative z-10 flex flex-col justify-end"
