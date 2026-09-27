@@ -8,8 +8,11 @@ import { fmt, fmtN, fmtInt, fmtDate } from '@/lib/fmt'
 import { sum } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, InfoRow, Divider, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
-import { Plus, Pencil, Trash2, Copy, Package, Star, Sparkles, Layers, FlaskConical, X, ImageOff, Boxes, Tag, Wand2, ScanEye } from 'lucide-react'
+import { Plus, Pencil, Trash2, Copy, Package, Star, Sparkles, Layers, FlaskConical, X, ImageOff, Boxes, Tag, Wand2, ScanEye, ImagePlus, RotateCcw } from 'lucide-react'
 import { aiIstek } from '@/lib/ai-client'
+
+const GORSEL_STIL = { studyo: 'Stüdyo', yasam: 'Yaşam alanı' } as const
+type GorselStil = keyof typeof GORSEL_STIL
 
 const bos = { code: '', name: '', slug: '', category: '', subcategory: '', description: '', image_url: '', images: [] as string[], tags: [] as string[], specs: [] as { k: string; v: string }[], barkod: '', is_featured: false, is_new: false, sort_order: 0, description_i18n: {} as Record<string, any> }
 const slugla = (s: string) => s.toLocaleLowerCase('tr').replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ş/g, 's').replace(/ü/g, 'u').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
@@ -33,6 +36,7 @@ export default function AdminUrunlerPage() {
   const [katModal, setKatModal] = useState<any>(null)
   const [aiBusy, setAiBusy] = useState('')
   const [gorselNot, setGorselNot] = useState<any>(null)
+  const [gorselAi, setGorselAi] = useState<{ stil: GorselStil; b64: string | null; busy: boolean } | null>(null)
 
   // AI: TR açıklama + 5 dil çevirisi + SEO önerisi (kayıt için Kaydet'e basmak gerekir)
   async function aiYaz() {
@@ -57,6 +61,26 @@ export default function AdminUrunlerPage() {
       setGorselNot(m); toast.show('Etiketler eklendi')
     } catch (e: any) { toast.show(e.message, true) }
     setAiBusy('')
+  }
+  // AI: ürün görselini yeniden tasarla (arka plan değişimi) — önce önizleme, onaylanınca Supabase Storage'a kaydedilir
+  async function gorselUret(stil: GorselStil) {
+    if (!form.image_url) return toast.show('Önce ana görsel URL\'si gir', true)
+    setGorselAi({ stil, b64: null, busy: true })
+    try {
+      const r: any = await aiIstek('urun_gorsel_tasarim', { url: form.image_url, stil })
+      setGorselAi({ stil, b64: r.b64, busy: false })
+    } catch (e: any) { toast.show(e.message, true); setGorselAi(null) }
+  }
+  async function gorselKullan() {
+    if (!editing?.id || !gorselAi?.b64) return
+    setBusy(true)
+    try {
+      const r: any = await aiIstek('urun_gorsel_kaydet', { urun_id: editing.id, b64: gorselAi.b64 })
+      setForm((f: any) => ({ ...f, image_url: r.url }))
+      setGorselAi(null); toast.show('Yeni görsel kaydedildi — eski görsel "Ek görseller"e taşındı')
+      load()
+    } catch (e: any) { toast.show(e.message, true) }
+    setBusy(false)
   }
 
   const load = useCallback(async () => {
@@ -239,6 +263,7 @@ export default function AdminUrunlerPage() {
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
           <button type="button" className="adm-btn-ghost" style={{ fontSize: 12 }} disabled={!!aiBusy} onClick={aiYaz}><Wand2 size={13} />{aiBusy === 'yaz' ? 'Yazılıyor…' : 'AI ile açıklama + çeviri yaz'}</button>
           <button type="button" className="adm-btn-ghost" style={{ fontSize: 12 }} disabled={!!aiBusy} onClick={gorselOner}><ScanEye size={13} />{aiBusy === 'gorsel' ? 'İnceleniyor…' : 'Görselden etiket öner'}</button>
+          {editing && <button type="button" className="adm-btn-ghost" style={{ fontSize: 12 }} disabled={!form.image_url} onClick={() => setGorselAi({ stil: 'studyo', b64: null, busy: false })}><ImagePlus size={13} />AI ile görseli yeniden tasarla</button>}
         </div>
         {gorselNot && <p style={{ fontSize: 12, color: 'var(--adm-tx3)', margin: '8px 0 0', lineHeight: 1.55 }}><b>Görsel:</b> {gorselNot.tur} — {gorselNot.gorunum} <br /><b>Site uygunluğu:</b> {gorselNot.site_uygunlugu}</p>}
         {Object.keys(form.description_i18n || {}).some(k => k !== 'seo') && <>
@@ -261,6 +286,34 @@ export default function AdminUrunlerPage() {
         <Divider label="Teknik özellikler" />
         {form.specs.map((s: any, i: number) => <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6 }}><input className="adm-inp" placeholder="Özellik (örn. Hacim)" value={s.k} onChange={e => setForm((f: any) => ({ ...f, specs: f.specs.map((x: any, j: number) => j === i ? { ...x, k: e.target.value } : x) }))} /><input className="adm-inp" placeholder="Değer (örn. 5 lt)" value={s.v} onChange={e => setForm((f: any) => ({ ...f, specs: f.specs.map((x: any, j: number) => j === i ? { ...x, v: e.target.value } : x) }))} /><button type="button" className="adm-btn-danger" style={{ padding: '4px 9px' }} onClick={() => setForm((f: any) => ({ ...f, specs: f.specs.filter((_: any, j: number) => j !== i) }))}><X size={12} /></button></div>)}
         <button type="button" className="adm-btn-ghost" style={{ fontSize: 12 }} onClick={() => setForm((f: any) => ({ ...f, specs: [...f.specs, { k: '', v: '' }] }))}><Plus size={12} />Özellik ekle</button>
+      </Modal>
+
+      <Modal open={!!gorselAi} onClose={() => setGorselAi(null)} width={640} title="AI ile Görseli Yeniden Tasarla"
+        footer={<>
+          <button type="button" className="adm-btn-ghost" onClick={() => setGorselAi(null)}>{gorselAi?.b64 ? 'Vazgeç' : 'İptal'}</button>
+          {gorselAi?.b64 && <button type="button" className="adm-btn-ghost" disabled={gorselAi.busy} onClick={() => gorselUret(gorselAi.stil)}><RotateCcw size={13} />Tekrar Dene</button>}
+          {gorselAi?.b64 ? <button type="button" className="adm-btn" disabled={busy} onClick={gorselKullan}>{busy ? 'Kaydediliyor…' : 'Bu Görseli Kullan'}</button>
+            : <button type="button" className="adm-btn" disabled={gorselAi?.busy} onClick={() => gorselUret(gorselAi!.stil)}><Wand2 size={13} />{gorselAi?.busy ? 'Oluşturuluyor…' : 'Oluştur'}</button>}
+        </>}>
+        <p style={{ fontSize: 12, color: 'var(--adm-tx3)', margin: '0 0 12px' }}>Ürünün kendisi değişmez, yalnızca arka planı AI ile yeniden oluşturulur. Sonucu onaylarsan ana görsel olarak kaydedilir; eski görsel otomatik olarak &quot;Ek görseller&quot;e taşınır.</p>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+          {(Object.keys(GORSEL_STIL) as GorselStil[]).map(s => (
+            <button key={s} type="button" className={gorselAi?.stil === s ? 'adm-chip on' : 'adm-chip'} disabled={gorselAi?.busy} onClick={() => setGorselAi(f => f && { ...f, stil: s, b64: null })}>{GORSEL_STIL[s]}</button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center', justifyContent: 'center', minHeight: 260 }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 11, color: 'var(--adm-tx3)', marginBottom: 6 }}>Mevcut</div>
+            <img src={form.image_url} alt="" style={{ width: 220, height: 220, objectFit: 'contain', borderRadius: 12, background: 'var(--adm-s2)', padding: 8 }} />
+          </div>
+          <div style={{ fontSize: 20, color: 'var(--adm-tx3)' }}>→</div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 11, color: 'var(--adm-tx3)', marginBottom: 6 }}>AI önerisi</div>
+            {gorselAi?.busy ? <div style={{ width: 220, height: 220, borderRadius: 12, background: 'var(--adm-s2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: 'var(--adm-tx3)' }}>Oluşturuluyor…</div>
+              : gorselAi?.b64 ? <img src={`data:image/png;base64,${gorselAi.b64}`} alt="" style={{ width: 220, height: 220, objectFit: 'contain', borderRadius: 12, background: 'var(--adm-s2)', padding: 8 }} />
+              : <div style={{ width: 220, height: 220, borderRadius: 12, background: 'var(--adm-s2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ImagePlus size={26} style={{ color: 'var(--adm-tx3)' }} /></div>}
+          </div>
+        </div>
       </Modal>
 
       <Modal open={!!katModal} onClose={() => setKatModal(null)} onSubmit={topluKategori} width={420} title={katModal && `${katModal.sel.length} ürünün kategorisini değiştir`}
