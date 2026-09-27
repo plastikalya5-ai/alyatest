@@ -13,14 +13,14 @@ import { Page, Kpi, KpiGrid, Card, Badge, Money, Empty, Skeleton } from '@/compo
 import { TrendChart } from '@/components/admin/erp/charts'
 import AiOzet from '@/components/admin/AiOzet'
 import {
-  Wallet, HandCoins, Scale, Factory, AlertTriangle, ClipboardList, Boxes, MessageSquare, Eye, ChevronRight, CheckCircle2, Circle, ScanLine, Receipt, Plus, PackageSearch, Activity, Sparkles, ArrowRight,
+  Wallet, HandCoins, Scale, Factory, AlertTriangle, ClipboardList, Boxes, MessageSquare, Eye, ChevronRight, CheckCircle2, Circle, ScanLine, Receipt, Plus, PackageSearch, Activity, Sparkles, ArrowRight, Truck, Users, WifiOff,
 } from 'lucide-react'
 
 type Alert = { tone: 'red' | 'amber' | 'blue'; text: string; href: string; mod: string }
 
 export default function AdminDashboardPage() {
   const { has, email, ready } = useModuller()
-  const A = { fin: has('muhasebe'), stok: has('stok'), uretim: has('uretim'), satis: has('satis'), satin: has('satinalma'), kalite: has('kalite'), sevk: has('sevkiyat'), web: has('dashboard') }
+  const A = { fin: has('muhasebe'), stok: has('stok'), uretim: has('uretim'), satis: has('satis'), satin: has('satinalma'), kalite: has('kalite'), sevk: has('sevkiyat'), web: has('dashboard'), bordro: has('bordro') }
 
   // Dashboard büyük tabloları asla tümüyle çekmez: finans/ziyaret özetleri veritabanında (rpc) hesaplanır,
   // operasyon verileri yalnızca açık/güncel kayıtlarla sınırlı sorgulanır.
@@ -30,6 +30,9 @@ export default function AdminDashboardPage() {
   const [fin, setFin] = useState<any>(null)
   const [web_, setWeb] = useState<any>(null)
   const [cariSayi, setCariSayi] = useState(0)
+  const [bordroOnceki, setBordroOnceki] = useState<any>(null)
+  const [finHata, setFinHata] = useState(false)
+  const [webHata, setWebHata] = useState(false)
 
   useEffect(() => {
     if (!ready) return
@@ -45,6 +48,7 @@ export default function AdminDashboardPage() {
       if (A.satin) add('satinalma', erp.from('satinalma_siparisleri').select('*').in('durum', ['beklemede', 'onaylandi', 'yolda']).limit(1000))
       if (A.kalite) add('kalite', erp.from('kalite_kontrol_kayitlari').select('uretim_emri_id,kontrol_tipi').gte('tarih', gunOnce(120)).limit(1000))
       if (A.fin) add('fiyatListeleri', erp.from('fiyat_listeleri').select('id').limit(50))
+      if (A.sevk) add('sevkiyatlar', erp.from('sevkiyatlar').select('id,no,tarih,durum,cari_id').in('durum', ['hazirlaniyor', 'yola_cikti']).limit(500))
       const res = await Promise.all(ops)
       const out: Record<string, any[]> = {}; keys.forEach((k, i) => { out[k] = res[i] })
       // açık siparişlerin kalemleri (yalnızca açık siparişler için)
@@ -55,6 +59,11 @@ export default function AdminDashboardPage() {
         const cids = Array.from(new Set(out.siparisler.map((x: any) => x.cari_id).filter(Boolean)))
         if (cids.length) { const c: any = await muh.from('cari_hesaplar').select('id,ad').in('id', cids.slice(0, 200)); out.cariler = c.data || [] }
       }
+      if (A.satin && out.satinalma?.length) {
+        const ids = out.satinalma.map((s: any) => s.id); const kal: any[] = []
+        for (let i = 0; i < ids.length; i += 80) { const r: any = await erp.from('satinalma_siparisi_kalemleri').select('siparis_id,miktar,birim_fiyat,teslim_alinan_miktar').in('siparis_id', ids.slice(i, i + 80)); kal.push(...(r.data || [])) }
+        out.satinalmaKalemleri = kal
+      }
       setD(out); setLoading(false)
     }
     ilerle().catch(() => setLoading(false))
@@ -62,11 +71,15 @@ export default function AdminDashboardPage() {
     if (A.fin) {
       muh.from('cari_hesaplar').select('id', { count: 'exact', head: true }).then((r: any) => setCariSayi(r.count || 0)).catch(() => {})
       const t = new Date(); const bas = new Date(t.getFullYear(), t.getMonth(), 1), pBas = new Date(t.getFullYear(), t.getMonth() - 1, 1), pSon = new Date(t.getFullYear(), t.getMonth(), 0)
-      muh.rpc('rpc_finans_ozet', { p_from: iso(bas), p_to: iso(t), p_pfrom: iso(pBas), p_pto: iso(pSon) }).then(setFin).catch(() => setFin({}))
+      muh.rpc('rpc_finans_ozet', { p_from: iso(bas), p_to: iso(t), p_pfrom: iso(pBas), p_pto: iso(pSon) }).then(setFin).catch(() => { setFinHata(true); setFin({}) })
     }
     if (A.web) {
       Promise.all([web.rpc('rpc_ziyaret_ozet', { p_days: 14 }), web.from('contact_submissions').select('id,name,email,status,created_at,subject').order('created_at', { ascending: false }).limit(50), web.from('contact_submissions').select('id', { count: 'exact', head: true }).eq('status', 'new')])
-        .then(([z, b, n]: any) => setWeb({ ziyaret: z.data, basvurular: b.data || [], yeni: n.count || 0 })).catch(() => setWeb({ ziyaret: null, basvurular: [], yeni: 0 }))
+        .then(([z, b, n]: any) => setWeb({ ziyaret: z.data, basvurular: b.data || [], yeni: n.count || 0 })).catch(() => { setWebHata(true); setWeb({ ziyaret: null, basvurular: [], yeni: 0 }) })
+    }
+    if (A.bordro) {
+      const t = new Date(); const oncekiAyBas = iso(new Date(t.getFullYear(), t.getMonth() - 1, 1))
+      web.from('bordro_donemleri').select('donem,durum').eq('donem', oncekiAyBas).maybeSingle().then(({ data }: any) => setBordroOnceki(data || null), () => setBordroOnceki(null))
     }
   }, [ready]) // eslint-disable-line
 
@@ -103,6 +116,16 @@ export default function AdminDashboardPage() {
   const gecEmir = g('emirler').filter((e: any) => ['planlandi', 'uretimde', 'durduruldu'].includes(e.durum) && g('siparisler').find((s: any) => s.id === e.siparis_id)?.teslim_tarihi < bugun)
   const gecSatin = g('satinalma').filter((s: any) => ['beklemede', 'onaylandi', 'yolda'].includes(s.durum) && s.beklenen_teslim && s.beklenen_teslim < bugun)
   const kontrolBekleyen = g('emirlerBitmis').filter((e: any) => +e.uretilen_miktar > 0 && !g('kalite').some((k: any) => k.uretim_emri_id === e.id && k.kontrol_tipi === 'son_kontrol'))
+  const satinP = useMemo(() => {
+    const ks = g('satinalmaKalemleri'); return g('satinalma').reduce((s: number, o: any) => {
+      const kalemler = ks.filter((k: any) => k.siparis_id === o.id)
+      const kalanTutar = sum(kalemler, (k: any) => Math.max((+k.miktar || 0) - (+k.teslim_alinan_miktar || 0), 0) * (+k.birim_fiyat || 0))
+      return s + kalanTutar * (+o.kur || 1)
+    }, 0)
+  }, [d]) // eslint-disable-line
+  const sevkBekleyen = g('sevkiyatlar').filter((s: any) => s.durum === 'hazirlaniyor')
+  const bordroAyAdi = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'][new Date().getMonth() === 0 ? 11 : new Date().getMonth() - 1]
+  const bordroUyari = A.bordro && new Date().getDate() > 5 && bordroOnceki?.durum !== 'muhasebelesti'
   const yeniSayi = web_?.yeni || 0
   const bugunZiyaret = +(web_?.ziyaret?.bugun || 0)
   const ziyaret14 = useMemo(() => { const m = new Map<string, number>(((web_?.ziyaret?.gunluk) || []).map((x: any) => [x.g, +x.v])); return Array.from({ length: 14 }, (_, i) => { const t = new Date(); t.setDate(t.getDate() - (13 - i)); const k = iso(t); return { l: `${k.slice(8)}.${k.slice(5, 7)}`, v: m.get(k) || 0 } }) }, [web_])
@@ -125,6 +148,7 @@ export default function AdminDashboardPage() {
   if (A.satin && gecSatin.length) alerts.push({ tone: 'amber', text: `${gecSatin.length} satınalma siparişinin teslimi gecikti`, href: '/admin/dashboard/satinalma/siparisler', mod: 'satinalma' })
   if (A.kalite && kontrolBekleyen.length) alerts.push({ tone: 'amber', text: `${kontrolBekleyen.length} tamamlanan emrin son kalite kontrolü girilmemiş`, href: '/admin/dashboard/kalite/kontrol', mod: 'kalite' })
   if (A.web && yeniSayi) alerts.push({ tone: 'blue', text: `${yeniSayi} yeni başvuru yanıt bekliyor`, href: '/admin/dashboard/basvurular', mod: 'dashboard' })
+  if (bordroUyari) alerts.push({ tone: 'amber', text: `${bordroAyAdi} ayı bordrosu henüz onaylanıp muhasebeye işlenmedi`, href: '/admin/dashboard/personel', mod: 'bordro' })
   alerts.sort((a, b) => ({ red: 0, amber: 1, blue: 2 }[a.tone] - { red: 0, amber: 1, blue: 2 }[b.tone]))
 
   // Kurulum kontrol listesi
@@ -153,7 +177,7 @@ export default function AdminDashboardPage() {
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
           <div style={{ flex: 1, minWidth: 240 }}>
             <h2 style={{ margin: 0, fontSize: 21, fontWeight: 700, letterSpacing: '-.4px' }}>{saatSel}{isim ? `, ${isim}` : ''} 👋</h2>
-            <p style={{ margin: '3px 0 0', fontSize: 12.5, color: 'var(--adm-tx3)' }}>{new Date().toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} · Alya Plastik ERP</p>
+            <p style={{ margin: '3px 0 0', fontSize: 12.5, color: 'var(--adm-tx3)' }}>{new Date().toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} · Alya Plastik ERP{(finHata || webHata) && <span style={{ color: 'var(--adm-amber)', marginLeft: 8 }}><WifiOff size={11} style={{ verticalAlign: -1, marginRight: 3 }} />Bazı veriler yüklenemedi</span>}</p>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{hizli.map((h: any) => <Link key={h.href + h.l} href={h.href} className="adm-chip" style={{ textDecoration: 'none' }}><h.Icon size={13} />{h.l}</Link>)}</div>
         </div>
@@ -169,6 +193,8 @@ export default function AdminDashboardPage() {
               {A.satis && <Kpi label="Açık Sipariş" value={openS.length} Icon={ClipboardList} color="var(--adm-ac)" sub={fmtK(sum(openS, sTutar)) + ' (KDV hariç)'} />}
               {A.uretim && <Kpi label="Üretimde" value={uretimde.length} Icon={Factory} color="var(--adm-blue)" sub={`bugün ${fmtInt(sum(bugunH, (h: any) => h.uretilen_adet))} adet`} />}
               {A.stok && <Kpi label="Kritik Stok" value={kritik.length} Icon={Boxes} color={kritik.length ? 'var(--adm-red)' : 'var(--adm-green)'} sub={kritik.length ? 'hammadde min. altında' : 'Sorun yok'} />}
+              {A.satin && g('satinalma').length > 0 && <Kpi label="Açık Satınalma" value={g('satinalma').length} Icon={PackageSearch} color="var(--adm-amber)" sub={fmtK(satinP) + ' bekleyen teslimat'} />}
+              {A.sevk && <Kpi label="Sevkiyat Bekleyen" value={sevkBekleyen.length} Icon={Truck} color={sevkBekleyen.length ? 'var(--adm-amber)' : 'var(--adm-green)'} sub={sevkBekleyen.length ? 'yola çıkmamış' : 'Sorun yok'} />}
               {A.web && web_ && <Kpi label="Yeni Başvuru" value={yeniSayi} Icon={MessageSquare} color="var(--adm-green)" sub={`bugün ${bugunZiyaret} ziyaret`} />}
             </KpiGrid>
 
@@ -208,7 +234,7 @@ export default function AdminDashboardPage() {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,320px),1fr))', gap: 16 }}>
-              {A.fin && F && <Card title="Yaklaşan Vadeler" right={<Link href="/admin/dashboard/muhasebe/genel" style={{ fontSize: 12, color: 'var(--adm-ac)' }}>Finans →</Link>}>
+              {A.fin && F && <Card title="Yaklaşan Vadeler" right={F.vadeler.length > 0 ? <span style={{ fontSize: 12, fontWeight: 700 }}>{fmtK(sum(F.vadeler, (v: any) => v.giris ? v.tutar : -v.tutar))}</span> : <Link href="/admin/dashboard/muhasebe/genel" style={{ fontSize: 12, color: 'var(--adm-ac)' }}>Finans →</Link>}>
                 {F.vadeler.length === 0 ? <Empty title="Yaklaşan vade yok" /> : F.vadeler.map((v: any, i: number) => { const gg = daysBetween(v.tarih, new Date()); return (
                   <div key={i} className="adm-row" style={{ padding: '9px 18px' }}><div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 12.5, fontWeight: 600 }}>{v.t}</div><div style={{ fontSize: 11, color: gg > 0 ? 'var(--adm-red)' : 'var(--adm-tx3)' }}>{v.cari ? `${v.cari} · ` : ''}{fmtDate(v.tarih)}{gg > 0 ? ` · ${gg} gün gecikmiş` : ''}</div></div><Money v={v.tutar} tone={v.giris ? 'green' : 'red'} size={12.5} /></div>) })}
               </Card>}
@@ -219,6 +245,13 @@ export default function AdminDashboardPage() {
               {A.web && web_ && <Card title="Son Başvurular" right={<Link href="/admin/dashboard/basvurular" style={{ fontSize: 12, color: 'var(--adm-ac)' }}>Tümü →</Link>}>
                 {web_.basvurular.length === 0 ? <Empty icon={<MessageSquare size={28} />} title="Başvuru yok" /> : web_.basvurular.slice(0, 6).map((b: any) => (
                   <Link key={b.id} href="/admin/dashboard/basvurular" className="adm-row" style={{ textDecoration: 'none', color: 'inherit', padding: '9px 18px' }}><div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 12.5, fontWeight: 600 }}>{b.name}</div><div style={{ fontSize: 11, color: 'var(--adm-tx3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.subject || b.email}</div></div><Badge tone={(b.status || 'new') === 'new' ? 'ac' : (b.status === 'replied' ? 'green' : 'muted')}>{{ new: 'Yeni', read: 'Okundu', replied: 'Yanıtlandı', archived: 'Arşiv' }[(b.status || 'new') as string]}</Badge></Link>))}
+              </Card>}
+              {A.sevk && <Card title="Sevkiyat Bekleyen" right={<Link href="/admin/dashboard/sevkiyat" style={{ fontSize: 12, color: 'var(--adm-ac)' }}>Tümü →</Link>}>
+                {sevkBekleyen.length === 0 ? <Empty icon={<Truck size={28} />} title="Bekleyen sevkiyat yok" /> : [...sevkBekleyen].sort((a: any, b: any) => (a.tarih || '').localeCompare(b.tarih || '')).slice(0, 6).map((s: any) => (
+                  <Link key={s.id} href="/admin/dashboard/sevkiyat" className="adm-row" style={{ textDecoration: 'none', color: 'inherit', padding: '9px 18px' }}><div style={{ flex: 1, minWidth: 0 }}><b style={{ fontFamily: 'JetBrains Mono,monospace', fontSize: 12.5 }}>{s.no}</b><div style={{ fontSize: 11, color: 'var(--adm-tx3)' }}>{cari[s.cari_id]?.ad || '—'}{s.tarih ? ` · ${fmtDate(s.tarih)}` : ''}</div></div><Badge tone="amber">Hazırlanıyor</Badge></Link>))}
+              </Card>}
+              {bordroUyari && <Card title="Bordro" right={<Link href="/admin/dashboard/personel" style={{ fontSize: 12, color: 'var(--adm-ac)' }}>Personel →</Link>}>
+                <div className="adm-row" style={{ padding: '9px 18px' }}><Users size={16} style={{ color: 'var(--adm-amber)', marginRight: 8 }} /><span style={{ fontSize: 13 }}>{bordroAyAdi} ayı bordrosu henüz onaylanmadı</span></div>
               </Card>}
             </div>
           </>
