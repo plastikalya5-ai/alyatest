@@ -6,11 +6,12 @@ import KurumsalSayfa from "@/components/kurumsal/KurumsalSayfa";
 
 export const revalidate = 3600;
 
-const BASLIK = "Hakkımızda | Alya Plastik";
+const BASLIK = "Hakkımızda | Alya Plastik"; // OG/Twitter'da olduğu gibi kullanılır (şablon uygulanmaz)
 const ACIKLAMA = "1968'den bu yana İstanbul'da plastik saksı, sepet, sandık ve ev ürünleri üreten Alya Plastik hakkında.";
 
 export const metadata: Metadata = {
-  title: BASLIK,
+  // Kök layout'un title template'i ("%s | Alya Plastik") otomatik ekleneceği için burada marka adı TEKRAR eklenmez.
+  title: "Hakkımızda",
   description: ACIKLAMA,
   alternates: { canonical: `${SITE_URL}/hakkimizda`, languages: { "tr-TR": `${SITE_URL}/hakkimizda`, "x-default": `${SITE_URL}/hakkimizda` } },
   openGraph: { type: "website", locale: "tr_TR", url: `${SITE_URL}/hakkimizda`, siteName: "Alya Plastik", title: BASLIK, description: ACIKLAMA, images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "Alya Plastik" }] },

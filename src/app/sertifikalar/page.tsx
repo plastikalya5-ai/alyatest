@@ -5,11 +5,12 @@ import KurumsalSayfa from "@/components/kurumsal/KurumsalSayfa";
 
 export const revalidate = 3600;
 
-const BASLIK = "Sertifikalar | Alya Plastik";
+const BASLIK = "Sertifikalar | Alya Plastik"; // OG/Twitter'da olduğu gibi kullanılır (şablon uygulanmaz)
 const ACIKLAMA = "Alya Plastik kalite ve uygunluk sertifikaları.";
 
 export const metadata: Metadata = {
-  title: BASLIK,
+  // Kök layout'un title template'i ("%s | Alya Plastik") otomatik ekleneceği için burada marka adı TEKRAR eklenmez.
+  title: "Sertifikalar",
   description: ACIKLAMA,
   alternates: { canonical: `${SITE_URL}/sertifikalar`, languages: { "tr-TR": `${SITE_URL}/sertifikalar`, "x-default": `${SITE_URL}/sertifikalar` } },
   openGraph: { type: "website", locale: "tr_TR", url: `${SITE_URL}/sertifikalar`, siteName: "Alya Plastik", title: BASLIK, description: ACIKLAMA, images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "Alya Plastik" }] },

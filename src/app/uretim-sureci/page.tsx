@@ -6,11 +6,12 @@ import KurumsalSayfa from "@/components/kurumsal/KurumsalSayfa";
 
 export const revalidate = 3600;
 
-const BASLIK = "Üretim Süreci | Alya Plastik";
+const BASLIK = "Üretim Süreci | Alya Plastik"; // OG/Twitter'da olduğu gibi kullanılır (şablon uygulanmaz)
 const ACIKLAMA = "Alya Plastik'te kalıp tasarımından sevkiyata kadar plastik enjeksiyon üretim sürecimiz.";
 
 export const metadata: Metadata = {
-  title: BASLIK,
+  // Kök layout'un title template'i ("%s | Alya Plastik") otomatik ekleneceği için burada marka adı TEKRAR eklenmez.
+  title: "Üretim Süreci",
   description: ACIKLAMA,
   alternates: { canonical: `${SITE_URL}/uretim-sureci`, languages: { "tr-TR": `${SITE_URL}/uretim-sureci`, "x-default": `${SITE_URL}/uretim-sureci` } },
   openGraph: { type: "website", locale: "tr_TR", url: `${SITE_URL}/uretim-sureci`, siteName: "Alya Plastik", title: BASLIK, description: ACIKLAMA, images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "Alya Plastik" }] },
