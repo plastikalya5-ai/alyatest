@@ -8,8 +8,9 @@ import { fmt, fmtN, fmtInt, fmtDate } from '@/lib/fmt'
 import { sum } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, InfoRow, Divider, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
-import { Plus, Pencil, Trash2, Copy, Package, Star, Sparkles, Layers, FlaskConical, X, ImageOff, Boxes, Tag, Wand2, ScanEye, ImagePlus, RotateCcw } from 'lucide-react'
+import { Plus, Pencil, Trash2, Copy, Package, Star, Sparkles, Layers, FlaskConical, X, ImageOff, Boxes, Tag, Wand2, ScanEye, ImagePlus, RotateCcw, Box } from 'lucide-react'
 import { aiIstek } from '@/lib/ai-client'
+import Donus360 from '@/components/urun/Donus360'
 
 const GORSEL_STIL = { studyo: 'Stüdyo', yasam: 'Yaşam alanı' } as const
 type GorselStil = keyof typeof GORSEL_STIL
@@ -37,6 +38,7 @@ export default function AdminUrunlerPage() {
   const [aiBusy, setAiBusy] = useState('')
   const [gorselNot, setGorselNot] = useState<any>(null)
   const [gorselAi, setGorselAi] = useState<{ stil: GorselStil; b64: string | null; busy: boolean } | null>(null)
+  const [gorsel360, setGorsel360] = useState<{ kareSayisi: 4 | 8; kareler: string[] | null; busy: boolean } | null>(null)
 
   // AI: TR açıklama + 5 dil çevirisi + SEO önerisi (kayıt için Kaydet'e basmak gerekir)
   async function aiYaz() {
@@ -78,6 +80,26 @@ export default function AdminUrunlerPage() {
       const r: any = await aiIstek('urun_gorsel_kaydet', { urun_id: editing.id, b64: gorselAi.b64 })
       setForm((f: any) => ({ ...f, image_url: r.url }))
       setGorselAi(null); toast.show('Yeni görsel kaydedildi — eski görsel "Ek görseller"e taşındı')
+      load()
+    } catch (e: any) { toast.show(e.message, true) }
+    setBusy(false)
+  }
+  // AI: ürünün "360° döner galeri" karelerini üret — gerçek 3D model değil, farklı açılardan AI ile türetilmiş görsel dizisi.
+  // Önce önizleme (sürükleyerek döndürülebilir), onaylanınca Supabase Storage'a kaydedilir.
+  async function uret360(kareSayisi: 4 | 8) {
+    if (!form.image_url) return toast.show('Önce ana görsel URL\'si gir', true)
+    setGorsel360({ kareSayisi, kareler: null, busy: true })
+    try {
+      const r: any = await aiIstek('urun_360_uret', { url: form.image_url, kareSayisi })
+      setGorsel360({ kareSayisi, kareler: r.kareler, busy: false })
+    } catch (e: any) { toast.show(e.message, true); setGorsel360(null) }
+  }
+  async function kaydet360() {
+    if (!editing?.id || !gorsel360?.kareler) return
+    setBusy(true)
+    try {
+      await aiIstek('urun_360_kaydet', { urun_id: editing.id, kareler: gorsel360.kareler })
+      setGorsel360(null); toast.show('360° görünüm kaydedildi — ürün sayfasında görünecek')
       load()
     } catch (e: any) { toast.show(e.message, true) }
     setBusy(false)
@@ -264,6 +286,7 @@ export default function AdminUrunlerPage() {
           <button type="button" className="adm-btn-ghost" style={{ fontSize: 12 }} disabled={!!aiBusy} onClick={aiYaz}><Wand2 size={13} />{aiBusy === 'yaz' ? 'Yazılıyor…' : 'AI ile açıklama + çeviri yaz'}</button>
           <button type="button" className="adm-btn-ghost" style={{ fontSize: 12 }} disabled={!!aiBusy} onClick={gorselOner}><ScanEye size={13} />{aiBusy === 'gorsel' ? 'İnceleniyor…' : 'Görselden etiket öner'}</button>
           {editing && <button type="button" className="adm-btn-ghost" style={{ fontSize: 12 }} disabled={!form.image_url} onClick={() => setGorselAi({ stil: 'studyo', b64: null, busy: false })}><ImagePlus size={13} />AI ile görseli yeniden tasarla</button>}
+          {editing && <button type="button" className="adm-btn-ghost" style={{ fontSize: 12 }} disabled={!form.image_url} onClick={() => setGorsel360({ kareSayisi: 8, kareler: null, busy: false })}><Box size={13} />AI ile 360° görünüm oluştur</button>}
         </div>
         {gorselNot && <p style={{ fontSize: 12, color: 'var(--adm-tx3)', margin: '8px 0 0', lineHeight: 1.55 }}><b>Görsel:</b> {gorselNot.tur} — {gorselNot.gorunum} <br /><b>Site uygunluğu:</b> {gorselNot.site_uygunlugu}</p>}
         {Object.keys(form.description_i18n || {}).some(k => k !== 'seo') && <>
@@ -313,6 +336,33 @@ export default function AdminUrunlerPage() {
               : gorselAi?.b64 ? <img src={`data:image/png;base64,${gorselAi.b64}`} alt="" style={{ width: 220, height: 220, objectFit: 'contain', borderRadius: 12, background: 'var(--adm-s2)', padding: 8 }} />
               : <div style={{ width: 220, height: 220, borderRadius: 12, background: 'var(--adm-s2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ImagePlus size={26} style={{ color: 'var(--adm-tx3)' }} /></div>}
           </div>
+        </div>
+      </Modal>
+
+      <Modal open={!!gorsel360} onClose={() => setGorsel360(null)} width={520} title="AI ile 360° Görünüm Oluştur"
+        footer={<>
+          <button type="button" className="adm-btn-ghost" onClick={() => setGorsel360(null)}>{gorsel360?.kareler ? 'Vazgeç' : 'İptal'}</button>
+          {gorsel360?.kareler && <button type="button" className="adm-btn-ghost" disabled={gorsel360.busy} onClick={() => uret360(gorsel360.kareSayisi)}><RotateCcw size={13} />Tekrar Dene</button>}
+          {gorsel360?.kareler ? <button type="button" className="adm-btn" disabled={busy} onClick={kaydet360}>{busy ? 'Kaydediliyor…' : 'Bu Görünümü Kullan'}</button>
+            : <button type="button" className="adm-btn" disabled={gorsel360?.busy} onClick={() => uret360(gorsel360!.kareSayisi)}><Wand2 size={13} />{gorsel360?.busy ? 'Oluşturuluyor… (~1 dk)' : 'Oluştur'}</button>}
+        </>}>
+        <p style={{ fontSize: 12, color: 'var(--adm-tx3)', margin: '0 0 12px', lineHeight: 1.55 }}>
+          Bu, gerçek bir 3D model değildir — mevcut fotoğraftan AI ile farklı açılardan çekilmiş gibi kareler türetilir ve ürün sayfasında sürükleyerek döndürülebilen bir galeri olarak gösterilir. Sonucu onaylarsan kaydedilir ve halka açık ürün sayfasında görünür.
+        </p>
+        {!gorsel360?.kareler && !gorsel360?.busy && (
+          <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+            <button type="button" className={gorsel360?.kareSayisi === 8 ? 'adm-chip on' : 'adm-chip'} onClick={() => setGorsel360(f => f && { ...f, kareSayisi: 8 })}>8 kare (daha akıcı)</button>
+            <button type="button" className={gorsel360?.kareSayisi === 4 ? 'adm-chip on' : 'adm-chip'} onClick={() => setGorsel360(f => f && { ...f, kareSayisi: 4 })}>4 kare (daha hızlı)</button>
+          </div>
+        )}
+        <div style={{ display: 'flex', justifyContent: 'center', minHeight: 260 }}>
+          {gorsel360?.busy ? (
+            <div style={{ width: 260, height: 260, borderRadius: 12, background: 'var(--adm-s2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: 'var(--adm-tx3)' }}>Kareler oluşturuluyor…</div>
+          ) : gorsel360?.kareler ? (
+            <Donus360 kareler={gorsel360.kareler.map(b64 => `data:image/png;base64,${b64}`)} alt="360° önizleme" style={{ width: 260, height: 260, borderRadius: 12, background: 'var(--adm-s2)', padding: 8 }} />
+          ) : (
+            <div style={{ width: 260, height: 260, borderRadius: 12, background: 'var(--adm-s2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Box size={26} style={{ color: 'var(--adm-tx3)' }} /></div>
+          )}
         </div>
       </Modal>
 

@@ -8,6 +8,7 @@ import { teklifKalemOner } from '@/lib/ai-teklif'
 import { araclariSuz } from '@/lib/ai-birim'
 import { asistanYanit, belgeOku, ekstreOner, gorselAnalizEt, haftalikOzet, urunMetniUret, type Konusma } from '@/lib/ai-admin'
 import { gorselTasarla, type GorselStil } from '@/lib/ai-gorsel'
+import { gorunum360Uret } from '@/lib/ai-360'
 import { supabaseAdmin } from '@/lib/notify'
 
 export const maxDuration = 60 // Vercel Hobby plan üst sınırı
@@ -21,6 +22,8 @@ const YETKI: Record<string, string[]> = {
   gorsel_analiz: ['yonetim'],
   urun_gorsel_tasarim: ['yonetim'],
   urun_gorsel_kaydet: ['yonetim'],
+  urun_360_uret: ['yonetim'],
+  urun_360_kaydet: ['yonetim'],
   basvuru_analiz: ['dashboard'],
   asistan: [],                      // her personel; veri erişimi zaten RLS ile sınırlı
   ozet: [],                         // yalnızca yetkili olduğu modüllerin verisi kullanılır
@@ -119,6 +122,38 @@ export async function POST(req: NextRequest) {
         const { error } = await admin.from('products').update({ image_url: pub.publicUrl, images: yeniImages, updated_at: new Date().toISOString() }).eq('id', body.urun_id)
         if (error) { console.error('[urun_gorsel_kaydet] update', error.message); return NextResponse.json({ error: 'Ürün güncellenemedi.' }, { status: 500 }) }
         return NextResponse.json({ ok: true, url: pub.publicUrl })
+      }
+      case 'urun_360_uret': {
+        if (typeof body.url !== 'string') return NextResponse.json({ error: 'Görsel adresi gerekli' }, { status: 400 })
+        const kareSayisi = body.kareSayisi === 4 ? 4 : 8
+        // 7-8 kareyi tek istekte paralel üretmek görsel üretiminden de maliyetli — daha dar bir saatlik sınır
+        if (!(await oranSiniri(`ai_360:${y.user.id}`, 6, 3600, false))) return NextResponse.json({ error: '360° görünüm üretimi için saatlik sınıra ulaştın, biraz sonra tekrar dene.' }, { status: 429 })
+        const kareler = await gorunum360Uret(body.url, kareSayisi)
+        return NextResponse.json({ ok: true, kareler })
+      }
+      case 'urun_360_kaydet': {
+        if (typeof body.urun_id !== 'string' || !/^[0-9a-f-]{36}$/.test(body.urun_id)) return NextResponse.json({ error: 'Ürün geçersiz' }, { status: 400 })
+        const kareler: string[] = Array.isArray(body.kareler) ? body.kareler : []
+        if (kareler.length < 2 || !kareler.every(k => typeof k === 'string' && k.length > 100)) return NextResponse.json({ error: 'Kare verisi geçersiz' }, { status: 400 })
+        // Ürünün bu kullanıcıya görünür olduğunu kendi oturumuyla (RLS) doğrula, sonra service_role ile yaz
+        const { data: urun } = await y.sb.from('products').select('id').eq('id', body.urun_id).maybeSingle()
+        if (!urun) return NextResponse.json({ error: 'Ürün bulunamadı' }, { status: 404 })
+        const admin = supabaseAdmin()
+        const damga = Date.now()
+        const urls: string[] = []
+        for (let i = 0; i < kareler.length; i++) {
+          let bytes: Buffer
+          try { bytes = Buffer.from(kareler[i], 'base64') } catch { return NextResponse.json({ error: `Kare ${i + 1} çözümlenemedi` }, { status: 400 }) }
+          if (!bytes.length || bytes.length > 15 * 1024 * 1024) return NextResponse.json({ error: `Kare ${i + 1} boyutu geçersiz` }, { status: 400 })
+          const yol = `${body.urun_id}/360-${damga}/${i}.png`
+          const up = await admin.storage.from('urun-gorselleri').upload(yol, bytes, { contentType: 'image/png', upsert: false })
+          if (up.error) { console.error('[urun_360_kaydet] upload', i, up.error.message); return NextResponse.json({ error: 'Kareler depoya yüklenemedi.' }, { status: 502 }) }
+          const { data: pub } = admin.storage.from('urun-gorselleri').getPublicUrl(yol)
+          urls.push(pub.publicUrl)
+        }
+        const { error } = await admin.from('products').update({ gorunum_360: urls, updated_at: new Date().toISOString() }).eq('id', body.urun_id)
+        if (error) { console.error('[urun_360_kaydet] update', error.message); return NextResponse.json({ error: 'Ürün güncellenemedi.' }, { status: 500 }) }
+        return NextResponse.json({ ok: true, urls })
       }
       case 'basvuru_analiz': {
         if (typeof body.id !== 'string') return NextResponse.json({ error: 'Başvuru id gerekli' }, { status: 400 })

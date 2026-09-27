@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Footer from "@/components/layout/Footer";
+import Donus360 from "@/components/urun/Donus360";
 import { bolumYolu, dilYolu, kategoriGoster } from "@/lib/site-metin";
 import type { Settings } from "@/lib/supabase";
 import { DILLER, DIL_AD, HREFLANG, UI, aciklama, jsonLdMetni, kategoriAdi, mevcutDiller, ozellikEtiketi, urunJsonLd, urunYolu, type Dil, type UrunKaydi } from "@/lib/urun-sayfasi";
@@ -10,6 +11,7 @@ export default function UrunSayfasi({ urun, dil, settings, benzer, kategoriler =
   const kn = (x: string) => (dil === "tr" ? kategoriAdi(x, kategoriler) : kategoriGoster(dil, x, kategoriler));
   const kat = kn(urun.category), altKat = urun.subcategory && kn(urun.subcategory).toLocaleLowerCase("tr-TR") !== kat.toLocaleLowerCase("tr-TR") ? kn(urun.subcategory) : "";
   const resimler = [urun.image_url, ...(urun.images || [])].filter((x, i, a) => typeof x === "string" && x.startsWith("https://") && a.indexOf(x) === i);
+  const kareler360 = (urun.gorunum_360 || []).filter(x => typeof x === "string" && x.startsWith("https://"));
   const metin = aciklama(urun, dil);
   const ozellikler = Object.entries(urun.specs || {});
   const diller = mevcutDiller(urun);
@@ -41,8 +43,13 @@ export default function UrunSayfasi({ urun, dil, settings, benzer, kategoriler =
           <div className="grid gap-10 lg:grid-cols-2 lg:gap-16">
             <div>
               <div className="bg-[#e3ddcf] flex items-center justify-center" style={{ aspectRatio: "1 / 1" }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                {resimler[0] && <img src={resimler[0]} alt={`${urun.name} — ${urun.code}`} className="w-full h-full object-contain" style={{ padding: "clamp(16px,4vw,48px)" }} fetchPriority="high" />}
+                {kareler360.length > 1 ? (
+                  <Donus360 kareler={kareler360} alt={`${urun.name} — ${urun.code}`} className="w-full h-full flex items-center justify-center" style={{ padding: "clamp(16px,4vw,48px)" }} />
+                ) : (
+                  resimler[0] &&
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={resimler[0]} alt={`${urun.name} — ${urun.code}`} className="w-full h-full object-contain" style={{ padding: "clamp(16px,4vw,48px)" }} fetchPriority="high" />
+                )}
               </div>
               {resimler.length > 1 && (
                 <ul className="grid grid-cols-4 gap-2 mt-2">
