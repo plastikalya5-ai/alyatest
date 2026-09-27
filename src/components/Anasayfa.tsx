@@ -1,4 +1,5 @@
-import { getFeaturedProducts, getAllProducts, getStats, getSettings, getExportCountries } from "@/lib/supabase";
+import { getFeaturedProducts, getAllProducts, getStats, getSettings, getExportCountries, getTemaGorselleri } from "@/lib/supabase";
+import { resolveImg } from "@/data/images";
 import type { Dil } from "@/lib/urun-sayfasi";
 import HtmlLang         from "@/components/layout/HtmlLang";
 import Header           from "@/components/layout/Header";
@@ -26,18 +27,21 @@ export default async function Anasayfa({ dil }: { dil: Dil }) {
   let stats:    Awaited<ReturnType<typeof getStats>>           = null;
   let settings: Awaited<ReturnType<typeof getSettings>>        = null;
   let countries: string[] = [];
+  let temaOverride: Awaited<ReturnType<typeof getTemaGorselleri>> = null;
 
   try {
-    [featured, all, stats, settings, countries] = await Promise.all([
+    [featured, all, stats, settings, countries, temaOverride] = await Promise.all([
       getFeaturedProducts(),
       getAllProducts(),
       getStats(),
       getSettings(),
       getExportCountries(),
+      getTemaGorselleri(),
     ]);
   } catch (e) {
     console.error("Supabase fetch error:", e);
   }
+  const img = resolveImg(temaOverride);
 
   return (
     <>
@@ -47,13 +51,13 @@ export default async function Anasayfa({ dil }: { dil: Dil }) {
       <ProgressDots />
       <Header settings={settings} dil={dil} />
       <main>
-        <Hero stats={stats} settings={settings} dil={dil} />
+        <Hero stats={stats} settings={settings} dil={dil} img={img} />
         <Marquee dil={dil} />
         <FeaturedProducts products={featured} dil={dil} />
         <HorizontalPin products={all} dil={dil} />
         <Collection products={all} dil={dil} />
-        <FullscreenFeature dil={dil} />
-        <Why stats={stats} dil={dil} />
+        <FullscreenFeature dil={dil} img={img} />
+        <Why stats={stats} dil={dil} img={img} />
         <Export countries={countries} dil={dil} />
         <Contact settings={settings} dil={dil} />
       </main>

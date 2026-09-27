@@ -3,7 +3,7 @@ import { IMG } from "@/data/images";
 import type { Dil } from "@/lib/urun-sayfasi";
 import { M } from "@/lib/site-metin";
 
-export default function Hero({ stats, settings, dil = "tr" }: { stats: Stats | null; settings: Settings | null; dil?: Dil }) {
+export default function Hero({ stats, settings, dil = "tr", img = IMG }: { stats: Stats | null; settings: Settings | null; dil?: Dil; img?: typeof IMG }) {
   const h = M[dil].hero;
   const st = [
     { n: stats?.years ?? 55,     s: "+", l: h.yil   },
@@ -26,7 +26,7 @@ export default function Hero({ stats, settings, dil = "tr" }: { stats: Stats | n
         {/* BG sadece sola */}
         <div className="js-hero-bg absolute inset-0 origin-center" style={{ transform: "scale(1.06)", willChange: "transform" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={IMG.fikir} alt={h.alt}
+          <img src={img.fikir} alt={h.alt}
             className="absolute inset-0 w-full h-full object-cover opacity-[0.09]"
             style={{ objectPosition: "30% center" }} />
           <div className="absolute inset-0"
@@ -100,7 +100,7 @@ export default function Hero({ stats, settings, dil = "tr" }: { stats: Stats | n
 
         {/* Ürün grid — 2x2 dönen ürünler */}
         <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-px bg-[#0b0e0b]/12">
-          {[IMG.ufo, IMG.dantel, IMG.d3, IMG.venusAsk].map((src, i) => (
+          {[img.ufo, img.dantel, img.d3, img.venusAsk].map((src, i) => (
             <div key={i} className="relative overflow-hidden tilt-card" style={{ background: i % 2 === 0 ? "#c17849" : "#ab6740" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={src} alt={h.alt}
@@ -119,7 +119,7 @@ export default function Hero({ stats, settings, dil = "tr" }: { stats: Stats | n
       {/* Mobilde ürün görseli */}
       <div className="absolute right-0 top-[8%] w-[40%] h-[60%] z-[5] pointer-events-none md:hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={IMG.kordon} alt="Alya Plastik ALY-110"
+        <img src={img.kordon} alt="Alya Plastik ALY-110"
           className="js-hero-product w-full h-full object-contain opacity-70"
           style={{ filter: "drop-shadow(0 40px 80px rgba(11,14,11,0.18))" }} />
       </div>

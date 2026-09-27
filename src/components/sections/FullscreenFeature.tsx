@@ -2,13 +2,13 @@ import { IMG } from "@/data/images";
 import type { Dil } from "@/lib/urun-sayfasi";
 import { M } from "@/lib/site-metin";
 
-export default function FullscreenFeature({ dil = "tr" }: { dil?: Dil }) {
+export default function FullscreenFeature({ dil = "tr", img = IMG }: { dil?: Dil; img?: typeof IMG }) {
   const f = M[dil].felsefe;
   return (
     <section className="relative grain overflow-hidden flex items-center bg-[#0b0e0b] min-h-[85svh]"
       data-bg="#0b0e0b">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={IMG.hero2} alt="Alya Plastik"
+      <img src={img.hero2} alt="Alya Plastik"
         className="absolute inset-0 w-full h-full object-cover opacity-30"
         style={{ objectPosition: "center 35%" }} />
       <div className="absolute inset-0"

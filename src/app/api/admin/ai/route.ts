@@ -9,6 +9,7 @@ import { araclariSuz } from '@/lib/ai-birim'
 import { asistanYanit, belgeOku, ekstreOner, gorselAnalizEt, haftalikOzet, urunMetniUret, type Konusma } from '@/lib/ai-admin'
 import { gorselTasarla, type GorselStil } from '@/lib/ai-gorsel'
 import { gorunum360Uret } from '@/lib/ai-360'
+import { TEMA_ALAN_ANAHTARLARI } from '@/data/images'
 import { supabaseAdmin } from '@/lib/notify'
 
 export const maxDuration = 60 // Vercel Hobby plan üst sınırı
@@ -24,6 +25,7 @@ const YETKI: Record<string, string[]> = {
   urun_gorsel_kaydet: ['yonetim'],
   urun_360_uret: ['yonetim'],
   urun_360_kaydet: ['yonetim'],
+  tema_gorsel_yukle: ['yonetim'],
   basvuru_analiz: ['dashboard'],
   asistan: [],                      // her personel; veri erişimi zaten RLS ile sınırlı
   ozet: [],                         // yalnızca yetkili olduğu modüllerin verisi kullanılır
@@ -99,7 +101,8 @@ export async function POST(req: NextRequest) {
         if (typeof body.url !== 'string') return NextResponse.json({ error: 'Görsel adresi gerekli' }, { status: 400 })
         const stil: GorselStil = body.stil === 'yasam' ? 'yasam' : 'studyo'
         // Görsel üretimi metin isteklerinden çok daha maliyetli — ayrı, daha dar bir saatlik sınır
-        if (!(await oranSiniri(`ai_gorsel:${y.user.id}`, 15, 3600, false))) return NextResponse.json({ error: 'Görsel üretimi için saatlik sınıra ulaştın, biraz sonra tekrar dene.' }, { status: 429 })
+        // (toplu tasarım akışı da bu eylemi kullanır, bu yüzden makul bir toplu iş payı bırakılmıştır)
+        if (!(await oranSiniri(`ai_gorsel:${y.user.id}`, 30, 3600, false))) return NextResponse.json({ error: 'Görsel üretimi için saatlik sınıra ulaştın, biraz sonra tekrar dene.' }, { status: 429 })
         const b64 = await gorselTasarla(body.url, stil)
         return NextResponse.json({ ok: true, b64, stil })
       }
@@ -154,6 +157,21 @@ export async function POST(req: NextRequest) {
         const { error } = await admin.from('products').update({ gorunum_360: urls, updated_at: new Date().toISOString() }).eq('id', body.urun_id)
         if (error) { console.error('[urun_360_kaydet] update', error.message); return NextResponse.json({ error: 'Ürün güncellenemedi.' }, { status: 500 }) }
         return NextResponse.json({ ok: true, urls })
+      }
+      case 'tema_gorsel_yukle': {
+        // AI üretimi 'urun_gorsel_tasarim' eylemiyle aynı — burada yalnızca onaylanan sonucu Storage'a yükleyip URL döner.
+        // settings.tema_gorselleri güncellemesi istemci tarafında (kendi RLS oturumuyla, ayarlar sayfasındaki gibi) yapılır.
+        if (typeof body.alan !== 'string' || !(TEMA_ALAN_ANAHTARLARI as string[]).includes(body.alan)) return NextResponse.json({ error: 'Geçersiz tema alanı' }, { status: 400 })
+        if (typeof body.b64 !== 'string' || body.b64.length < 100) return NextResponse.json({ error: 'Görsel verisi geçersiz' }, { status: 400 })
+        let bytes: Buffer
+        try { bytes = Buffer.from(body.b64, 'base64') } catch { return NextResponse.json({ error: 'Görsel çözümlenemedi' }, { status: 400 }) }
+        if (!bytes.length || bytes.length > 15 * 1024 * 1024) return NextResponse.json({ error: 'Görsel boyutu geçersiz' }, { status: 400 })
+        const admin = supabaseAdmin()
+        const yol = `tema/${body.alan}/${Date.now()}.png`
+        const up = await admin.storage.from('urun-gorselleri').upload(yol, bytes, { contentType: 'image/png', upsert: false })
+        if (up.error) { console.error('[tema_gorsel_yukle] upload', up.error.message); return NextResponse.json({ error: 'Görsel depoya yüklenemedi.' }, { status: 502 }) }
+        const { data: pub } = admin.storage.from('urun-gorselleri').getPublicUrl(yol)
+        return NextResponse.json({ ok: true, url: pub.publicUrl })
       }
       case 'basvuru_analiz': {
         if (typeof body.id !== 'string') return NextResponse.json({ error: 'Başvuru id gerekli' }, { status: 400 })

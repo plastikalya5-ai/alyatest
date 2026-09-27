@@ -4,7 +4,7 @@ import { IMG } from "@/data/images";
 import type { Dil } from "@/lib/urun-sayfasi";
 import { M } from "@/lib/site-metin";
 
-export default function Why({ stats, dil = "tr" }: { stats: Stats | null; dil?: Dil }) {
+export default function Why({ stats, dil = "tr", img = IMG }: { stats: Stats | null; dil?: Dil; img?: typeof IMG }) {
   const w = M[dil].neden, FEATURES = w.ozellikler, y = stats?.years ?? 55, u = stats?.countries ?? 20;
   const st = [
     { n: y,                              s: "+", ...w.stat[0] },
@@ -67,7 +67,7 @@ export default function Why({ stats, dil = "tr" }: { stats: Stats | null; dil?: 
             <div className="flex flex-col gap-3">
               <div className="anim-img-reveal relative overflow-hidden bg-[#e3ddcf] aspect-[4/3]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={IMG.ufo} alt="UFO"
+                <img src={img.ufo} alt="UFO"
                   className="absolute inset-0 w-full h-full object-contain"
                   style={{ padding: "clamp(20px,4vw,48px)" }} />
                 <div className="absolute bottom-0 left-0 right-0 flex items-end justify-between p-4 pt-12"

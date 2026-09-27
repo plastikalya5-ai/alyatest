@@ -28,3 +28,21 @@ export const IMG = {
   cop:       "https://res.cloudinary.com/dy7dekame/image/upload/v1789927642/%C3%87%C3%B6p_Kovasi_aikibm.webp",
   guvecOval: "https://res.cloudinary.com/dy7dekame/image/upload/v1789927642/G%C3%BCve%C3%A7_Oval_Ayakli_Saks_rxvojz.webp",
 };
+
+// "Tema Yönetimi" admin ekranında AI ile yeniden tasarlanabilen sabit vitrin/dekoratif görseller.
+// Yalnızca anasayfada gerçekten kullanılan anahtarlar burada listelenir (IMG'deki diğer anahtarlar kodda referans edilmiyor).
+export const TEMA_ALANLARI: { key: keyof typeof IMG; ad: string; aciklama: string }[] = [
+  { key: "fikir", ad: "Anasayfa — Hero Sol Zemin Dokusu", aciklama: "Hero bölümünün sol (metin) tarafında soluk arka plan dokusu olarak kullanılır." },
+  { key: "ufo", ad: "Anasayfa — Hero Vitrin 1 / \"Neden Biz\"", aciklama: "Hero sağ 2×2 ızgaranın ilk karesi ve \"Neden Biz\" bölümünde tekrar kullanılır." },
+  { key: "dantel", ad: "Anasayfa — Hero Vitrin 2", aciklama: "Hero sağ 2×2 ızgaranın ikinci karesi." },
+  { key: "d3", ad: "Anasayfa — Hero Vitrin 3", aciklama: "Hero sağ 2×2 ızgaranın üçüncü karesi." },
+  { key: "venusAsk", ad: "Anasayfa — Hero Vitrin 4", aciklama: "Hero sağ 2×2 ızgaranın dördüncü karesi." },
+  { key: "kordon", ad: "Anasayfa — Mobil Hero Görseli", aciklama: "Mobil görünümde hero bölümünün sağında gösterilen tekil görsel." },
+  { key: "hero2", ad: "Anasayfa — Tam Ekran Bölüm Arka Planı", aciklama: "\"Fikirden formaya\" tam ekran bölümünün arka plan fotoğrafı." },
+];
+export const TEMA_ALAN_ANAHTARLARI = TEMA_ALANLARI.map(a => a.key);
+
+/** Varsayılan IMG üzerine (varsa) admin tarafından kaydedilmiş özel tema görsellerini bindirir. */
+export function resolveImg(override?: Partial<Record<keyof typeof IMG, string>> | null): typeof IMG {
+  return override && Object.keys(override).length ? { ...IMG, ...override } : IMG;
+}

@@ -39,6 +39,10 @@ export default function AdminUrunlerPage() {
   const [gorselNot, setGorselNot] = useState<any>(null)
   const [gorselAi, setGorselAi] = useState<{ stil: GorselStil; b64: string | null; busy: boolean } | null>(null)
   const [gorsel360, setGorsel360] = useState<{ kareSayisi: 4 | 8; kareler: string[] | null; busy: boolean } | null>(null)
+  const [topluAi, setTopluAi] = useState<{
+    stil: GorselStil; urunler: any[]; clear: () => void; asama: 'ayar' | 'uretim' | 'onay'; calisiyor: boolean
+    durum: Record<string, 'bekliyor' | 'isleniyor' | 'tamam' | 'hata'>; sonuc: Record<string, string>; secili: Record<string, boolean>
+  } | null>(null)
 
   // AI: TR açıklama + 5 dil çevirisi + SEO önerisi (kayıt için Kaydet'e basmak gerekir)
   async function aiYaz() {
@@ -103,6 +107,43 @@ export default function AdminUrunlerPage() {
       load()
     } catch (e: any) { toast.show(e.message, true) }
     setBusy(false)
+  }
+
+  // AI: toplu görsel tasarım — önce hepsi için üretilir, önizleme ızgarasında istenmeyenler seçimden çıkarılır, sonra sadece seçililer kaydedilir.
+  function topluAiAc(sel: any[], clear: () => void) {
+    const urunler = sel.filter(p => p.image_url)
+    if (!urunler.length) return toast.show('Seçili ürünlerin hiçbirinde ana görsel yok', true)
+    setTopluAi({ stil: 'studyo', urunler, clear, asama: 'ayar', calisiyor: false, durum: {}, sonuc: {}, secili: {} })
+  }
+  async function topluAiUret() {
+    setTopluAi(t => t && { ...t, asama: 'uretim', calisiyor: true })
+    const t0 = topluAi; if (!t0) return
+    let limitDoldu = false
+    for (const p of t0.urunler) {
+      if (limitDoldu) break
+      setTopluAi(t => t && { ...t, durum: { ...t.durum, [p.id]: 'isleniyor' } })
+      try {
+        const r: any = await aiIstek('urun_gorsel_tasarim', { url: p.image_url, stil: t0.stil })
+        setTopluAi(t => t && { ...t, durum: { ...t.durum, [p.id]: 'tamam' }, sonuc: { ...t.sonuc, [p.id]: r.b64 }, secili: { ...t.secili, [p.id]: true } })
+      } catch (e: any) {
+        setTopluAi(t => t && { ...t, durum: { ...t.durum, [p.id]: 'hata' } })
+        if (/saatlik sınır/i.test(e.message || '')) { limitDoldu = true; toast.show('Saatlik AI görsel sınırına ulaşıldı — kalan ürünler işlenmedi, bir saat sonra tekrar deneyebilirsin.', true) }
+      }
+    }
+    setTopluAi(t => t && { ...t, asama: 'onay', calisiyor: false })
+  }
+  async function topluAiKaydet() {
+    if (!topluAi) return
+    const secilenler = topluAi.urunler.filter(p => topluAi.durum[p.id] === 'tamam' && topluAi.secili[p.id])
+    if (!secilenler.length) return toast.show('Kaydedilecek görsel seçmedin', true)
+    setTopluAi(t => t && { ...t, calisiyor: true })
+    let basarili = 0, hatali = 0
+    for (const p of secilenler) {
+      try { await aiIstek('urun_gorsel_kaydet', { urun_id: p.id, b64: topluAi.sonuc[p.id] }); basarili++ }
+      catch { hatali++ }
+    }
+    toast.show(hatali ? `${basarili} ürün güncellendi, ${hatali} tanesi kaydedilemedi` : `${basarili} ürünün görseli güncellendi`, !!hatali)
+    topluAi.clear(); setTopluAi(null); load()
   }
 
   const load = useCallback(async () => {
@@ -233,6 +274,7 @@ export default function AdminUrunlerPage() {
           searchText={p => `${p.name} ${p.code} ${p.barkod || ''} ${catAd[p.category] || ''} ${(p.tags || []).join(' ')}`} searchPlaceholder="Ürün adı, kod, barkod, etiket..."
           bulkActions={(sel, clear) => <>
             <button className="adm-btn-ghost" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => setKatModal({ sel, clear, kategori: '' })}><Tag size={12} />Kategori</button>
+            <button className="adm-btn-ghost" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => topluAiAc(sel, clear)}><ImagePlus size={12} />AI Görsel Tasarımı</button>
             <button className="adm-btn-ghost" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => topluAlan(sel, 'is_featured', true, clear)}><Star size={12} />Öne çıkar</button>
             <button className="adm-btn-ghost" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => topluAlan(sel, 'is_new', true, clear)}><Sparkles size={12} />Yeni işaretle</button>
             <button className="adm-btn-danger" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => topluSil(sel, clear)}><Trash2 size={12} />Sil</button></>}
@@ -364,6 +406,42 @@ export default function AdminUrunlerPage() {
             <div style={{ width: 260, height: 260, borderRadius: 12, background: 'var(--adm-s2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Box size={26} style={{ color: 'var(--adm-tx3)' }} /></div>
           )}
         </div>
+      </Modal>
+
+      <Modal open={!!topluAi} onClose={() => { if (!topluAi?.calisiyor) topluAi?.clear(); setTopluAi(null) }} width={720} title={`AI ile Toplu Görsel Tasarımı${topluAi ? ` — ${topluAi.urunler.length} ürün` : ''}`}
+        footer={<>
+          <button type="button" className="adm-btn-ghost" disabled={topluAi?.calisiyor} onClick={() => { topluAi?.clear(); setTopluAi(null) }}>{topluAi?.asama === 'onay' ? 'Vazgeç' : 'İptal'}</button>
+          {topluAi?.asama === 'ayar' && <button type="button" className="adm-btn" onClick={topluAiUret}><Wand2 size={13} />{topluAi.urunler.length} Ürün İçin Oluştur</button>}
+          {topluAi?.asama === 'onay' && <button type="button" className="adm-btn" disabled={topluAi.calisiyor} onClick={topluAiKaydet}>{topluAi.calisiyor ? 'Kaydediliyor…' : `Seçilenleri Kaydet (${topluAi.urunler.filter(p => topluAi.durum[p.id] === 'tamam' && topluAi.secili[p.id]).length})`}</button>}
+        </>}>
+        {topluAi?.asama === 'ayar' && <>
+          <p style={{ fontSize: 12, color: 'var(--adm-tx3)', margin: '0 0 12px', lineHeight: 1.55 }}>Seçili {topluAi.urunler.length} ürünün görseli sırayla AI ile yeniden tasarlanacak (yalnızca arka plan değişir). Üretim bitince önce önizleme ızgarasını göreceksin — hiçbir görsel bu ekranda otomatik kaydedilmez.</p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {(Object.keys(GORSEL_STIL) as GorselStil[]).map(s => (
+              <button key={s} type="button" className={topluAi.stil === s ? 'adm-chip on' : 'adm-chip'} onClick={() => setTopluAi(t => t && { ...t, stil: s })}>{GORSEL_STIL[s]}</button>
+            ))}
+          </div>
+        </>}
+        {(topluAi?.asama === 'uretim' || topluAi?.asama === 'onay') && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 10, maxHeight: 440, overflow: 'auto' }}>
+            {topluAi.urunler.map(p => {
+              const d = topluAi.durum[p.id]
+              const secili = !!topluAi.secili[p.id]
+              return (
+                <div key={p.id} onClick={() => d === 'tamam' && setTopluAi(t => t && { ...t, secili: { ...t.secili, [p.id]: !t.secili[p.id] } })}
+                  style={{ border: `2px solid ${d === 'tamam' && secili ? 'var(--adm-ac)' : 'transparent'}`, borderRadius: 10, padding: 4, cursor: d === 'tamam' ? 'pointer' : 'default', opacity: d === 'hata' ? 0.5 : 1 }}>
+                  <div style={{ width: '100%', aspectRatio: '1/1', borderRadius: 8, background: 'var(--adm-s2)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                    {d === 'tamam' ? <img src={`data:image/png;base64,${topluAi.sonuc[p.id]}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 4 }} />
+                      : d === 'isleniyor' ? <span style={{ fontSize: 11, color: 'var(--adm-tx3)' }}>Oluşturuluyor…</span>
+                      : d === 'hata' ? <span style={{ fontSize: 11, color: 'var(--adm-red)' }}>Hata</span>
+                      : <img src={p.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 4, opacity: 0.5 }} />}
+                  </div>
+                  <div style={{ fontSize: 11, marginTop: 4, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </Modal>
 
       <Modal open={!!katModal} onClose={() => setKatModal(null)} onSubmit={topluKategori} width={420} title={katModal && `${katModal.sel.length} ürünün kategorisini değiştir`}

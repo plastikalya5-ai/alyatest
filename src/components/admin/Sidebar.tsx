@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import SifreDegistir from './SifreDegistir'
 import MfaAyar from './MfaAyar'
 import { useEffect, useState } from 'react'
-import { Target, Scale, Building2, Share2, LayoutDashboard, Package, Tag, MessageSquare, Settings, BarChart2, TrendingUp, Eye, Image, LogOut, ExternalLink, FileText, Bell, Activity, Layers, DollarSign, Receipt, Users2, PieChart, Landmark, FileSignature, Warehouse, Boxes, ArrowLeftRight, Cog, Wrench, FlaskConical, Factory, Zap, ClipboardList, PackageSearch, Truck, ShieldCheck, FlameKindling, UserCog, ScanLine, Sparkles, KeyRound } from 'lucide-react'
+import { Target, Scale, Building2, Share2, LayoutDashboard, Package, Tag, MessageSquare, Settings, BarChart2, TrendingUp, Eye, Image, LogOut, ExternalLink, FileText, Bell, Activity, Layers, DollarSign, Receipt, Users2, PieChart, Landmark, FileSignature, Warehouse, Boxes, ArrowLeftRight, Cog, Wrench, FlaskConical, Factory, Zap, ClipboardList, PackageSearch, Truck, ShieldCheck, FlameKindling, UserCog, ScanLine, Sparkles, KeyRound, Palette } from 'lucide-react'
 
 const NAV = [
   { g:'Genel', mod:['dashboard'], items:[
@@ -72,6 +72,7 @@ const NAV = [
   ]},
   { g:'Site Yönetimi', mod:['yonetim'], items:[
     { href:'/admin/dashboard/icerik',       label:'İçerik',          Icon:FileText, mod:['yonetim'] },
+    { href:'/admin/dashboard/tema',         label:'Tema Yönetimi',   Icon:Palette,  mod:['yonetim'] },
     { href:'/admin/dashboard/kullanicilar', label:'Kullanıcılar',    Icon:UserCog,  mod:['yonetim'] },
     { href:'/admin/dashboard/ayarlar',      label:'Ayarlar',         Icon:Settings, mod:['yonetim'] },
     { href:'/admin/dashboard/bildirimler',  label:'Bildirimler',     Icon:Bell,     mod:['yonetim'] },

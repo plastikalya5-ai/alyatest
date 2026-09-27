@@ -103,6 +103,16 @@ export async function getExportCountries(): Promise<string[]> {
   return data?.value ?? [];
 }
 
+// "Tema Yönetimi" — admin panelde AI ile yeniden tasarlanmış sabit vitrin görsellerinin override URL'leri.
+export async function getTemaGorselleri(): Promise<Record<string, string> | null> {
+  const { data } = await supabase
+    .from("settings")
+    .select("value")
+    .eq("key", "tema_gorselleri")
+    .single();
+  return data?.value ?? null;
+}
+
 export async function getCategories(): Promise<Category[]> {
   const { data } = await supabase
     .from("categories")
