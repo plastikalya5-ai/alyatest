@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Footer from "@/components/layout/Footer";
 import Donus360 from "@/components/urun/Donus360";
+import Model3D from "@/components/urun/Model3D";
 import TeklifModal from "@/components/urun/TeklifModal";
 import { bolumYolu, dilYolu, kategoriGoster } from "@/lib/site-metin";
 import type { Settings } from "@/lib/supabase";
@@ -44,7 +45,9 @@ export default function UrunSayfasi({ urun, dil, settings, benzer, kategoriler =
           <div className="grid gap-10 lg:grid-cols-2 lg:gap-16">
             <div>
               <div className="bg-[#e3ddcf] flex items-center justify-center" style={{ aspectRatio: "1 / 1" }}>
-                {kareler360.length > 1 ? (
+                {urun.model_3d_url ? (
+                  <Model3D url={urun.model_3d_url} alt={`${urun.name} — ${urun.code}`} className="w-full h-full" />
+                ) : kareler360.length > 1 ? (
                   <Donus360 kareler={kareler360} alt={`${urun.name} — ${urun.code}`} className="w-full h-full flex items-center justify-center" style={{ padding: "clamp(16px,4vw,48px)" }} />
                 ) : (
                   resimler[0] &&

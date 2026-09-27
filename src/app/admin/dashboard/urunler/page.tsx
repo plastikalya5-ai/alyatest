@@ -11,11 +11,13 @@ import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
 import { Plus, Pencil, Trash2, Copy, Package, Star, Sparkles, Layers, FlaskConical, X, ImageOff, Boxes, Tag, Wand2, ScanEye, ImagePlus, RotateCcw, Box } from 'lucide-react'
 import { aiIstek } from '@/lib/ai-client'
 import Donus360 from '@/components/urun/Donus360'
+import Model3D from '@/components/urun/Model3D'
 
 const GORSEL_STIL = { studyo: 'Stüdyo', yasam: 'Yaşam alanı' } as const
 type GorselStil = keyof typeof GORSEL_STIL
 
-const bos = { code: '', name: '', slug: '', category: '', subcategory: '', description: '', image_url: '', images: [] as string[], tags: [] as string[], specs: [] as { k: string; v: string }[], barkod: '', is_featured: false, is_new: false, sort_order: 0, description_i18n: {} as Record<string, any> }
+const bos = { code: '', name: '', slug: '', category: '', subcategory: '', description: '', image_url: '', images: [] as string[], model_3d_url: '' as string | null, tags: [] as string[], specs: [] as { k: string; v: string }[], barkod: '', is_featured: false, is_new: false, sort_order: 0, description_i18n: {} as Record<string, any> }
+const MODEL_3D_UZANTILAR = ['glb', 'gltf', 'obj', 'stl', 'fbx']
 const slugla = (s: string) => s.toLocaleLowerCase('tr').replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ş/g, 's').replace(/ü/g, 'u').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 
 export default function AdminUrunlerPage() {
@@ -39,6 +41,7 @@ export default function AdminUrunlerPage() {
   const [gorselNot, setGorselNot] = useState<any>(null)
   const [gorselAi, setGorselAi] = useState<{ stil: GorselStil; b64: string | null; busy: boolean } | null>(null)
   const [gorsel360, setGorsel360] = useState<{ kareSayisi: 4 | 8 | 16; kareler: string[] | null; busy: boolean } | null>(null)
+  const [model3DBusy, setModel3DBusy] = useState(false)
   const [topluAi, setTopluAi] = useState<{
     stil: GorselStil; urunler: any[]; clear: () => void; asama: 'ayar' | 'uretim' | 'onay'; calisiyor: boolean
     durum: Record<string, 'bekliyor' | 'isleniyor' | 'tamam' | 'hata'>; sonuc: Record<string, string>; secili: Record<string, boolean>
@@ -110,6 +113,41 @@ export default function AdminUrunlerPage() {
     setBusy(false)
   }
 
+  // Gerçek 3D model dosyası (glb/gltf/obj/stl/fbx) yükleme — AI ile üretilmez, kullanıcı kendi
+  // dosyasını yükler. Dosya büyük olabileceği için doğrudan tarayıcıdan Supabase Storage'a
+  // (imzalı adresle) yüklenir; sunucu yalnızca izin verir ve sonucu ürüne kaydeder.
+  async function model3DYukle(dosya: File) {
+    if (!editing?.id) return
+    const uzanti = dosya.name.split('.').pop()?.toLowerCase() || ''
+    if (!MODEL_3D_UZANTILAR.includes(uzanti)) return toast.show(`Desteklenmeyen dosya türü (.${uzanti}). İzin verilenler: ${MODEL_3D_UZANTILAR.join(', ')}`, true)
+    if (dosya.size > 50 * 1024 * 1024) return toast.show('Dosya çok büyük (50MB üstü)', true)
+    setModel3DBusy(true)
+    try {
+      const imza = await fetch('/api/admin/urun-3d', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ eylem: 'imza', urun_id: editing.id, dosyaAdi: dosya.name, boyut: dosya.size }) }).then(r => r.json())
+      if (imza.error) throw new Error(imza.error)
+      const up = await web.storage.from('urun-3d-modelleri').uploadToSignedUrl(imza.path, imza.token, dosya)
+      if (up.error) throw new Error(up.error.message)
+      const kaydet = await fetch('/api/admin/urun-3d', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ eylem: 'kaydet', urun_id: editing.id, path: imza.path }) }).then(r => r.json())
+      if (kaydet.error) throw new Error(kaydet.error)
+      setForm((f: typeof bos) => ({ ...f, model_3d_url: kaydet.url }))
+      toast.show('3D model yüklendi — ürün sayfasında görünecek')
+      load()
+    } catch (e) { toast.show(e instanceof Error ? e.message : String(e), true) }
+    setModel3DBusy(false)
+  }
+  async function model3DKaldir() {
+    if (!editing?.id) return
+    setModel3DBusy(true)
+    try {
+      const r = await fetch('/api/admin/urun-3d', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ urun_id: editing.id }) }).then(x => x.json())
+      if (r.error) throw new Error(r.error)
+      setForm((f: typeof bos) => ({ ...f, model_3d_url: null }))
+      toast.show('3D model kaldırıldı')
+      load()
+    } catch (e) { toast.show(e instanceof Error ? e.message : String(e), true) }
+    setModel3DBusy(false)
+  }
+
   // AI: toplu görsel tasarım — önce hepsi için üretilir, önizleme ızgarasında istenmeyenler seçimden çıkarılır, sonra sadece seçililer kaydedilir.
   function topluAiAc(sel: any[], clear: () => void) {
     const urunler = sel.filter(p => p.image_url)
@@ -176,7 +214,7 @@ export default function AdminUrunlerPage() {
   const openNew = () => { setEditing(null); setSlugElle(false); setForm({ ...bos, sort_order: products.length + 1, category: cats[0]?.slug || '' }); setModal(true) }
   const openEdit = (p: any) => {
     setEditing(p); setSlugElle(true)
-    setForm({ code: p.code || '', name: p.name || '', slug: p.slug || '', category: p.category || '', subcategory: p.subcategory || '', description: p.description || '', image_url: p.image_url || '', images: p.images || [], tags: p.tags || [], specs: Object.entries(p.specs || {}).map(([k, v]) => ({ k, v: String(v) })), barkod: p.barkod || '', is_featured: !!p.is_featured, is_new: !!p.is_new, sort_order: p.sort_order || 0, description_i18n: p.description_i18n || {} })
+    setForm({ code: p.code || '', name: p.name || '', slug: p.slug || '', category: p.category || '', subcategory: p.subcategory || '', description: p.description || '', image_url: p.image_url || '', images: p.images || [], model_3d_url: p.model_3d_url || null, tags: p.tags || [], specs: Object.entries(p.specs || {}).map(([k, v]) => ({ k, v: String(v) })), barkod: p.barkod || '', is_featured: !!p.is_featured, is_new: !!p.is_new, sort_order: p.sort_order || 0, description_i18n: p.description_i18n || {} })
     setModal(true)
   }
   async function save(e: React.FormEvent) {
@@ -331,6 +369,25 @@ export default function AdminUrunlerPage() {
           {editing && <button type="button" className="adm-btn-ghost" style={{ fontSize: 12 }} disabled={!form.image_url} onClick={() => setGorselAi({ stil: 'studyo', b64: null, busy: false })}><ImagePlus size={13} />AI ile görseli yeniden tasarla</button>}
           {editing && <button type="button" className="adm-btn-ghost" style={{ fontSize: 12 }} disabled={!form.image_url} onClick={() => setGorsel360({ kareSayisi: 8, kareler: null, busy: false })}><Box size={13} />AI ile 360° görünüm oluştur</button>}
         </div>
+        {editing && (
+          <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginTop: 10, padding: '10px 12px', background: 'var(--adm-s2)', borderRadius: 10 }}>
+            {form.model_3d_url ? (
+              <Model3D url={form.model_3d_url} alt="3D model önizleme" style={{ width: 64, height: 64, borderRadius: 8, background: 'var(--adm-s1)', flexShrink: 0 }} />
+            ) : <div style={{ width: 64, height: 64, borderRadius: 8, background: 'var(--adm-s1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Box size={20} style={{ color: 'var(--adm-tx3)' }} /></div>}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: 12.5, fontWeight: 600, margin: 0 }}>Gerçek 3D Model</p>
+              <p style={{ fontSize: 11, color: 'var(--adm-tx3)', margin: '2px 0 0' }}>
+                {form.model_3d_url ? 'Yüklendi — ürün sayfasında AI 360° galerisi yerine bu gösteriliyor.' : `Kendi ürettiğin .glb/.gltf/.obj/.stl/.fbx dosyasını yükle (en fazla 50MB).`}
+              </p>
+            </div>
+            <label className="adm-btn-ghost" style={{ fontSize: 12, cursor: model3DBusy ? 'default' : 'pointer', opacity: model3DBusy ? 0.6 : 1 }}>
+              <input type="file" accept={MODEL_3D_UZANTILAR.map(u => `.${u}`).join(',')} disabled={model3DBusy} style={{ display: 'none' }}
+                onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) model3DYukle(f) }} />
+              {model3DBusy ? 'Yükleniyor…' : form.model_3d_url ? 'Değiştir' : 'Yükle'}
+            </label>
+            {form.model_3d_url && <button type="button" className="adm-btn-ghost" style={{ fontSize: 12 }} disabled={model3DBusy} onClick={model3DKaldir}><X size={13} />Kaldır</button>}
+          </div>
+        )}
         {gorselNot && <p style={{ fontSize: 12, color: 'var(--adm-tx3)', margin: '8px 0 0', lineHeight: 1.55 }}><b>Görsel:</b> {gorselNot.tur} — {gorselNot.gorunum} <br /><b>Site uygunluğu:</b> {gorselNot.site_uygunlugu}</p>}
         {Object.keys(form.description_i18n || {}).some(k => k !== 'seo') && <>
           <Divider label="Çeviriler (AI — yayınlamadan önce kontrol et)" />

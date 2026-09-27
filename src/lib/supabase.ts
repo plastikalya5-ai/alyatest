@@ -17,6 +17,7 @@ export type Product = {
   image_url: string;
   images: string[];
   gorunum_360: string[];
+  model_3d_url: string | null;
   specs: Record<string, string>;
   tags: string[];
   is_featured: boolean;

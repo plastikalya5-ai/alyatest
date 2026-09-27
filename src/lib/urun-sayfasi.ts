@@ -4,7 +4,7 @@ import { DILLER, HREFLANG, SITE_URL, urunYolu, urunUrl, mevcutDiller, type Dil }
 
 
 export type UrunKaydi = Product & { description_i18n: Partial<Record<Dil, string>> | null };
-const SUTUNLAR = "id,code,name,slug,category,subcategory,description,image_url,images,gorunum_360,specs,tags,is_featured,is_new,sort_order,created_at,updated_at,description_i18n";
+const SUTUNLAR = "id,code,name,slug,category,subcategory,description,image_url,images,gorunum_360,model_3d_url,specs,tags,is_featured,is_new,sort_order,created_at,updated_at,description_i18n";
 
 /** Slug yalnızca küçük harf, rakam ve tire içerir; başka bir şey veritabanı sorgusuna hiç girmez. */
 export const slugGecerli = (s: string) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(s) && s.length <= 120;
