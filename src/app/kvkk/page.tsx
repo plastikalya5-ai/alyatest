@@ -5,11 +5,15 @@ import KurumsalSayfa from "@/components/kurumsal/KurumsalSayfa";
 
 export const revalidate = 3600;
 
+const BASLIK = "KVKK Aydınlatma Metni | Alya Plastik";
+const ACIKLAMA = "Alya Plastik 6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında aydınlatma metni.";
+
 export const metadata: Metadata = {
-  title: "KVKK Aydınlatma Metni | Alya Plastik",
-  description: "Alya Plastik 6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında aydınlatma metni.",
-  alternates: { canonical: `${SITE_URL}/kvkk` },
-  robots: { index: false }, // Hukuki incelemeden geçene kadar arama motorlarına kapalı
+  title: BASLIK,
+  description: ACIKLAMA,
+  alternates: { canonical: `${SITE_URL}/kvkk`, languages: { "tr-TR": `${SITE_URL}/kvkk`, "x-default": `${SITE_URL}/kvkk` } },
+  openGraph: { type: "website", locale: "tr_TR", url: `${SITE_URL}/kvkk`, siteName: "Alya Plastik", title: BASLIK, description: ACIKLAMA, images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "Alya Plastik" }] },
+  twitter: { card: "summary_large_image", title: BASLIK, description: ACIKLAMA, images: ["/og-image.jpg"] },
 };
 
 export default async function KvkkPage() {

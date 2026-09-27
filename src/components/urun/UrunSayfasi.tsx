@@ -1,8 +1,7 @@
 import Link from "next/link";
 import Footer from "@/components/layout/Footer";
 import HtmlLang from "@/components/layout/HtmlLang";
-import Donus360 from "@/components/urun/Donus360";
-import Model3D from "@/components/urun/Model3D";
+import UrunGaleri from "@/components/urun/UrunGaleri";
 import TeklifModal from "@/components/urun/TeklifModal";
 import { bolumYolu, dilYolu, kategoriGoster } from "@/lib/site-metin";
 import type { Settings } from "@/lib/supabase";
@@ -45,27 +44,7 @@ export default function UrunSayfasi({ urun, dil, settings, benzer, kategoriler =
           </nav>
 
           <div className="grid gap-10 lg:grid-cols-2 lg:gap-16">
-            <div>
-              <div className="bg-[#e3ddcf] flex items-center justify-center" style={{ aspectRatio: "1 / 1" }}>
-                {urun.model_3d_url ? (
-                  <Model3D url={urun.model_3d_url} alt={`${urun.name} — ${urun.code}`} className="w-full h-full" />
-                ) : kareler360.length > 1 ? (
-                  <Donus360 kareler={kareler360} alt={`${urun.name} — ${urun.code}`} className="w-full h-full flex items-center justify-center" style={{ padding: "clamp(16px,4vw,48px)" }} />
-                ) : (
-                  resimler[0] &&
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={resimler[0]} alt={`${urun.name} — ${urun.code}`} className="w-full h-full object-contain" style={{ padding: "clamp(16px,4vw,48px)" }} fetchPriority="high" />
-                )}
-              </div>
-              {resimler.length > 1 && (
-                <ul className="grid grid-cols-4 gap-2 mt-2">
-                  {resimler.slice(1, 9).map((r, i) => (
-                    <li key={r} className="bg-[#e3ddcf] aspect-square">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={r} alt={`${urun.name} ${i + 2}`} loading="lazy" className="w-full h-full object-contain p-2" />
-                    </li>))}
-                </ul>)}
-            </div>
+            <UrunGaleri model3dUrl={urun.model_3d_url} kareler360={kareler360} resimler={resimler} alt={`${urun.name} — ${urun.code}`} />
 
             <div>
               <p className="eyebrow text-[#e55f28] mb-3">{kat}{altKat ? ` · ${altKat}` : ""}{urun.is_new && <span className="ms-2 text-white bg-[#e55f28] px-1.5">{T.yeni}</span>}</p>

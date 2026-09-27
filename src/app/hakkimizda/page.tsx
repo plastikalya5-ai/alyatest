@@ -6,11 +6,15 @@ import KurumsalSayfa from "@/components/kurumsal/KurumsalSayfa";
 
 export const revalidate = 3600;
 
+const BASLIK = "Hakkımızda | Alya Plastik";
+const ACIKLAMA = "1968'den bu yana İstanbul'da plastik saksı, sepet, sandık ve ev ürünleri üreten Alya Plastik hakkında.";
+
 export const metadata: Metadata = {
-  title: "Hakkımızda | Alya Plastik",
-  description: "1968'den bu yana İstanbul'da plastik saksı, sepet, sandık ve ev ürünleri üreten Alya Plastik hakkında.",
-  alternates: { canonical: `${SITE_URL}/hakkimizda` },
-  robots: { index: false }, // İçerik son haliyle onaylanana kadar arama motorlarına kapalı
+  title: BASLIK,
+  description: ACIKLAMA,
+  alternates: { canonical: `${SITE_URL}/hakkimizda`, languages: { "tr-TR": `${SITE_URL}/hakkimizda`, "x-default": `${SITE_URL}/hakkimizda` } },
+  openGraph: { type: "website", locale: "tr_TR", url: `${SITE_URL}/hakkimizda`, siteName: "Alya Plastik", title: BASLIK, description: ACIKLAMA, images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "Alya Plastik" }] },
+  twitter: { card: "summary_large_image", title: BASLIK, description: ACIKLAMA, images: ["/og-image.jpg"] },
 };
 
 export default async function HakkimizdaPage() {
