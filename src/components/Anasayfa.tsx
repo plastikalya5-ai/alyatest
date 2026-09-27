@@ -46,7 +46,7 @@ export default async function Anasayfa({ dil }: { dil: Dil }) {
   return (
     <>
       <HtmlLang dil={dil} />
-      <SchemaOrg settings={settings} stats={stats} />
+      <SchemaOrg settings={settings} stats={stats} dil={dil} />
       <Animations />
       <ProgressDots />
       <Header settings={settings} dil={dil} />

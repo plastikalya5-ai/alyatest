@@ -2,16 +2,23 @@
 // seo-schema skill kuralı: server-rendered HTML içinde, JS ile inject ETMEYİN
 
 import { guvenliUrl, type Settings, type Stats } from "@/lib/supabase";
+import { HREFLANG, type Dil } from "@/lib/diller";
+import { M, dilYolu, bolumYolu } from "@/lib/site-metin";
+import { UI } from "@/lib/urun-sayfasi";
 
 const SITE_URL = "https://alyatest-alyis.vercel.app";
 
 export default function SchemaOrg({
   settings,
   stats,
+  dil,
 }: {
   settings: Settings | null;
   stats: Stats | null;
+  dil: Dil;
 }) {
+  const anaSayfaUrl = `${SITE_URL}${dilYolu(dil)}`;
+  const m = M[dil], t = UI[dil];
   const phone   = settings?.phone   ?? "+90 212 671 85 65";
   const email   = settings?.email   ?? "info@alyaplastik.com";
   const address = settings?.address ?? "İkitelli OSB 4B Blok No:26-28 Kat:2, Başakşehir, İstanbul";
@@ -95,17 +102,17 @@ export default function SchemaOrg({
   const websiteSchema = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    "@id": `${SITE_URL}/#website`,
-    url: SITE_URL,
+    "@id": `${anaSayfaUrl}#website`,
+    url: anaSayfaUrl,
     name: "Alya Plastik",
-    description: "Plastik Saksı, Sepet ve Depolama Ürünleri Üreticisi",
+    description: m.meta.aciklama,
     publisher: { "@id": `${SITE_URL}/#organization` },
-    inLanguage: "tr-TR",
+    inLanguage: HREFLANG[dil],
     potentialAction: {
       "@type": "SearchAction",
       target: {
         "@type": "EntryPoint",
-        urlTemplate: `${SITE_URL}/#collection?q={search_term_string}`,
+        urlTemplate: `${SITE_URL}${bolumYolu(dil, "collection")}?q={search_term_string}`,
       },
       "query-input": "required name=search_term_string",
     },
@@ -139,10 +146,10 @@ export default function SchemaOrg({
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Ana Sayfa", item: SITE_URL },
-      { "@type": "ListItem", position: 2, name: "Ürünler",   item: `${SITE_URL}/#products` },
-      { "@type": "ListItem", position: 3, name: "Koleksiyon",item: `${SITE_URL}/#collection` },
-      { "@type": "ListItem", position: 4, name: "İletişim",  item: `${SITE_URL}/#contact` },
+      { "@type": "ListItem", position: 1, name: t.anasayfa,     item: anaSayfaUrl },
+      { "@type": "ListItem", position: 2, name: m.nav.urunler,   item: `${SITE_URL}${bolumYolu(dil, "products")}` },
+      { "@type": "ListItem", position: 3, name: m.nav.koleksiyon, item: `${SITE_URL}${bolumYolu(dil, "collection")}` },
+      { "@type": "ListItem", position: 4, name: m.nav.iletisim,  item: `${SITE_URL}${bolumYolu(dil, "contact")}` },
     ],
   };
 

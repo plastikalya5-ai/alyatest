@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Footer from "@/components/layout/Footer";
+import HtmlLang from "@/components/layout/HtmlLang";
 import Donus360 from "@/components/urun/Donus360";
 import Model3D from "@/components/urun/Model3D";
 import TeklifModal from "@/components/urun/TeklifModal";
@@ -23,6 +24,7 @@ export default function UrunSayfasi({ urun, dil, settings, benzer, kategoriler =
   return (
     <div lang={HREFLANG[dil]} dir={rtl ? "rtl" : "ltr"}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdMetni(urunJsonLd(urun, dil, kat)) }} />
+      <HtmlLang dil={dil} />
       <header className="fixed inset-x-0 top-0 z-50 flex items-center justify-between h-[68px] bg-[#0b0e0b] border-b border-white/10" style={{ paddingInline: "clamp(20px,5vw,80px)" }}>
         <Link href={dilYolu(dil)} className="flex items-baseline shrink-0" dir="ltr" aria-label="Alya Plastik">
           <span className="heading text-white" style={{ fontSize: "clamp(17px,2.5vw,22px)" }}>ALYA</span>

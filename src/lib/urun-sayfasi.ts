@@ -72,8 +72,8 @@ export function urunJsonLd(u: UrunKaydi, d: Dil, kategori?: string) {
       { "@type": "Product", "@id": `${urunUrl(d, u.slug)}#product`, name: u.name, sku: u.code, category: kategori || u.category, description: kisalt(aciklama(u, d), 500), image: resimler, url: urunUrl(d, u.slug), inLanguage: HREFLANG[d],
         brand: { "@type": "Brand", name: "Alya Plastik" }, manufacturer: { "@type": "Organization", name: "Alya Plastik", url: SITE_URL }, ...(ozellik.length ? { additionalProperty: ozellik } : {}) },
       { "@type": "BreadcrumbList", itemListElement: [
-        { "@type": "ListItem", position: 1, name: UI[d].anasayfa, item: SITE_URL },
-        { "@type": "ListItem", position: 2, name: UI[d].urunler, item: `${SITE_URL}/#collection` },
+        { "@type": "ListItem", position: 1, name: UI[d].anasayfa, item: d === "tr" ? SITE_URL : `${SITE_URL}/${d}` },
+        { "@type": "ListItem", position: 2, name: UI[d].urunler, item: `${SITE_URL}${d === "tr" ? "" : `/${d}`}/#collection` },
         { "@type": "ListItem", position: 3, name: u.name, item: urunUrl(d, u.slug) },
       ] },
     ],
