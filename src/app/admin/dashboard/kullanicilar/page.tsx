@@ -11,6 +11,7 @@ const MODULLER: { k: string; l: string; grup: string }[] = [
   { k: 'dashboard', l: 'Dashboard, Analitik, Başvurular, Ziyaretçiler', grup: 'Genel' },
   { k: 'muhasebe', l: 'Muhasebe (tam) — fatura, kasa, cari, raporlar', grup: 'Muhasebe' },
   { k: 'muhasebe_cari', l: 'Yalnızca Cari Hesaplar', grup: 'Muhasebe' },
+  { k: 'bordro', l: 'Bordro — maaş bilgileri, bordro hesaplama ve onay', grup: 'Muhasebe' },
   { k: 'stok', l: 'Stok / Depo / Hammadde / Barkod Terminali', grup: 'Operasyon' },
   { k: 'uretim', l: 'Üretim (makine, kalıp, reçete, emirler, canlı üretim)', grup: 'Operasyon' },
   { k: 'personel', l: 'Personel giriş-çıkış, puantaj, izin', grup: 'Operasyon' },
