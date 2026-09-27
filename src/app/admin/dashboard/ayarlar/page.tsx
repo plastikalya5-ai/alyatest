@@ -6,6 +6,20 @@ import { Save, Phone, Mail, MapPin, Clock, Globe, BarChart2, ExternalLink } from
 
 const sb = createClient()
 
+// Modül seviyesinde tanımlı: render içinde tanımlanırsa her state değişikliğinde
+// yeni bir bileşen kimliği oluşur ve React inputu unmount/remount eder (yazarken focus kaybı).
+function F({label,k,type='text',obj,setObj,icon:Icon,placeholder}:any) {
+  return (
+    <div>
+      <label className="adm-label">{label}</label>
+      <div style={{position:'relative'}}>
+        {Icon && <Icon size={13} style={{position:'absolute',left:11,top:'50%',transform:'translateY(-50%)',color:'var(--adm-tx3)',pointerEvents:'none'}}/>}
+        <input type={type} className="adm-inp" value={obj[k]||''} onChange={e=>setObj((o:any)=>({...o,[k]:type==='number'?+e.target.value:e.target.value}))} placeholder={placeholder} style={Icon?{paddingLeft:32}:{}}/>
+      </div>
+    </div>
+  )
+}
+
 export default function AdminAyarlarPage() {
   const [site, setSite]   = useState<any>({})
   const [stats, setStats] = useState<any>({})
@@ -35,16 +49,6 @@ export default function AdminAyarlarPage() {
     ])
     setSaving(false); setToast('Ayarlar kaydedildi'); setTimeout(()=>setToast(''),3000)
   }
-
-  const F = ({label,k,type='text',obj,setObj,icon:Icon,placeholder}:any) => (
-    <div>
-      <label className="adm-label">{label}</label>
-      <div style={{position:'relative'}}>
-        {Icon && <Icon size={13} style={{position:'absolute',left:11,top:'50%',transform:'translateY(-50%)',color:'var(--adm-tx3)',pointerEvents:'none'}}/>}
-        <input type={type} className="adm-inp" value={obj[k]||''} onChange={e=>setObj((o:any)=>({...o,[k]:type==='number'?+e.target.value:e.target.value}))} placeholder={placeholder} style={Icon?{paddingLeft:32}:{}}/>
-      </div>
-    </div>
-  )
 
   const TABS = [
     {id:'iletisim', label:'İletişim'},

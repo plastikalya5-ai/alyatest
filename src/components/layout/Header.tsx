@@ -5,6 +5,18 @@ import type { Settings } from "@/lib/supabase";
 import { DILLER, DIL_AD, HREFLANG, type Dil } from "@/lib/diller";
 import { M, dilYolu } from "@/lib/site-metin";
 
+// Modül seviyesinde tanımlı: render içinde tanımlanırsa Header her state değişikliğinde
+// (scroll, menü aç/kapa) bu bileşeni yeniden yaratır ve React onu gereksiz yere unmount/remount eder.
+function DilSecici({ cls, dil, ariaLabel }: { cls: string; dil: Dil; ariaLabel: string }) {
+  return (
+    <div className={cls} aria-label={ariaLabel}>
+      {DILLER.map(d => d === dil
+        ? <span key={d} className="text-white font-semibold" aria-current="true">{DIL_AD[d]}</span>
+        : <Link key={d} href={dilYolu(d)} hrefLang={HREFLANG[d]} lang={HREFLANG[d]} className="text-[#6b7366] hover:text-white transition-colors">{DIL_AD[d]}</Link>)}
+    </div>
+  );
+}
+
 export default function Header({ settings, dil = "tr" }: { settings: Settings | null; dil?: Dil }) {
   const m = M[dil];
   const NAV = [
@@ -13,13 +25,6 @@ export default function Header({ settings, dil = "tr" }: { settings: Settings | 
     { href: "#why",        label: m.nav.neden },
     { href: "#contact",    label: m.nav.iletisim },
   ];
-  const DilSecici = ({ cls }: { cls: string }) => (
-    <div className={cls} aria-label={m.dil}>
-      {DILLER.map(d => d === dil
-        ? <span key={d} className="text-white font-semibold" aria-current="true">{DIL_AD[d]}</span>
-        : <Link key={d} href={dilYolu(d)} hrefLang={HREFLANG[d]} lang={HREFLANG[d]} className="text-[#6b7366] hover:text-white transition-colors">{DIL_AD[d]}</Link>)}
-    </div>
-  );
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const wa = settings?.whatsapp ? `https://wa.me/${settings.whatsapp.replace(/\D/g,"")}` : "https://wa.me/905357616524";
@@ -54,7 +59,7 @@ export default function Header({ settings, dil = "tr" }: { settings: Settings | 
           ))}
         </nav>
 
-        <DilSecici cls="hidden md:flex items-center gap-3 ms-auto me-5 text-[11px]" />
+        <DilSecici cls="hidden md:flex items-center gap-3 ms-auto me-5 text-[11px]" dil={dil} ariaLabel={m.dil} />
         <a href={wa} target="_blank" rel="noopener noreferrer nofollow"
           className="hidden md:inline-flex items-center gap-2 bg-[#e55f28] hover:bg-[#c94f1e] text-white text-[10px] font-semibold tracking-[0.14em] uppercase px-5 py-2.5 transition-colors shrink-0">
           {m.nav.teklif}
@@ -83,7 +88,7 @@ export default function Header({ settings, dil = "tr" }: { settings: Settings | 
           ))}
         </nav>
         <div className="flex flex-col gap-3">
-          <DilSecici cls="flex items-center justify-center gap-5 text-[13px] pb-2" />
+          <DilSecici cls="flex items-center justify-center gap-5 text-[13px] pb-2" dil={dil} ariaLabel={m.dil} />
           <a href={wa} target="_blank" rel="noopener noreferrer nofollow"
             className="flex items-center justify-center gap-2 bg-[#e55f28] text-white text-[10px] font-semibold tracking-[0.14em] uppercase py-4">
             {m.nav.waTeklif}

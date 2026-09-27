@@ -8,6 +8,20 @@ import { Mail, Phone, Save, Info, AlertTriangle, Boxes, Wrench, FileSignature, W
 
 const sb = createClient()
 
+// Modül seviyesinde tanımlı: render içinde tanımlanırsa sayfa her state değişiminde
+// (toast, uyarılar, ayarlar...) bu bileşenleri yeniden yaratır ve React gereksiz yere unmount/remount eder.
+function Durum({d}:{d?:{ok:boolean;missing:string[]}}) {
+  return !d ? <span>…</span> : d.ok ? <b style={{color:'var(--adm-green)'}}>hazır ✓</b> : <b style={{color:'var(--adm-red)'}}>Vercel&apos;de eksik: {d.missing.join(', ')}</b>
+}
+function Kod({t, onKopyala}:{t:string; onKopyala:(t:string)=>void}) {
+  return (
+    <span style={{display:'inline-flex',alignItems:'center',gap:6,background:'var(--adm-s2)',border:'1px solid var(--adm-bdr)',borderRadius:6,padding:'3px 8px',fontFamily:'monospace',fontSize:12,wordBreak:'break-all'}}>
+      {t}
+      <button type="button" onClick={()=>onKopyala(t)} aria-label="Kopyala" style={{background:'none',border:0,cursor:'pointer',color:'var(--adm-tx3)',padding:0}}><Copy size={12}/></button>
+    </span>
+  )
+}
+
 const EVENTS = [
   { event:'new_contact', label:'Yeni Başvuru', desc:'Birisi iletişim formunu doldurduğunda bildirim al' },
   { event:'new_visit_milestone', label:'Ziyaret Kilometre Taşı', desc:'Site 100, 500, 1000 ziyarete ulaştığında bildirim al' },
@@ -96,8 +110,6 @@ export default function AdminBildirimlerPage() {
 
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const kopyala = (t:string) => { navigator.clipboard?.writeText(t).then(()=>{ setToast('Kopyalandı'); setTimeout(()=>setToast(''),2500) }).catch(()=>{}) }
-  const Durum = ({d}:{d?:{ok:boolean;missing:string[]}}) => !d ? <span>…</span> : d.ok ? <b style={{color:'var(--adm-green)'}}>hazır ✓</b> : <b style={{color:'var(--adm-red)'}}>Vercel'de eksik: {d.missing.join(', ')}</b>
-  const Kod = ({t}:{t:string}) => <span style={{display:'inline-flex',alignItems:'center',gap:6,background:'var(--adm-s2)',border:'1px solid var(--adm-bdr)',borderRadius:6,padding:'3px 8px',fontFamily:'monospace',fontSize:12,wordBreak:'break-all'}}>{t}<button type="button" onClick={()=>kopyala(t)} aria-label="Kopyala" style={{background:'none',border:0,cursor:'pointer',color:'var(--adm-tx3)',padding:0}}><Copy size={12}/></button></span>
 
   const ICONS: Record<string,any> = { stok: Boxes, bakim: Wrench, cek: FileSignature }
 
@@ -143,23 +155,23 @@ export default function AdminBildirimlerPage() {
             <p style={{marginBottom:12}}>Güvenlik gereği gizli anahtarlar ve giden adresler panelde değil, <b>Vercel → Settings → Environment Variables</b> içinde tutulur (değiştirince yeniden deploy gerekir). Aşağıda n8n tarafına girmeniz gereken adresler ve her bağlantının durumu var.</p>
 
             <p style={{color:'var(--adm-tx)',fontWeight:700,marginTop:10}}>1) n8n → Site (n8n paylaşımı çeker / sonucu bildirir) — Sosyal medya</p>
-            <div>Adres (n8n HTTP Request düğmesine): <Kod t={`${origin}/api/webhooks/sosyal`}/></div>
-            <div>Yetkilendirme: <b>Header Auth</b> → <Kod t="Authorization: Bearer <N8N_SOSYAL_API_TOKEN değeri>"/></div>
+            <div>Adres (n8n HTTP Request düğmesine): <Kod t={`${origin}/api/webhooks/sosyal`} onKopyala={kopyala}/></div>
+            <div>Yetkilendirme: <b>Header Auth</b> → <Kod t="Authorization: Bearer <N8N_SOSYAL_API_TOKEN değeri>" onKopyala={kopyala}/></div>
             <div>GET: tarihi gelmiş "planlandı" gönderileri verir · POST: paylaşım sonucunu yazar</div>
             <div>Durum: <Durum d={durum?.sosyalGelen}/></div>
 
             <p style={{color:'var(--adm-tx)',fontWeight:700,marginTop:14}}>2) Site → n8n (Takvim'deki "n8n" düğmesi gönderiyi iter) — Sosyal medya</p>
-            <div>n8n'de bir <b>Webhook</b> düğmesi oluşturun, "Production URL"i Vercel'e <Kod t="N8N_SOSYAL_WEBHOOK_URL"/> olarak, kendi belirlediğiniz gizli değeri <Kod t="N8N_SOSYAL_WEBHOOK_SECRET"/> olarak girin (n8n bunu <code>x-alya-secret</code> başlığında doğrular).</div>
+            <div>n8n'de bir <b>Webhook</b> düğmesi oluşturun, "Production URL"i Vercel'e <Kod t="N8N_SOSYAL_WEBHOOK_URL" onKopyala={kopyala}/> olarak, kendi belirlediğiniz gizli değeri <Kod t="N8N_SOSYAL_WEBHOOK_SECRET" onKopyala={kopyala}/> olarak girin (n8n bunu <code>x-alya-secret</code> başlığında doğrular).</div>
             <div>Durum: <Durum d={durum?.sosyalGiden}/></div>
 
             <p style={{color:'var(--adm-tx)',fontWeight:700,marginTop:14}}>3) n8n → Site (potansiyel müşteri verisi → Potansiyel Müşteriler tablosu)</p>
-            <div>Adres (HTTP Request, POST, JSON): <Kod t={`${origin}/api/webhooks/potansiyel`}/></div>
-            <div>Yetkilendirme: <Kod t="Authorization: Bearer <N8N_LEAD_API_TOKEN değeri>"/> (tanımlı değilse N8N_SOSYAL_API_TOKEN kullanılır)</div>
-            <div>Gövde: <Kod t="title, phone, emails, website, address, categoryName, url"/> alanlarını olduğu gibi gönderin; tek kayıt, dizi ya da {'{'}items:[…]{'}'} olabilir (en çok 500). Aynı işletme ikinci kez gelirse atlanır.</div>
+            <div>Adres (HTTP Request, POST, JSON): <Kod t={`${origin}/api/webhooks/potansiyel`} onKopyala={kopyala}/></div>
+            <div>Yetkilendirme: <Kod t="Authorization: Bearer <N8N_LEAD_API_TOKEN değeri>" onKopyala={kopyala}/> (tanımlı değilse N8N_SOSYAL_API_TOKEN kullanılır)</div>
+            <div>Gövde: <Kod t="title, phone, emails, website, address, categoryName, url" onKopyala={kopyala}/> alanlarını olduğu gibi gönderin; tek kayıt, dizi ya da {'{'}items:[…]{'}'} olabilir (en çok 500). Aynı işletme ikinci kez gelirse atlanır.</div>
             <div>Durum: <Durum d={durum?.potansiyel}/></div>
 
             <p style={{color:'var(--adm-tx)',fontWeight:700,marginTop:14}}>4) Site → n8n (WhatsApp bildirimleri)</p>
-            <div>n8n Webhook adresini Vercel'e <Kod t="N8N_WHATSAPP_WEBHOOK_URL"/> olarak girin (isteğe bağlı gizli değer: <Kod t="N8N_WEBHOOK_SECRET"/>, başlık <code>x-webhook-secret</code>).</div>
+            <div>n8n Webhook adresini Vercel'e <Kod t="N8N_WHATSAPP_WEBHOOK_URL" onKopyala={kopyala}/> olarak girin (isteğe bağlı gizli değer: <Kod t="N8N_WEBHOOK_SECRET" onKopyala={kopyala}/>, başlık <code>x-webhook-secret</code>).</div>
             <div>Durum: <Durum d={durum?.whatsapp}/></div>
           </div>
         </div>
