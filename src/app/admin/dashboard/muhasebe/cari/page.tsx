@@ -9,6 +9,7 @@ import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field,
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
 import {
   Plus, Pencil, Trash2, User, Building2, Phone, Mail, MessageCircle, FileBarChart, HandCoins, Users2, AlertTriangle, Scale, Wallet, Printer, Download, Receipt, FileSignature,
+  FileSpreadsheet, Upload, CheckCircle2, XCircle,
 } from 'lucide-react'
 
 const TIP: Record<string, { l: string; tone: any; Icon: any }> = {
@@ -38,6 +39,8 @@ export default function CariPage() {
   const [form, setForm] = useState<any>(bosForm)
   const [odeme, setOdeme] = useState<any>(null) // tahsilat / ödeme modalı
   const [busy, setBusy] = useState(false)
+  const [iceAktar, setIceAktar] = useState<{ dosyaAdi: string; b64: string; asama: 'onizle' | 'hata' | 'onay' | 'bitti'; hatalar?: { satir: number; mesaj: string }[]; onizle?: { toplam: number; yeni: number; guncelleme: number }; sonuc?: { eklenen: number; guncellenen: number } } | null>(null)
+  const [iceAktarBusy, setIceAktarBusy] = useState(false)
 
   const load = useCallback(async () => {
     // Cari başına fatura/işlem özetleri veritabanı görünümünden (v_cari_ozet); ekstre/fatura/çek detayı yalnızca seçili cari için çekilir.
@@ -121,6 +124,35 @@ export default function CariPage() {
     setModal(false); toast.show(editing ? 'Cari güncellendi' : 'Cari eklendi'); load()
   }
 
+  /* ── Excel içe aktarma: dosya seçilince önce önizleme (kaç yeni/güncelleme veya hata listesi), onaylanınca yazma ── */
+  function dosyaSecildi(e: React.ChangeEvent<HTMLInputElement>) {
+    const dosya = e.target.files?.[0]; e.target.value = ''
+    if (!dosya) return
+    const okuyucu = new FileReader()
+    okuyucu.onload = async () => {
+      const b64 = String(okuyucu.result).split(',')[1] || ''
+      setIceAktar({ dosyaAdi: dosya.name, b64, asama: 'onizle' })
+      setIceAktarBusy(true)
+      try {
+        const r = await fetch('/api/admin/muhasebe-cari-excel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ b64 }) }).then(x => x.json())
+        if (!r.ok) setIceAktar(f => f && { ...f, asama: 'hata', hatalar: r.hatalar })
+        else setIceAktar(f => f && { ...f, asama: 'onay', onizle: r.onizle })
+      } catch { toast.show('Dosya işlenemedi', true); setIceAktar(null) }
+      setIceAktarBusy(false)
+    }
+    okuyucu.readAsDataURL(dosya)
+  }
+  async function iceAktarOnayla() {
+    if (!iceAktar) return
+    setIceAktarBusy(true)
+    try {
+      const r = await fetch('/api/admin/muhasebe-cari-excel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ b64: iceAktar.b64, onayla: true }) }).then(x => x.json())
+      if (!r.ok) setIceAktar(f => f && { ...f, asama: 'hata', hatalar: r.hatalar })
+      else { setIceAktar(f => f && { ...f, asama: 'bitti', sonuc: { eklenen: r.eklenen, guncellenen: r.guncellenen } }); load() }
+    } catch { toast.show('İçe aktarma başarısız oldu', true) }
+    setIceAktarBusy(false)
+  }
+
   async function del(c: any) {
     const x = M[c.id]
     if (Math.abs(+c.bakiye) > 0.005 && !confirm(`${c.ad} hesabının ${fmt(c.bakiye)} bakiyesi var. Yine de silinsin mi?`)) return
@@ -191,7 +223,12 @@ export default function CariPage() {
       <AdminTopBar title="Cari Hesaplar" />
       <Page>
         <PageHead title="Cari Hesap Yönetimi" sub="Müşteri ve tedarikçi bakiyeleri, ekstre, tahsilat/ödeme takibi"
-          actions={<button className="adm-btn" onClick={openNew}><Plus size={14} />Yeni Cari</button>} />
+          actions={<>
+            <a className="adm-btn-ghost" style={{ textDecoration: 'none' }} href={`/api/admin/muhasebe-cari-excel?tip=sablon`} title="Boş Excel şablonu indir"><FileSpreadsheet size={13} />Şablon İndir</a>
+            <a className="adm-btn-ghost" style={{ textDecoration: 'none' }} href={`/api/admin/muhasebe-cari-excel?tip=disa`} title="Tüm cari listesini Excel olarak indir"><Download size={13} />Excel&apos;e Aktar</a>
+            <label className="adm-btn-ghost" style={{ cursor: 'pointer' }}><Upload size={13} />Excel&apos;den İçe Aktar<input type="file" accept=".xlsx" onChange={dosyaSecildi} style={{ display: 'none' }} /></label>
+            <button className="adm-btn" onClick={openNew}><Plus size={14} />Yeni Cari</button>
+          </>} />
 
         <KpiGrid min={190}>
           <Kpi label="Toplam Alacak" value={fmtK(alacak)} Icon={HandCoins} color="var(--adm-green)" sub={`${list.filter(c => +c.bakiye > 0).length} cari bize borçlu`} />
@@ -335,6 +372,39 @@ export default function CariPage() {
             <Field label="Açıklama" span={2}><input className="adm-inp" value={odeme.aciklama} onChange={e => setOdeme((o: any) => ({ ...o, aciklama: e.target.value }))} /></Field>
             <div style={{ gridColumn: 'span 2', fontSize: 12, color: 'var(--adm-tx3)' }}>Bakiye: {fmt(odeme.cari.bakiye)} → <b style={{ color: 'var(--adm-tx)' }}>{fmt(+odeme.cari.bakiye + (odeme.tip === 'gelir' ? -1 : 1) * (+odeme.tutar || 0))}</b></div>
           </FormGrid>
+        )}
+      </Modal>
+
+      <Modal open={!!iceAktar} onClose={() => setIceAktar(null)} width={560} title={`Excel'den İçe Aktar${iceAktar ? ` — ${iceAktar.dosyaAdi}` : ''}`}
+        footer={<>
+          <button type="button" className="adm-btn-ghost" onClick={() => setIceAktar(null)}>{iceAktar?.asama === 'bitti' ? 'Kapat' : 'İptal'}</button>
+          {iceAktar?.asama === 'onay' && <button type="button" className="adm-btn" disabled={iceAktarBusy} onClick={iceAktarOnayla}>{iceAktarBusy ? 'Kaydediliyor…' : 'Onayla ve Kaydet'}</button>}
+        </>}>
+        {iceAktar?.asama === 'onizle' && <p style={{ fontSize: 13, color: 'var(--adm-tx3)' }}>Dosya kontrol ediliyor…</p>}
+        {iceAktar?.asama === 'hata' && (
+          <div>
+            <p style={{ fontSize: 12.5, color: 'var(--adm-red)', display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}><XCircle size={16} />Dosyada {iceAktar.hatalar?.length} satırda hata var — hiçbir kayıt eklenmedi/güncellenmedi. Düzeltip yeniden yükle.</p>
+            <div style={{ maxHeight: 320, overflow: 'auto', border: '1px solid var(--adm-bdr)', borderRadius: 8 }}>
+              {iceAktar.hatalar?.map((h, i) => (
+                <div key={i} style={{ padding: '8px 12px', fontSize: 12.5, borderBottom: i < (iceAktar.hatalar?.length || 0) - 1 ? '1px solid var(--adm-bdr)' : 'none' }}>
+                  {h.satir > 0 && <b style={{ marginRight: 6 }}>Satır {h.satir}:</b>}{h.mesaj}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {iceAktar?.asama === 'onay' && iceAktar.onizle && (
+          <div>
+            <p style={{ fontSize: 12.5, color: 'var(--adm-green)', display: 'flex', gap: 8, alignItems: 'center', marginBottom: 14 }}><CheckCircle2 size={16} />Dosya geçerli — kaydetmek için onayla.</p>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <div className="adm-card" style={{ flex: 1, padding: 14, textAlign: 'center' }}><div style={{ fontSize: 22, fontWeight: 700 }}>{iceAktar.onizle.toplam}</div><div style={{ fontSize: 11.5, color: 'var(--adm-tx3)' }}>Toplam satır</div></div>
+              <div className="adm-card" style={{ flex: 1, padding: 14, textAlign: 'center' }}><div style={{ fontSize: 22, fontWeight: 700, color: 'var(--adm-green)' }}>{iceAktar.onizle.yeni}</div><div style={{ fontSize: 11.5, color: 'var(--adm-tx3)' }}>Yeni eklenecek</div></div>
+              <div className="adm-card" style={{ flex: 1, padding: 14, textAlign: 'center' }}><div style={{ fontSize: 22, fontWeight: 700, color: 'var(--adm-blue)' }}>{iceAktar.onizle.guncelleme}</div><div style={{ fontSize: 11.5, color: 'var(--adm-tx3)' }}>Güncellenecek (kod eşleşmesi)</div></div>
+            </div>
+          </div>
+        )}
+        {iceAktar?.asama === 'bitti' && iceAktar.sonuc && (
+          <p style={{ fontSize: 13, color: 'var(--adm-green)', display: 'flex', gap: 8, alignItems: 'center' }}><CheckCircle2 size={16} />{iceAktar.sonuc.eklenen} yeni cari eklendi, {iceAktar.sonuc.guncellenen} cari güncellendi.</p>
         )}
       </Modal>
       {toast.node}
