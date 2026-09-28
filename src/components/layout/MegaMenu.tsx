@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { kategoriYolu, bolumYolu } from "@/lib/site-metin";
 import type { Dil } from "@/lib/urun-sayfasi";
@@ -58,15 +57,19 @@ export default function MegaMenu({ dil, kategoriAd, label }: { dil: Dil; kategor
             <span className="eyebrow text-[#e55f28]">{t.baslik}</span>
             <p className="text-[#9aa294] text-xs mt-1.5">{t.alt}</p>
           </div>
-          <Link href={bolumYolu(dil, "collection")} onClick={() => setAcik(false)}
+          {/* Düz <a>: Collection bileşeni ?kategori= parametresini yalnızca mount anında okuyor
+              (bkz. Collection.tsx). Next <Link> ile aynı sayfada kalınarak yapılan bir geçiş bu
+              effect'i yeniden tetiklemediğinden seçili kategori güncellenmiyordu — tam sayfa
+              yenilemesi (<a>) her tıklamada doğru filtrelenmiş listeyle mount olmasını garantiler. */}
+          <a href={bolumYolu(dil, "collection")}
             className="eyebrow text-white/70 hover:text-white flex items-center gap-1.5 shrink-0 transition-colors">
             {t.tumu} <ArrowRight size={12} />
-          </Link>
+          </a>
         </div>
 
         <div className="grid grid-cols-5 gap-3">
           {KATEGORILER.map(k => (
-            <Link key={k.slug} href={kategoriYolu(dil, k.slug)} onClick={() => setAcik(false)}
+            <a key={k.slug} href={kategoriYolu(dil, k.slug)}
               className="group flex flex-col gap-2.5">
               <div className="relative aspect-square rounded-xl overflow-hidden bg-white/5">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -81,7 +84,7 @@ export default function MegaMenu({ dil, kategoriAd, label }: { dil: Dil; kategor
               <span className="eyebrow text-[#9aa294] group-hover:text-white transition-colors text-center" style={{ fontSize: 9.5 }}>
                 {kategoriAd[k.slug] || k.slug}
               </span>
-            </Link>
+            </a>
           ))}
         </div>
       </div>
