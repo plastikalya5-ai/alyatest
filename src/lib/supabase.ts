@@ -19,6 +19,7 @@ export type Product = {
   gorunum_360: string[];
   model_3d_url: string | null;
   specs: Record<string, string>;
+  renkler: { hex: string; ad: string; gorsel: string }[];
   tags: string[];
   is_featured: boolean;
   is_new: boolean;

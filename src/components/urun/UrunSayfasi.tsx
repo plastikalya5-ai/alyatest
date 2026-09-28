@@ -39,7 +39,7 @@ export default function UrunSayfasi({ urun, dil, settings, benzer, kategoriler =
           </nav>
 
           <div className="grid gap-10 lg:grid-cols-2 lg:gap-16">
-            <UrunGaleri model3dUrl={urun.model_3d_url} kareler360={kareler360} resimler={resimler} alt={`${urun.name} — ${urun.code}`} />
+            <UrunGaleri model3dUrl={urun.model_3d_url} kareler360={kareler360} resimler={resimler} renkler={urun.renkler} alt={`${urun.name} — ${urun.code}`} />
 
             <div>
               <p className="eyebrow text-[#e55f28] mb-3">{kat}{altKat ? ` · ${altKat}` : ""}{urun.is_new && <span className="ms-2 text-white bg-[#e55f28] px-1.5">{T.yeni}</span>}</p>
