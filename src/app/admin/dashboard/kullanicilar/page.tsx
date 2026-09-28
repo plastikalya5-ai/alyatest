@@ -5,7 +5,15 @@ import { erp } from '@/lib/erp-client'
 import { fmtDate, fmtDateTime } from '@/lib/fmt'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Drawer, Modal, Field, FormGrid, InfoRow, Divider, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
-import { ShieldCheck, UserPlus, Pencil, Trash2, Power, Send, Mail, Users2, Check, ShieldAlert, Copy, ShieldOff } from 'lucide-react'
+import { ShieldCheck, UserPlus, Pencil, Trash2, Power, Mail, Users2, Check, ShieldAlert, Copy, ShieldOff, KeyRound, RefreshCw } from 'lucide-react'
+
+// Kolay okunur, tahmin edilmesi zor rastgele şifre — admin isterse kendi şifresini de yazabilir.
+function rastgeleSifre() {
+  const harfler = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
+  let s = ''
+  for (let i = 0; i < 10; i++) s += harfler[Math.floor(Math.random() * harfler.length)]
+  return s
+}
 
 const MODULLER: { k: string; l: string; grup: string }[] = [
   { k: 'dashboard', l: 'Dashboard, Analitik, Başvurular, Ziyaretçiler', grup: 'Genel' },
@@ -25,7 +33,7 @@ const MODULLER: { k: string; l: string; grup: string }[] = [
 ]
 const modAd = (k: string) => MODULLER.find(m => m.k === k)?.l.split(' — ')[0].split(' (')[0] || k
 const bosRol = { kod: '', ad: '', aciklama: '', moduller: [] as string[] }
-const bosDavet = { email: '', full_name: '', role_id: '' }
+const bosYeni = { email: '', full_name: '', role_id: '', password: rastgeleSifre() }
 
 export default function KullanicilarPage() {
   const toast = useToast()
@@ -35,8 +43,9 @@ export default function KullanicilarPage() {
   const [meId, setMeId] = useState<string | null>(null)
   const [tab, setTab] = useState('personel')
   const [detay, setDetay] = useState<any>(null)
-  const [daveteModal, setDaveteModal] = useState(false)
-  const [davet, setDavet] = useState(bosDavet)
+  const [yeniModal, setYeniModal] = useState(false)
+  const [yeni, setYeni] = useState(bosYeni)
+  const [sifreModal, setSifreModal] = useState<any>(null) // { email, password } — kayıt sonrası/reset sonrası gösterilecek şifre
   const [rolModal, setRolModal] = useState(false)
   const [editingRol, setEditingRol] = useState<any>(null)
   const [rolForm, setRolForm] = useState<any>(bosRol)
@@ -64,14 +73,22 @@ export default function KullanicilarPage() {
     return r
   }
 
-  async function davetGonder(e: React.FormEvent) {
+  async function personelEkle(e: React.FormEvent) {
     e.preventDefault(); if (busy) return
-    if (users.some(u => u.email?.toLowerCase() === davet.email.trim().toLowerCase())) return toast.show('Bu e-posta zaten kayıtlı', true)
+    if (users.some(u => u.email?.toLowerCase() === yeni.email.trim().toLowerCase())) return toast.show('Bu e-posta zaten kayıtlı', true)
     setBusy(true)
-    try { await api({ action: 'invite', ...davet, email: davet.email.trim() }); setDaveteModal(false); setDavet(bosDavet); toast.show('Davet gönderildi'); await load() }
-    catch {} finally { setBusy(false) }
+    try {
+      await api({ action: 'create', ...yeni, email: yeni.email.trim() })
+      setYeniModal(false)
+      setSifreModal({ email: yeni.email.trim(), password: yeni.password })
+      setYeni(bosYeni)
+      await load()
+    } catch {} finally { setBusy(false) }
   }
-  async function tekrarGonder(u: any) { try { await api({ action: 'resend', email: u.email }); toast.show(`${u.email} adresine davet tekrar gönderildi`) } catch {} }
+  async function sifreSifirla(u: any) {
+    const yeniSifre = rastgeleSifre()
+    try { await api({ action: 'reset_password', id: u.id, password: yeniSifre }); setSifreModal({ email: u.email, password: yeniSifre }); load() } catch {}
+  }
   async function rolDegistir(u: any, role_id: string) { try { await api({ action: 'role', id: u.id, role_id }); toast.show('Rol güncellendi'); load() } catch {} }
   async function pasifeAl(u: any) {
     if (!confirm(`${u.full_name || u.email} girişi engellensin mi? Aktif oturumları kesilir, tekrar açana kadar giriş yapamaz.`)) return
@@ -122,10 +139,10 @@ export default function KullanicilarPage() {
       </select>) },
     { key: 'mfa', label: '2FA', width: 80, sort: u => u.mfa ? 1 : 0, render: u => u.mfa ? <Badge tone="green">Açık</Badge> : <span style={{ color: 'var(--adm-tx3)', fontSize: 12 }}>Kapalı</span>, hideSm: true },
     { key: 'giris', label: 'Son Giriş', sort: u => u.last_sign_in_at || '', render: u => u.last_sign_in_at ? fmtDateTime(u.last_sign_in_at) : <span style={{ color: 'var(--adm-tx3)' }}>Hiç giriş yapmadı</span>, hideSm: true },
-    { key: 'durum', label: 'Durum', width: 130, sort: u => u.banned ? 1 : !u.email_confirmed_at ? 0 : 2, render: u => u.banned ? <Badge tone="red">Pasif</Badge> : !u.email_confirmed_at ? <Badge tone="amber">Davet bekliyor</Badge> : <Badge tone="green">Aktif</Badge> },
-    { key: 'act', label: '', width: 130, align: 'right', render: u => (
+    { key: 'durum', label: 'Durum', width: 130, sort: u => u.banned ? 1 : !u.email_confirmed_at ? 0 : 2, render: u => u.banned ? <Badge tone="red">Pasif</Badge> : !u.email_confirmed_at ? <Badge tone="amber">Şifre belirlenmedi</Badge> : <Badge tone="green">Aktif</Badge> },
+    { key: 'act', label: '', width: 150, align: 'right', render: u => (
       <span style={{ display: 'inline-flex', gap: 4 }} onClick={e => e.stopPropagation()}>
-        {!u.email_confirmed_at && <button className="adm-btn-ghost" style={{ padding: '4px 8px' }} title="Daveti tekrar gönder" onClick={() => tekrarGonder(u)}><Send size={12} /></button>}
+        <button className="adm-btn-ghost" style={{ padding: '4px 8px' }} title="Şifre sıfırla / belirle" onClick={() => sifreSifirla(u)}><KeyRound size={12} /></button>
         {u.id !== meId && (u.banned ? <button className="adm-btn-ghost" style={{ padding: '4px 8px' }} title="Aktifleştir" onClick={() => aktifEt(u)}><Power size={12} style={{ color: 'var(--adm-green)' }} /></button> : <button className="adm-btn-ghost" style={{ padding: '4px 8px' }} title="Pasife al" onClick={() => pasifeAl(u)}><Power size={12} /></button>)}
       </span>) },
   ]
@@ -134,18 +151,18 @@ export default function KullanicilarPage() {
     <div style={{ flex: 1, overflow: 'auto' }}>
       <AdminTopBar title="Kullanıcılar & Roller" />
       <Page>
-        <PageHead title="Kullanıcı & Yetki Yönetimi" sub="Personel hesapları ve rol bazlı modül yetkileri" actions={<button className="adm-btn" onClick={() => setDaveteModal(true)}><UserPlus size={14} />Personel Davet Et</button>} />
+        <PageHead title="Kullanıcı & Yetki Yönetimi" sub="Personel hesapları ve rol bazlı modül yetkileri" actions={<button className="adm-btn" onClick={() => { setYeni(bosYeni); setYeniModal(true) }}><UserPlus size={14} />Yeni Personel Ekle</button>} />
         <KpiGrid min={180}>
           <Kpi label="Personel" value={users.length} Icon={Users2} color="var(--adm-ac)" sub={`${roller.length} rol tanımlı`} />
           <Kpi label="Aktif" value={aktifPersonel.filter(u => u.email_confirmed_at).length} Icon={ShieldCheck} color="var(--adm-green)" />
-          <Kpi label="Davet Bekleyen" value={users.filter(u => !u.email_confirmed_at).length} Icon={Mail} color="var(--adm-amber)" />
+          <Kpi label="Şifre Belirlenmedi" value={users.filter(u => !u.email_confirmed_at).length} Icon={Mail} color="var(--adm-amber)" />
           <Kpi label="Rolsüz" value={bekleyen.length} Icon={ShieldAlert} color={bekleyen.length ? 'var(--adm-red)' : 'var(--adm-green)'} sub={bekleyen.length ? 'hiçbir modülü göremiyor' : 'Tümüne rol atanmış'} onClick={() => setTab('bekleyen')} />
           <Kpi label="Pasif" value={pasif.length} Icon={Power} color={pasif.length ? 'var(--adm-red)' : 'var(--adm-green)'} onClick={() => setTab('pasif')} />
         </KpiGrid>
 
         <div style={{ marginBottom: 12 }}><Tabs value={tab} onChange={setTab} tabs={[{ v: 'personel', l: 'Personel', n: aktifPersonel.length }, { v: 'bekleyen', l: 'Rolsüz', n: bekleyen.length }, { v: 'pasif', l: 'Pasif', n: pasif.length }, { v: 'hepsi', l: 'Tümü', n: users.length }]} /></div>
         <DataGrid rows={liste} cols={cols} rowKey={u => u.id} loading={loading} storageKey="kullanicilar" onRowClick={setDetay} activeKey={detay?.id}
-          searchText={u => `${u.full_name || ''} ${u.email}`} searchPlaceholder="İsim, e-posta..." emptyTitle="Kullanıcı yok" emptySub="Personel Davet Et ile ilk kullanıcıyı ekle" />
+          searchText={u => `${u.full_name || ''} ${u.email}`} searchPlaceholder="İsim, e-posta..." emptyTitle="Kullanıcı yok" emptySub="Yeni Personel Ekle ile ilk kullanıcıyı oluştur" />
 
         <div style={{ marginTop: 24 }}>
           <PageHead title="Roller" sub="Her rol bir modül grubuna erişim verir — kullanıcılar rollere atanır" actions={<button className="adm-btn" onClick={openNewRol}><ShieldCheck size={14} />Yeni Rol</button>} />
@@ -179,22 +196,43 @@ export default function KullanicilarPage() {
           {detay.id !== meId && (detay.banned ? <button className="adm-btn" onClick={() => aktifEt(detay)}><Power size={14} />Aktifleştir</button> : <button className="adm-btn-ghost" onClick={() => pasifeAl(detay)}><Power size={13} />Pasife Al</button>)}
         </>}>
         {detay && <div style={{ padding: 20 }}>
-          <InfoRow k="Durum" v={detay.banned ? <Badge tone="red">Pasif</Badge> : !detay.email_confirmed_at ? <Badge tone="amber">Davet bekliyor</Badge> : <Badge tone="green">Aktif</Badge>} />
+          <InfoRow k="Durum" v={detay.banned ? <Badge tone="red">Pasif</Badge> : !detay.email_confirmed_at ? <Badge tone="amber">Şifre belirlenmedi</Badge> : <Badge tone="green">Aktif</Badge>} />
           <InfoRow k="Rol" v={rolAd[detay.role_id] || 'Atanmadı'} />
           <InfoRow k="Kayıt tarihi" v={fmtDate(detay.created_at)} />
           <InfoRow k="Son giriş" v={detay.last_sign_in_at ? fmtDateTime(detay.last_sign_in_at) : 'Hiç giriş yapmadı'} />
-          {!detay.email_confirmed_at && <div style={{ marginTop: 16 }}><button className="adm-btn-ghost" onClick={() => tekrarGonder(detay)}><Send size={13} />Daveti Tekrar Gönder</button></div>}
+          <div style={{ marginTop: 16 }}><button className="adm-btn-ghost" onClick={() => sifreSifirla(detay)}><KeyRound size={13} />Şifre Sıfırla / Belirle</button></div>
         </div>}
       </Drawer>
 
-      <Modal open={daveteModal} onClose={() => setDaveteModal(false)} onSubmit={davetGonder} width={480} title="Personel Davet Et"
-        footer={<><button type="button" className="adm-btn-ghost" onClick={() => setDaveteModal(false)}>İptal</button><button type="submit" className="adm-btn" disabled={busy}><Send size={13} />{busy ? 'Gönderiliyor...' : 'Davet Gönder'}</button></>}>
+      <Modal open={yeniModal} onClose={() => setYeniModal(false)} onSubmit={personelEkle} width={480} title="Yeni Personel Ekle"
+        footer={<><button type="button" className="adm-btn-ghost" onClick={() => setYeniModal(false)}>İptal</button><button type="submit" className="adm-btn" disabled={busy}><UserPlus size={13} />{busy ? 'Oluşturuluyor...' : 'Personeli Oluştur'}</button></>}>
         <FormGrid cols={1}>
-          <Field label="E-posta *"><input type="email" className="adm-inp" required autoFocus value={davet.email} onChange={e => setDavet(d => ({ ...d, email: e.target.value }))} /></Field>
-          <Field label="Ad Soyad"><input className="adm-inp" value={davet.full_name} onChange={e => setDavet(d => ({ ...d, full_name: e.target.value }))} /></Field>
-          <Field label="Rol" hint="Boş bırakırsan sonra atarsın; rolsüz kullanıcı hiçbir modülü göremez"><select className="adm-inp" value={davet.role_id} onChange={e => setDavet(d => ({ ...d, role_id: e.target.value }))}><option value="">Sonra ata</option>{roller.map(r => <option key={r.id} value={r.id}>{r.ad}</option>)}</select></Field>
+          <Field label="E-posta *"><input type="email" className="adm-inp" required autoFocus value={yeni.email} onChange={e => setYeni(d => ({ ...d, email: e.target.value }))} /></Field>
+          <Field label="Ad Soyad"><input className="adm-inp" value={yeni.full_name} onChange={e => setYeni(d => ({ ...d, full_name: e.target.value }))} /></Field>
+          <Field label="Rol" hint="Boş bırakırsan sonra atarsın; rolsüz kullanıcı hiçbir modülü göremez"><select className="adm-inp" value={yeni.role_id} onChange={e => setYeni(d => ({ ...d, role_id: e.target.value }))}><option value="">Sonra ata</option>{roller.map(r => <option key={r.id} value={r.id}>{r.ad}</option>)}</select></Field>
+          <Field label="Şifre *" hint="İstersen değiştir, ya da hazır üretilen şifreyi kullan">
+            <div style={{ display: 'flex', gap: 6 }}>
+              <input className="adm-inp" required minLength={8} style={{ fontFamily: 'JetBrains Mono,monospace' }} value={yeni.password} onChange={e => setYeni(d => ({ ...d, password: e.target.value }))} />
+              <button type="button" className="adm-btn-ghost" style={{ padding: '0 10px' }} title="Rastgele üret" onClick={() => setYeni(d => ({ ...d, password: rastgeleSifre() }))}><RefreshCw size={13} /></button>
+            </div>
+          </Field>
         </FormGrid>
-        <p style={{ fontSize: 11.5, color: 'var(--adm-tx3)', margin: '12px 0 0' }}>Kişiye şifre belirleme bağlantısı içeren bir e-posta gönderilir.</p>
+        <p style={{ fontSize: 11.5, color: 'var(--adm-tx3)', margin: '12px 0 0' }}>Hesap anında ve aktif olarak oluşturulur — e-posta beklemeye gerek yok. Bu e-posta/şifreyi personele sen iletirsin.</p>
+      </Modal>
+
+      <Modal open={!!sifreModal} onClose={() => setSifreModal(null)} width={420} title="Şifre Hazır" footer={<button type="button" className="adm-btn" onClick={() => setSifreModal(null)}>Kapat</button>}>
+        {sifreModal && <div>
+          <p style={{ fontSize: 13, color: 'var(--adm-tx2)', margin: '0 0 14px' }}>Bu bilgiyi kopyalayıp <b>{sifreModal.email}</b> adresindeki personele ilet — bu şifre bir daha burada gösterilmez.</p>
+          <FormGrid cols={1}>
+            <Field label="E-posta"><input className="adm-inp" readOnly value={sifreModal.email} onFocus={e => e.target.select()} /></Field>
+            <Field label="Şifre">
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input className="adm-inp" readOnly style={{ fontFamily: 'JetBrains Mono,monospace', fontWeight: 700 }} value={sifreModal.password} onFocus={e => e.target.select()} />
+                <button type="button" className="adm-btn-ghost" style={{ padding: '0 10px' }} title="Kopyala" onClick={() => { navigator.clipboard.writeText(sifreModal.password); toast.show('Şifre kopyalandı') }}><Copy size={13} /></button>
+              </div>
+            </Field>
+          </FormGrid>
+        </div>}
       </Modal>
 
       <Modal open={rolModal} onClose={() => setRolModal(false)} onSubmit={kaydetRol} width={600} title={editingRol ? 'Rolü Düzenle' : 'Yeni Rol'}

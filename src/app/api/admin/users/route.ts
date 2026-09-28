@@ -59,22 +59,29 @@ export async function POST(req: NextRequest) {
   const hedef = async (id: string) => { try { const { data } = await admin.auth.admin.getUserById(id); return data?.user?.email || id } catch { return id } }
 
   try {
-    if (action === 'invite') {
-      const { email, full_name, role_id } = body
+    if (action === 'create') {
+      // E-posta ile davet gönderip kullanıcının linke tıklayıp şifre belirlemesini beklemek yerine
+      // hesap burada, şifresiyle birlikte doğrudan ve aktif olarak oluşturulur — bekleme yok,
+      // admin şifreyi kendisi belirler (veya rastgele üretilenini kopyalayıp personele iletir).
+      const { email, full_name, role_id, password } = body
       if (!email) return NextResponse.json({ error: 'E-posta gerekli' }, { status: 400 })
-      const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
-        data: { full_name: full_name || null },
-        redirectTo: `${new URL(req.url).origin}/admin/reset-password`,
+      if (!password || password.length < 8) return NextResponse.json({ error: 'Şifre en az 8 karakter olmalı' }, { status: 400 })
+      const { data, error } = await admin.auth.admin.createUser({
+        email, password, email_confirm: true,
+        user_metadata: { full_name: full_name || null },
       })
       if (error) throw new Error(error.message)
       if (role_id && data.user) { const r = await sb.from('admin_profiles').update({ role_id }).eq('id', data.user.id); if (r.error) throw new Error(r.error.message) }
-      await yoneticiOlayi(kim, 'kullanici_davet', email, ip)
+      await yoneticiOlayi(kim, 'kullanici_eklendi', email, ip)
       return NextResponse.json({ ok: true, user_id: data.user?.id })
     }
-    if (action === 'resend') {
-      const { email } = body
-      const { error } = await admin.auth.admin.inviteUserByEmail(email, { redirectTo: `${new URL(req.url).origin}/admin/reset-password` })
+    if (action === 'reset_password') {
+      // Personelin şifresini unutması/kaybetmesi durumunda admin buradan anında yeni bir şifre belirleyip iletebilir.
+      const { id, password } = body
+      if (!password || password.length < 8) return NextResponse.json({ error: 'Şifre en az 8 karakter olmalı' }, { status: 400 })
+      const { error } = await admin.auth.admin.updateUserById(id, { password, email_confirm: true })
       if (error) throw new Error(error.message)
+      await yoneticiOlayi(kim, 'sifre_sifirlandi', await hedef(id), ip)
       return NextResponse.json({ ok: true })
     }
     if (action === 'role') {

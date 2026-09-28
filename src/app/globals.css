@@ -90,8 +90,14 @@ img { max-width: 100%; display: block; }
   background-size: 160px;
 }
 
-/* ── Cursor ──────────────────────────────── */
-@media (pointer: fine) { a, button { cursor: none !important; } }
+/* ── Cursor ──────────────────────────────────────────────
+   Gerçek imleç yalnızca özel cursor-dot/cursor-ring JS'i fiilen
+   çalışmaya başladığında (html'e .cursor-live eklendiğinde) gizlenir.
+   Önceden a/button üzerinde koşulsuz "cursor:none" uygulanıyordu; GSAP
+   geç yüklenirse veya sonradan DOM'a eklenen linkler/butonlar (ör.
+   menü, ürün kartları) JS'in yetişemediği bir anda hoverlanırsa imleç
+   hem gerçek hem özel haliyle tamamen kayboluyordu. */
+@media (pointer: fine) { html.cursor-live a, html.cursor-live button { cursor: none !important; } }
 .cursor-dot {
   position: fixed; top: 0; left: 0; z-index: 9999;
   width: 7px; height: 7px; border-radius: 9999px;

@@ -257,8 +257,11 @@ export default function Animations() {
       });
 
       // ── CURSOR ──────────────────────────────────────────────
+      // html.cursor-live eklenmeden gerçek imleç gizlenmiyor (bkz. globals.css) —
+      // bu yüzden JS her nedenle çalışmazsa/gecikirse kullanıcı asla imleçsiz kalmaz.
       const dot  = document.querySelector<HTMLElement>(".cursor-dot");
       const ring = document.querySelector<HTMLElement>(".cursor-ring");
+      let removeCursorListeners: (() => void) | undefined;
       if (isFine && dot && ring) {
         let rx = -999, ry = -999, mx = -999, my = -999;
         const mv = (e: MouseEvent) => {
@@ -274,16 +277,37 @@ export default function Animations() {
         };
         rafId = requestAnimationFrame(animRing);
         document.addEventListener("mousemove", mv);
-        document.querySelectorAll("a,button").forEach(el => {
-          el.addEventListener("mouseenter", () => ring.classList.add("hovered"));
-          el.addEventListener("mouseleave", () => ring.classList.remove("hovered"));
-        });
+
+        // querySelectorAll("a,button") bir kerelik tarama yapıyordu: menü/ürün
+        // kartları gibi sonradan DOM'a eklenen elementler hover efektini hiç
+        // almıyordu. Bunun yerine document üzerinde delegation kullanılıyor —
+        // hangi element sonradan eklenirse eklensin çalışır.
+        const onOver = (e: Event) => {
+          if ((e.target as HTMLElement)?.closest?.("a,button")) ring.classList.add("hovered");
+        };
+        const onOut = (e: Event) => {
+          if ((e.target as HTMLElement)?.closest?.("a,button")) ring.classList.remove("hovered");
+        };
+        document.addEventListener("mouseover", onOver);
+        document.addEventListener("mouseout", onOut);
+
+        // Gerçek imleç ancak artık bunun yerini alacak özel imleç fiilen
+        // hareket etmeye başladıktan sonra CSS ile gizlenir.
+        document.documentElement.classList.add("cursor-live");
+
+        removeCursorListeners = () => {
+          document.removeEventListener("mousemove", mv);
+          document.removeEventListener("mouseover", onOver);
+          document.removeEventListener("mouseout", onOut);
+          document.documentElement.classList.remove("cursor-live");
+        };
       }
 
       return () => {
         killed = true;
         ScrollTrigger.killAll();
         cancelAnimationFrame(rafId);
+        removeCursorListeners?.();
       };
     };
 
