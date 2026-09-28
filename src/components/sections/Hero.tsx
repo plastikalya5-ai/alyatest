@@ -44,17 +44,20 @@ export default function Hero({ stats, settings, dil = "tr", img = IMG }: { stats
 
         {/* Ana başlık — maskeli reveal */}
         <div className="relative z-10 mb-10">
+          {/* Başlık boyutu: mobilde (tek sütun) tam genişlik var, 8vw güvenli. md+ (768px) itibariyle
+              sağ görsel sütunu genişliğin yarısını alıyor — aynı 8vw oranı burada uzun kelimeleri
+              (ör. "ENJEKSİYONLA") taşırıp overflow-hidden sarmalayıcı tarafından kırpılmasına yol
+              açıyordu. md: için sütun genişliğine göre ölçeklenen ayrı, daha küçük bir clamp kullanılır.
+              (Not: inline style yerine Tailwind sınıfı kullanılıyor — inline style medya sorgusu
+              içeren bir sınıfça ASLA ezilemez, bkz. Hero grid-template-columns geçmişi.) */}
           <div className="overflow-hidden">
-            <h1 className="anim-hero-line heading text-[#0b0e0b]"
-              style={{ fontSize: "clamp(56px,8vw,120px)" }}>{h.satir[0]}</h1>
+            <h1 className="anim-hero-line heading text-[#0b0e0b] text-[clamp(56px,8vw,120px)] md:text-[clamp(34px,4.5vw,118px)]">{h.satir[0]}</h1>
           </div>
           <div className="overflow-hidden">
-            <h1 className="anim-hero-line heading text-[#0b0e0b]"
-              style={{ fontSize: "clamp(56px,8vw,120px)" }}>{h.satir[1]}</h1>
+            <h1 className="anim-hero-line heading text-[#0b0e0b] text-[clamp(56px,8vw,120px)] md:text-[clamp(34px,4.5vw,118px)]">{h.satir[1]}</h1>
           </div>
           <div className="overflow-hidden">
-            <h1 className="anim-hero-line heading text-[#e55f28]"
-              style={{ fontSize: "clamp(56px,8vw,120px)" }}>{h.satir[2]}</h1>
+            <h1 className="anim-hero-line heading text-[#e55f28] text-[clamp(56px,8vw,120px)] md:text-[clamp(34px,4.5vw,118px)]">{h.satir[2]}</h1>
           </div>
         </div>
 
