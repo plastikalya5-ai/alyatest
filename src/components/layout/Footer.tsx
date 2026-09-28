@@ -27,8 +27,9 @@ export default function Footer({ settings, dil = "tr" }: { settings: Settings | 
       <div style={{ paddingInline:"clamp(20px,5vw,80px)" }}>
         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-12 lg:gap-20 mb-14">
           <div>
-            <div className="heading text-[#0b0e0b] mb-4" style={{ fontSize:"clamp(28px,4vw,44px)" }}>
-              ALYA<span className="text-[#e55f28]">PLASTİK</span>
+            <div className="mb-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.png" alt="Alya Plastik" className="h-[34px] md:h-[44px] w-auto" />
             </div>
             <p className="text-[#6b7366] font-light leading-loose text-sm mb-2">
               {m.lider(s?.founded ?? 1968)}

@@ -92,9 +92,9 @@ export default function Header({ settings, dil = "tr" }: { settings: Settings | 
         scrolled || open ? "shadow-[0_8px_24px_rgba(11,14,11,0.18)] border-b border-white/8" : "border-b border-transparent"
       }`} style={{ paddingInline: "clamp(20px,5vw,80px)" }}>
 
-        <Link href={dilYolu(dil)} className="flex items-baseline shrink-0">
-          <span className="heading text-white" style={{ fontSize: "clamp(17px,2.5vw,22px)" }}>ALYA</span>
-          <span className="heading text-[#e55f28]" style={{ fontSize: "clamp(17px,2.5vw,22px)" }}>PLASTİK</span>
+        <Link href={dilYolu(dil)} className="flex items-center shrink-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-white.png" alt="Alya Plastik" className="h-[22px] md:h-[26px] w-auto" />
         </Link>
 
         <nav className="hidden md:flex items-center gap-10 absolute left-1/2 -translate-x-1/2">
