@@ -8,7 +8,7 @@ import { supabaseAdmin } from '@/lib/notify'
 // yükleme adresine DOĞRUDAN Supabase Storage'a yükler. Tek bir global kayıt olduğu için (ürüne
 // bağlı değil) settings.katalog'da tutulur — ürün 3D modellerindeki imza/kaydet akışıyla aynı desen.
 export const BUCKET = 'katalog-dosyalari'
-const MAX_BOYUT = 50 * 1024 * 1024 // 50MB
+const MAX_BOYUT = 150 * 1024 * 1024 // 150MB
 
 export async function POST(req: NextRequest) {
   const y = await modulGerekli(['yonetim']); if (y.hata) return y.hata
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     const dosyaAdi = String(b.dosyaAdi || '')
     if (!/\.pdf$/i.test(dosyaAdi.trim())) return NextResponse.json({ error: 'Yalnızca PDF dosyası yüklenebilir.' }, { status: 400 })
     const boyut = Number(b.boyut) || 0
-    if (boyut > MAX_BOYUT) return NextResponse.json({ error: 'Dosya çok büyük (50MB üstü).' }, { status: 400 })
+    if (boyut > MAX_BOYUT) return NextResponse.json({ error: 'Dosya çok büyük (150MB üstü).' }, { status: 400 })
     const yol = `katalog-${Date.now()}.pdf`
     const { data, error } = await admin.storage.from(BUCKET).createSignedUploadUrl(yol)
     if (error || !data) { console.error('[katalog][imza]', error?.message); return NextResponse.json({ error: 'Yükleme adresi oluşturulamadı.' }, { status: 502 }) }

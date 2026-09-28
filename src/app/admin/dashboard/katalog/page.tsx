@@ -7,7 +7,7 @@ import { fmtDateTime } from '@/lib/fmt'
 import { Page, PageHead, Card, useToast } from '@/components/admin/erp/ui'
 import { BookOpen, UploadCloud, Trash2, ExternalLink, FileText } from 'lucide-react'
 
-const MAX_BOYUT = 50 * 1024 * 1024 // 50MB
+const MAX_BOYUT = 150 * 1024 * 1024 // 150MB
 
 function boyutGoster(b?: number) {
   if (!b) return ''
@@ -31,7 +31,7 @@ export default function AdminKatalogPage() {
 
   async function dosyaSec(dosya: File) {
     if (!/\.pdf$/i.test(dosya.name)) return toast.show('Yalnızca PDF dosyası yüklenebilir', true)
-    if (dosya.size > MAX_BOYUT) return toast.show('Dosya çok büyük (50MB üstü)', true)
+    if (dosya.size > MAX_BOYUT) return toast.show('Dosya çok büyük (150MB üstü)', true)
     setYukleniyor(true); setIlerleme(0)
     try {
       const imza = await fetch('/api/admin/katalog', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ eylem: 'imza', dosyaAdi: dosya.name, boyut: dosya.size }) }).then(r => r.json())
@@ -85,7 +85,7 @@ export default function AdminKatalogPage() {
 
         <Card title={<><UploadCloud size={14} />{katalog ? 'Katalogu Değiştir' : 'Katalog Yükle'}</>}>
           <div style={{ padding: 16 }}>
-            <p style={{ fontSize: 12.5, color: 'var(--adm-tx3)', margin: '0 0 12px', lineHeight: 1.6 }}>PDF dosyası yükle — her sayfa sitede çevrilebilir bir kitap gibi gösterilir. En fazla 50MB. Yeni dosya yüklendiğinde eskisinin yerini alır.</p>
+            <p style={{ fontSize: 12.5, color: 'var(--adm-tx3)', margin: '0 0 12px', lineHeight: 1.6 }}>PDF dosyası yükle — her sayfa sitede çevrilebilir bir kitap gibi gösterilir. En fazla 150MB. Yeni dosya yüklendiğinde eskisinin yerini alır.</p>
             <input ref={dosyaRef} type="file" accept="application/pdf" disabled={yukleniyor}
               onChange={e => { const f = e.target.files?.[0]; if (f) dosyaSec(f) }}
               className="adm-inp" style={{ padding: 8 }} />
