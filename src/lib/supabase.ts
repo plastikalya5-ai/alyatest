@@ -115,6 +115,18 @@ export async function getTemaGorselleri(): Promise<Record<string, string> | null
   return data?.value ?? null;
 }
 
+export type Katalog = { url: string; boyut?: number; guncellenme: string } | null;
+
+// PDF katalog (dijital flipbook) — admin panelde yüklenen dosyanın URL'i ve güncellenme tarihi.
+export async function getKatalog(): Promise<Katalog> {
+  const { data } = await supabase
+    .from("settings")
+    .select("value")
+    .eq("key", "katalog")
+    .maybeSingle();
+  return data?.value ?? null;
+}
+
 export async function getCategories(): Promise<Category[]> {
   const { data } = await supabase
     .from("categories")

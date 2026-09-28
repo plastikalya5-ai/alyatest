@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import SifreDegistir from './SifreDegistir'
 import MfaAyar from './MfaAyar'
 import { useEffect, useState } from 'react'
-import { Target, Scale, Building2, Share2, LayoutDashboard, Package, Tag, MessageSquare, Settings, BarChart2, TrendingUp, Eye, Image, LogOut, ExternalLink, FileText, Bell, Activity, Layers, DollarSign, Receipt, Users2, PieChart, Landmark, FileSignature, Warehouse, Boxes, ArrowLeftRight, Cog, Wrench, FlaskConical, Factory, Zap, ClipboardList, PackageSearch, Truck, ShieldCheck, FlameKindling, UserCog, ScanLine, Sparkles, KeyRound, Palette } from 'lucide-react'
+import { Target, Scale, Building2, Share2, LayoutDashboard, Package, Tag, MessageSquare, Settings, BarChart2, TrendingUp, Eye, Image, LogOut, ExternalLink, FileText, Bell, Activity, Layers, DollarSign, Receipt, Users2, PieChart, Landmark, FileSignature, Warehouse, Boxes, ArrowLeftRight, Cog, Wrench, FlaskConical, Factory, Zap, ClipboardList, PackageSearch, Truck, ShieldCheck, FlameKindling, UserCog, ScanLine, Sparkles, KeyRound, Palette, BookOpen } from 'lucide-react'
 
 const NAV = [
   { g:'Genel', mod:['dashboard'], items:[
@@ -21,6 +21,7 @@ const NAV = [
     { href:'/admin/dashboard/kategoriler',  label:'Kategoriler',     Icon:Tag,     mod:['yonetim'] },
     { href:'/admin/dashboard/varyantlar',   label:'Varyantlar',      Icon:Layers,  mod:['yonetim'] },
     { href:'/admin/dashboard/gorseller',    label:'Görseller',       Icon:Image,   mod:['yonetim'] },
+    { href:'/admin/dashboard/katalog',      label:'Katalog',         Icon:BookOpen,mod:['yonetim'] },
     { href:'/admin/dashboard/sosyal-medya', label:'Sosyal Medya',    Icon:Share2,  mod:['sosyal','yonetim'] },
   ]},
   { g:'Müşteri', mod:['dashboard','satis','yonetim'], items:[
