@@ -23,6 +23,7 @@ const YETKI: Record<string, string[]> = {
   gorsel_analiz: ['yonetim'],
   urun_gorsel_tasarim: ['yonetim'],
   urun_gorsel_kaydet: ['yonetim'],
+  varyant_gorsel_kaydet: ['yonetim'],
   urun_360_uret: ['yonetim'],
   urun_360_kaydet: ['yonetim'],
   tema_gorsel_yukle: ['yonetim'],
@@ -124,6 +125,28 @@ export async function POST(req: NextRequest) {
         const yeniImages = eskiGorsel && eskiGorsel !== pub.publicUrl ? Array.from(new Set([...(urun.images || []), eskiGorsel])) : (urun.images || [])
         const { error } = await admin.from('products').update({ image_url: pub.publicUrl, images: yeniImages, updated_at: new Date().toISOString() }).eq('id', body.urun_id)
         if (error) { console.error('[urun_gorsel_kaydet] update', error.message); return NextResponse.json({ error: 'Ürün güncellenemedi.' }, { status: 500 }) }
+        return NextResponse.json({ ok: true, url: pub.publicUrl })
+      }
+      case 'varyant_gorsel_kaydet': {
+        // Bir varyantın renk fotoğrafını AI ile yeniden tasarlanmış (stüdyo/yaşam alanı) haliyle değiştirir.
+        // Üretim 'urun_gorsel_tasarim' eylemiyle aynıdır (yalnızca arka plan değişir, renk/şekil korunur);
+        // burada yalnızca onaylanan sonuç Storage'a yüklenip product_variants.gorsel güncellenir.
+        // products.renkler önbelleği trg_urun_renk_senkron trigger'ı ile otomatik senkronlanır.
+        if (typeof body.variant_id !== 'string' || !/^[0-9a-f-]{36}$/.test(body.variant_id)) return NextResponse.json({ error: 'Varyant geçersiz' }, { status: 400 })
+        if (typeof body.b64 !== 'string' || body.b64.length < 100) return NextResponse.json({ error: 'Görsel verisi geçersiz' }, { status: 400 })
+        // Varyantın bu kullanıcıya görünür olduğunu kendi oturumuyla (RLS) doğrula, sonra service_role ile yaz
+        const { data: varyant } = await y.sb.from('product_variants').select('id,product_id').eq('id', body.variant_id).maybeSingle()
+        if (!varyant) return NextResponse.json({ error: 'Varyant bulunamadı' }, { status: 404 })
+        let bytes: Buffer
+        try { bytes = Buffer.from(body.b64, 'base64') } catch { return NextResponse.json({ error: 'Görsel çözümlenemedi' }, { status: 400 }) }
+        if (!bytes.length || bytes.length > 15 * 1024 * 1024) return NextResponse.json({ error: 'Görsel boyutu geçersiz' }, { status: 400 })
+        const admin = supabaseAdmin()
+        const yol = `renkler/${varyant.product_id}/varyant-${varyant.id}-${Date.now()}.png`
+        const up = await admin.storage.from('urun-gorselleri').upload(yol, bytes, { contentType: 'image/png', upsert: false })
+        if (up.error) { console.error('[varyant_gorsel_kaydet] upload', up.error.message); return NextResponse.json({ error: 'Görsel depoya yüklenemedi.' }, { status: 502 }) }
+        const { data: pub } = admin.storage.from('urun-gorselleri').getPublicUrl(yol)
+        const { error } = await admin.from('product_variants').update({ gorsel: pub.publicUrl }).eq('id', body.variant_id)
+        if (error) { console.error('[varyant_gorsel_kaydet] update', error.message); return NextResponse.json({ error: 'Varyant güncellenemedi.' }, { status: 500 }) }
         return NextResponse.json({ ok: true, url: pub.publicUrl })
       }
       case 'urun_360_uret': {
