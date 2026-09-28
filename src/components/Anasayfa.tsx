@@ -2,6 +2,7 @@ import { getFeaturedProducts, getAllProducts, getStats, getSettings, getExportCo
 import { resolveImg } from "@/data/images";
 import type { Dil } from "@/lib/urun-sayfasi";
 import HtmlLang         from "@/components/layout/HtmlLang";
+import HashDuzelt       from "@/components/layout/HashDuzelt";
 import Header           from "@/components/layout/Header";
 import Footer           from "@/components/layout/Footer";
 import Animations       from "@/components/layout/Animations";
@@ -46,6 +47,7 @@ export default async function Anasayfa({ dil }: { dil: Dil }) {
   return (
     <>
       <HtmlLang dil={dil} />
+      <HashDuzelt />
       <SchemaOrg settings={settings} stats={stats} dil={dil} />
       <Animations />
       <ProgressDots />

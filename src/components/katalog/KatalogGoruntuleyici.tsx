@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, type ComponentType } from "react";
 import dynamic from "next/dynamic";
-import { ChevronLeft, ChevronRight, Download, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Loader2, Maximize2, Minimize2 } from "lucide-react";
 
 // react-pageflip'in TS tanımları tüm ayar alanlarını zorunlu gösteriyor (kütüphanenin bilinen bir
 // eksikliği) — çalışma zamanında hepsi opsiyonel olduğu için burada gevşek tipleniyor.
@@ -17,7 +17,10 @@ export default function KatalogGoruntuleyici({ pdfUrl }: { pdfUrl: string }) {
   const [hata, setHata] = useState<string | null>(null);
   const [aktif, setAktif] = useState(0);
   const kitapRef = useRef<any>(null);
+  const kapsayiciRef = useRef<HTMLDivElement>(null);
   const iptal = useRef(false);
+  const [viewport, setViewport] = useState({ w: 0, h: 0 });
+  const [tamEkran, setTamEkran] = useState(false);
 
   useEffect(() => {
     iptal.current = false;
@@ -55,13 +58,54 @@ export default function KatalogGoruntuleyici({ pdfUrl }: { pdfUrl: string }) {
     return () => { iptal.current = true; };
   }, [pdfUrl]);
 
-  const genislik = Math.min(MAX_GENISLIK, typeof window !== "undefined" ? Math.round((window.innerWidth - 40) / 2) : MAX_GENISLIK);
-  const yukseklik = Math.round(genislik / oran);
+  useEffect(() => {
+    const guncelle = () => setViewport({ w: window.innerWidth, h: window.innerHeight });
+    guncelle();
+    window.addEventListener("resize", guncelle);
+    window.addEventListener("orientationchange", guncelle);
+    return () => {
+      window.removeEventListener("resize", guncelle);
+      window.removeEventListener("orientationchange", guncelle);
+    };
+  }, []);
+
+  useEffect(() => {
+    const guncelle = () => setTamEkran(document.fullscreenElement === kapsayiciRef.current);
+    document.addEventListener("fullscreenchange", guncelle);
+    return () => document.removeEventListener("fullscreenchange", guncelle);
+  }, []);
+
+  async function tamEkranDegistir() {
+    try {
+      if (!document.fullscreenElement) await kapsayiciRef.current?.requestFullscreen();
+      else await document.exitFullscreen();
+    } catch (e) { console.error("[katalog] tam ekran hatası", e); }
+  }
+
+  // Mobilde çift sayfa yan yana sığmadığı için tek sayfa tam genişlikte gösterilir;
+  // tam ekranda başlık/menü gizlendiğinden daha fazla dikey alan kitaba ayrılır.
+  const MOBIL_ESIK = 768;
+  const mobil = viewport.w > 0 && viewport.w < MOBIL_ESIK;
+  const kenarBosluk = mobil ? 24 : 40;
+  const dikeyBosluk = tamEkran ? 110 : mobil ? 230 : 320;
+  let genislik = viewport.w === 0
+    ? MAX_GENISLIK
+    : mobil
+      ? Math.min(560, viewport.w - kenarBosluk)
+      : Math.min(MAX_GENISLIK, Math.round((viewport.w - kenarBosluk) / 2));
+  let yukseklik = Math.round(genislik / oran);
+  if (viewport.h > 0) {
+    const maxYukseklik = viewport.h - dikeyBosluk;
+    if (maxYukseklik > 160 && yukseklik > maxYukseklik) {
+      yukseklik = maxYukseklik;
+      genislik = Math.round(yukseklik * oran);
+    }
+  }
 
   if (hata) return <div style={{ paddingInline: "clamp(20px,5vw,80px)", paddingBottom: 96 }}><p className="text-[#e55f28]">{hata}</p></div>;
 
   return (
-    <div style={{ paddingInline: "clamp(12px,4vw,80px)", paddingBottom: 72, display: "flex", flexDirection: "column", alignItems: "center", gap: 24 }}>
+    <div ref={kapsayiciRef} style={{ paddingInline: "clamp(12px,4vw,80px)", paddingBottom: 72, display: "flex", flexDirection: "column", alignItems: "center", gap: 24, background: "#0b0e0b", ...(tamEkran ? { justifyContent: "center", minHeight: "100vh", paddingTop: 24 } : {}) }}>
       {sayfalar.length === 0 ? (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: "80px 0", color: "#9aa294" }}>
           <Loader2 size={28} className="animate-spin" />
@@ -102,7 +146,7 @@ export default function KatalogGoruntuleyici({ pdfUrl }: { pdfUrl: string }) {
             ))}
           </HTMLFlipBook>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
             <button type="button" aria-label="Önceki sayfa" onClick={() => kitapRef.current?.pageFlip()?.flipPrev()}
               className="text-[#eae6dd] border border-[#eae6dd]/25 hover:border-[#eae6dd]/60 rounded-full p-2.5 transition-colors">
               <ChevronLeft size={16} />
@@ -116,6 +160,10 @@ export default function KatalogGoruntuleyici({ pdfUrl }: { pdfUrl: string }) {
               className="eyebrow text-[#eae6dd] border border-[#eae6dd]/25 hover:border-[#eae6dd]/60 rounded-full px-4 py-2.5 flex items-center gap-2 transition-colors" style={{ fontSize: 11 }}>
               <Download size={14} />PDF indir
             </a>
+            <button type="button" onClick={tamEkranDegistir}
+              className="eyebrow text-[#eae6dd] border border-[#eae6dd]/25 hover:border-[#eae6dd]/60 rounded-full px-4 py-2.5 flex items-center gap-2 transition-colors" style={{ fontSize: 11 }}>
+              {tamEkran ? <Minimize2 size={14} /> : <Maximize2 size={14} />}{tamEkran ? "Küçült" : "Tam Ekran"}
+            </button>
           </div>
         </>
       )}
