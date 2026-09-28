@@ -10,8 +10,14 @@ import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Modal, Field, FormGrid, Card
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
 import { Plus, Pencil, Trash2, Layers, Package, ClipboardCheck, Wand2, AlertTriangle, Boxes } from 'lucide-react'
 
-const RENKLER = [['Beyaz', '#ffffff'], ['Siyah', '#0b0e0b'], ['Kırmızı', '#f25757'], ['Mavi', '#4ea8f0'], ['Yeşil', '#22d3a0'], ['Sarı', '#f0d043'], ['Turuncu', '#e55f28'], ['Gri', '#9090a8'], ['Kahverengi', '#8b5a2b'], ['Antrasit', '#3a3f47'], ['Şeffaf', '#e6f0f5']]
-const bos = { product_id: '', name: '', color: '', size: '', barkod: '', sort_order: '0', acilis: '' }
+const RENKLER = [['Beyaz', '#ffffff'], ['Siyah', '#0b0e0b'], ['Kırmızı', '#f25757'], ['Mavi', '#4ea8f0'], ['Yeşil', '#22d3a0'], ['Sarı', '#f0d043'], ['Turuncu', '#e55f28'], ['Gri', '#9090a8'], ['Kahverengi', '#8b5a2b'], ['Antrasit', '#3a3f47'], ['Şeffaf', '#e6f0f5'],
+  // Eski sitede (alyaplastik.com) ürün renk fotoğraflarından gelen ek renk adları/kodları.
+  ['Bej', '#e7ceb2'], ['Mint Yeşili', '#a2c4c9'], ['Buz Mavisi', '#caeaff'], ['Mürdüm', '#37154e'], ['Lila', '#8e7cc3'],
+  ['Sütlü Kahve', '#b48457'], ['Kum', '#b48457'], ['Haki', '#777522'], ['Bordo', '#a10000'], ['Lacivert', '#191970'],
+  ['Koyu Yeşil', '#013220'], ['Fildişi', '#e8e5dd'], ['Açık Bej', '#efe3cb'], ['Kırık Beyaz', '#f5f5f0'], ['Krem', '#f5edd6'], ['Pembe', '#ffc6c6']]
+const RENK_HEX: Record<string, string> = Object.fromEntries(RENKLER.map(([ad, hex]) => [ad.toLowerCase(), hex]))
+const renkHex = (ad: string) => RENK_HEX[(ad || '').toLowerCase()]
+const bos = { product_id: '', name: '', color: '', hex: '', gorsel: '', size: '', barkod: '', sort_order: '0', acilis: '' }
 
 export default function AdminVaryantlarPage() {
   const toast = useToast()
@@ -34,7 +40,7 @@ export default function AdminVaryantlarPage() {
   const barkodVar = (b: string, haric?: string) => !!b && (d.variants.some((v: any) => v.barkod === b && v.id !== haric) || d.hammaddeler.some((h: any) => h.barkod === b))
 
   const openNew = (pid = '') => { setEditing(null); setForm({ ...bos, product_id: pid || urunF }); setModal(true) }
-  const openEdit = (v: any) => { setEditing(v); setForm({ product_id: v.product_id, name: v.name, color: v.color || '', size: v.size || '', barkod: v.barkod || '', sort_order: String(v.sort_order || 0), acilis: '' }); setModal(true) }
+  const openEdit = (v: any) => { setEditing(v); setForm({ product_id: v.product_id, name: v.name, color: v.color || '', hex: v.hex || '', gorsel: v.gorsel || '', size: v.size || '', barkod: v.barkod || '', sort_order: String(v.sort_order || 0), acilis: '' }); setModal(true) }
 
   async function save(e: React.FormEvent) {
     e.preventDefault(); if (busy) return
@@ -43,7 +49,7 @@ export default function AdminVaryantlarPage() {
     if (d.variants.some((v: any) => v.id !== editing?.id && v.product_id === form.product_id && v.name.toLowerCase() === form.name.trim().toLowerCase() && (v.color || '') === form.color && (v.size || '') === form.size)) return toast.show('Bu ürün için aynı varyant zaten var', true)
     setBusy(true)
     try {
-      const p: any = { product_id: form.product_id, name: form.name.trim(), color: form.color || null, size: form.size || null, barkod: form.barkod || null, sort_order: +form.sort_order || 0 }
+      const p: any = { product_id: form.product_id, name: form.name.trim(), color: form.color || null, hex: form.hex || null, gorsel: form.gorsel || null, size: form.size || null, barkod: form.barkod || null, sort_order: +form.sort_order || 0 }
       if (editing) { const { error } = await web.from('product_variants').update(p).eq('id', editing.id); if (error) throw new Error(error.message) }
       else {
         const { data, error } = await web.from('product_variants').insert({ ...p, stock: 0 }).select(); if (error) throw new Error(error.message)
@@ -87,7 +93,7 @@ export default function AdminVaryantlarPage() {
     const yeni: any[] = []; let sira = d.variants.filter((v: any) => v.product_id === uret.product_id).length
     renkler.forEach(r => bedenler.forEach(b => {
       const ad = [r, b].filter(Boolean).join(' / ') || 'Standart'
-      if (!d.variants.some((v: any) => v.product_id === uret.product_id && (v.color || '') === r && (v.size || '') === b)) yeni.push({ product_id: uret.product_id, name: ad, color: r || null, size: b || null, stock: 0, sort_order: sira++ })
+      if (!d.variants.some((v: any) => v.product_id === uret.product_id && (v.color || '') === r && (v.size || '') === b)) yeni.push({ product_id: uret.product_id, name: ad, color: r || null, hex: r ? renkHex(r) || null : null, size: b || null, stock: 0, sort_order: sira++ })
     }))
     if (!yeni.length) return toast.show('Tüm kombinasyonlar zaten mevcut', true)
     setBusy(true); const { error } = await web.from('product_variants').insert(yeni); setBusy(false)
@@ -97,7 +103,10 @@ export default function AdminVaryantlarPage() {
 
   const cols: Col<any>[] = [
     { key: 'urun', label: 'Ürün', sort: v => v.urunAd, render: v => <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>{urun[v.product_id]?.image_url ? <img src={urun[v.product_id].image_url} alt="" style={{ width: 34, height: 34, objectFit: 'contain', borderRadius: 7, background: 'var(--adm-s2)', padding: 2 }} /> : <Package size={16} style={{ color: 'var(--adm-tx3)' }} />}<div><div style={{ fontWeight: 600 }}>{v.urunAd}</div><div style={{ fontSize: 11, color: 'var(--adm-tx3)' }}>{v.urunKod}</div></div></div> },
-    { key: 'ad', label: 'Varyant', sort: v => v.name, render: v => <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{v.color && <i style={{ width: 12, height: 12, borderRadius: 6, border: '1px solid var(--adm-bdr2)', background: (RENKLER.find(r => r[0].toLowerCase() === (v.color || '').toLowerCase()) || [0, '#ccc'])[1] as string, display: 'inline-block' }} />}{v.name}{v.size && <Badge tone="muted">{v.size}</Badge>}</div> },
+    { key: 'ad', label: 'Varyant', sort: v => v.name, render: v => <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      {v.gorsel ? <img src={v.gorsel} alt="" style={{ width: 22, height: 22, objectFit: 'contain', borderRadius: 5, background: 'var(--adm-s2)', border: '1px solid var(--adm-bdr2)' }} />
+        : v.color && <i style={{ width: 12, height: 12, borderRadius: 6, border: '1px solid var(--adm-bdr2)', background: v.hex || renkHex(v.color) || '#ccc', display: 'inline-block' }} />}
+      {v.name}{v.size && <Badge tone="muted">{v.size}</Badge>}</div> },
     { key: 'barkod', label: 'Barkod', sort: v => v.barkod || '', render: v => v.barkod ? <span style={{ fontFamily: 'JetBrains Mono,monospace', fontSize: 12 }}>{v.barkod}</span> : <span style={{ color: 'var(--adm-tx3)' }}>—</span>, hideSm: true },
     { key: 'stok', label: 'Stok', align: 'right', sort: v => +v.stock, render: v => <b style={{ fontFamily: 'JetBrains Mono,monospace', color: +v.stock <= 0 ? 'var(--adm-red)' : undefined }}>{fmtInt(v.stock)}</b>, total: rs => fmtInt(sum(rs, (v: any) => v.stock)) },
     { key: 'rez', label: 'Rezerve', align: 'right', sort: v => v.rezerve, render: v => v.rezerve ? <span style={{ color: 'var(--adm-amber)', fontWeight: 600 }}>{fmtInt(v.rezerve)}</span> : '—', hideSm: true },
@@ -141,8 +150,17 @@ export default function AdminVaryantlarPage() {
           <Field label="Varyant adı *"><input className="adm-inp" required value={form.name} onChange={e => setForm((f: any) => ({ ...f, name: e.target.value }))} placeholder="Standart / Beyaz / 5 lt" /></Field>
           <Field label="Beden / boyut"><input className="adm-inp" value={form.size} onChange={e => setForm((f: any) => ({ ...f, size: e.target.value }))} /></Field>
           <Field label="Renk" span={2}>
-            <input className="adm-inp" value={form.color} onChange={e => setForm((f: any) => ({ ...f, color: e.target.value }))} placeholder="Seç veya yaz" />
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>{RENKLER.map(([ad, hex]) => <button type="button" key={ad} onClick={() => setForm((f: any) => ({ ...f, color: ad }))} title={ad} style={{ width: 22, height: 22, borderRadius: 11, background: hex, border: form.color === ad ? '2px solid var(--adm-ac)' : '1px solid var(--adm-bdr2)' }} />)}</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input className="adm-inp" value={form.color} onChange={e => setForm((f: any) => ({ ...f, color: e.target.value, hex: renkHex(e.target.value) || f.hex }))} placeholder="Seç veya yaz" style={{ flex: 1 }} />
+              <input type="color" value={form.hex || '#cccccc'} onChange={e => setForm((f: any) => ({ ...f, hex: e.target.value }))} title="Hex kodu" style={{ width: 38, height: 34, padding: 2, border: '1px solid var(--adm-bdr2)', borderRadius: 6, background: 'none' }} />
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>{RENKLER.map(([ad, hex]) => <button type="button" key={ad} onClick={() => setForm((f: any) => ({ ...f, color: ad, hex }))} title={ad} style={{ width: 22, height: 22, borderRadius: 11, background: hex, border: form.color === ad ? '2px solid var(--adm-ac)' : '1px solid var(--adm-bdr2)' }} />)}</div>
+          </Field>
+          <Field label="Görsel (renk fotoğrafı URL'i)" span={2} hint="Bu renkteki gerçek ürün fotoğrafının linki — ürün sayfasında renk seçilince gösterilir">
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {form.gorsel && <img src={form.gorsel} alt="" style={{ width: 34, height: 34, objectFit: 'contain', borderRadius: 6, background: 'var(--adm-s2)', border: '1px solid var(--adm-bdr2)' }} />}
+              <input className="adm-inp" value={form.gorsel} onChange={e => setForm((f: any) => ({ ...f, gorsel: e.target.value }))} placeholder="https://..." style={{ flex: 1 }} />
+            </div>
           </Field>
           <Field label="Barkod" hint={barkodVar(form.barkod, editing?.id) ? 'Bu barkod kullanımda' : undefined}><input className="adm-inp" value={form.barkod} onChange={e => setForm((f: any) => ({ ...f, barkod: e.target.value }))} style={barkodVar(form.barkod, editing?.id) ? { borderColor: 'var(--adm-red)' } : undefined} /></Field>
           <Field label="Sıra"><input type="number" className="adm-inp" value={form.sort_order} onChange={e => setForm((f: any) => ({ ...f, sort_order: e.target.value }))} /></Field>
