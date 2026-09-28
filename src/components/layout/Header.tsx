@@ -5,6 +5,7 @@ import { ChevronDown, Globe, Check } from "lucide-react";
 import type { Settings } from "@/lib/supabase";
 import { DILLER, DIL_AD, HREFLANG, type Dil } from "@/lib/diller";
 import { M, dilYolu, bolumYolu } from "@/lib/site-metin";
+import MegaMenu from "@/components/layout/MegaMenu";
 
 // Dil koduna karşılık bayrak emojisi (İngilizce için nötr/uluslararası bir seçim olarak İngiltere bayrağı kullanılmıyor,
 // dünya genelinde "İngilizce" için en yaygın kabul gören seçenek olduğundan GB bayrağı tercih edildi).
@@ -65,8 +66,8 @@ function DilSecici({ dil, ariaLabel, dark }: { dil: Dil; ariaLabel: string; dark
 
 export default function Header({ settings, dil = "tr" }: { settings: Settings | null; dil?: Dil }) {
   const m = M[dil];
+  // "Ürünler" mega menü olarak ayrı render ediliyor (bkz. aşağı); geri kalanı düz link.
   const NAV = [
-    { href: bolumYolu(dil, "products"),   label: m.nav.urunler },
     { href: bolumYolu(dil, "collection"), label: m.nav.koleksiyon },
     { href: bolumYolu(dil, "why"),        label: m.nav.neden },
     { href: bolumYolu(dil, "contact"),    label: m.nav.iletisim },
@@ -98,6 +99,7 @@ export default function Header({ settings, dil = "tr" }: { settings: Settings | 
         </Link>
 
         <nav className="hidden md:flex items-center gap-10 absolute left-1/2 -translate-x-1/2">
+          <MegaMenu dil={dil} kategoriAd={m.kategori} label={m.nav.urunler} />
           {NAV.map(l => (
             <a key={l.href} href={l.href} className="eyebrow text-[#6b7366] hover:text-white transition-colors duration-200">
               {l.label}

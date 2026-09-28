@@ -67,6 +67,7 @@ export const M: Record<Dil, SiteMetin> = {
           { ad: "Sepet Ürünleri", href: "/?kategori=sepet#collection" },
           { ad: "Depolama Sandığı", href: "/?kategori=sandik#collection" },
           { ad: "Ev Gereçleri", href: "/?kategori=ev#collection" },
+          { ad: "Bahçe Ürünleri", href: "/?kategori=bahce#collection" },
           { ad: "Özel Sipariş", href: "/#contact" },
         ] },
         { baslik: "Firma", ogeler: [
@@ -121,6 +122,7 @@ export const M: Record<Dil, SiteMetin> = {
           { ad: "Baskets", href: "/en?kategori=sepet#collection" },
           { ad: "Storage Crates", href: "/en?kategori=sandik#collection" },
           { ad: "Household Items", href: "/en?kategori=ev#collection" },
+          { ad: "Garden Products", href: "/en?kategori=bahce#collection" },
           { ad: "Custom Orders", href: "/en#contact" },
         ] },
         { baslik: "Company", ogeler: [
@@ -175,6 +177,7 @@ export const M: Record<Dil, SiteMetin> = {
           { ad: "Корзины", href: "/ru?kategori=sepet#collection" },
           { ad: "Ящики для хранения", href: "/ru?kategori=sandik#collection" },
           { ad: "Товары для дома", href: "/ru?kategori=ev#collection" },
+          { ad: "Товары для сада", href: "/ru?kategori=bahce#collection" },
           { ad: "Заказное производство", href: "/ru#contact" },
         ] },
         { baslik: "Компания", ogeler: [
@@ -229,6 +232,7 @@ export const M: Record<Dil, SiteMetin> = {
           { ad: "收纳篮", href: "/zh?kategori=sepet#collection" },
           { ad: "储物箱", href: "/zh?kategori=sandik#collection" },
           { ad: "家居用品", href: "/zh?kategori=ev#collection" },
+          { ad: "园艺用品", href: "/zh?kategori=bahce#collection" },
           { ad: "定制订单", href: "/zh#contact" },
         ] },
         { baslik: "公司", ogeler: [
@@ -250,5 +254,7 @@ export const M: Record<Dil, SiteMetin> = {
 
 export const dilYolu = (d: Dil) => (d === "tr" ? "/" : `/${d}`);
 export const bolumYolu = (d: Dil, id: string) => `${d === "tr" ? "/" : `/${d}`}#${id}`;
+/** Anasayfadaki ürün koleksiyonunu belirli bir kategori seçiliyken açan link (mega menü, footer). */
+export const kategoriYolu = (d: Dil, kategori: string) => `${dilYolu(d)}?kategori=${kategori}#collection`;
 /** Ürün kategori adı: sözlükte varsa çeviri, yoksa veritabanındaki ad/slug. */
 export const kategoriGoster = (d: Dil, slug: string | null | undefined, harita?: Record<string, string>) => (slug ? M[d].kategori[slug] || harita?.[slug] || slug : "");

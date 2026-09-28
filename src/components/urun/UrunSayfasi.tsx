@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import HtmlLang from "@/components/layout/HtmlLang";
 import UrunGaleri from "@/components/urun/UrunGaleri";
@@ -24,16 +25,10 @@ export default function UrunSayfasi({ urun, dil, settings, benzer, kategoriler =
     <div lang={HREFLANG[dil]} dir={rtl ? "rtl" : "ltr"}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdMetni(urunJsonLd(urun, dil, kat)) }} />
       <HtmlLang dil={dil} />
-      <header className="fixed inset-x-0 top-0 z-50 flex items-center justify-between h-[68px] bg-[#0b0e0b] border-b border-white/10" style={{ paddingInline: "clamp(20px,5vw,80px)" }}>
-        <Link href={dilYolu(dil)} className="flex items-baseline shrink-0" dir="ltr" aria-label="Alya Plastik">
-          <span className="heading text-white" style={{ fontSize: "clamp(17px,2.5vw,22px)" }}>ALYA</span>
-          <span className="heading text-[#e55f28]" style={{ fontSize: "clamp(17px,2.5vw,22px)" }}>PLASTİK</span>
-        </Link>
-        <nav className="flex items-center gap-6">
-          <Link href={bolumYolu(dil, "collection")} className="eyebrow text-[#9aa294] hover:text-white transition-colors">{T.urunler}</Link>
-          <TeklifModal urun={urun} dil={dil} className="eyebrow text-white bg-[#e55f28] px-4 py-2">{T.teklif}</TeklifModal>
-        </nav>
-      </header>
+      {/* Önceden bu sayfanın kendi, ayrı/sadeleştirilmiş bir header'ı vardı (eski metin logo, mega menü
+          ve dil seçici yoktu) — site genelindeki Header ile senkron değildi. Artık paylaşılan Header
+          kullanılıyor, böylece logo/mega menü/dil seçici güncellemeleri her sayfada aynı anda geçerli olur. */}
+      <Header settings={settings} dil={dil} />
 
       <main className="pt-[68px]">
         <div style={{ paddingInline: "clamp(20px,5vw,80px)", paddingBlock: "clamp(24px,4vw,56px)" }}>
