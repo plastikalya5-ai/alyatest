@@ -1,18 +1,64 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { ChevronDown, Globe, Check } from "lucide-react";
 import type { Settings } from "@/lib/supabase";
 import { DILLER, DIL_AD, HREFLANG, type Dil } from "@/lib/diller";
 import { M, dilYolu, bolumYolu } from "@/lib/site-metin";
 
+// Dil koduna karşılık bayrak emojisi (İngilizce için nötr/uluslararası bir seçim olarak İngiltere bayrağı kullanılmıyor,
+// dünya genelinde "İngilizce" için en yaygın kabul gören seçenek olduğundan GB bayrağı tercih edildi).
+const BAYRAK: Record<Dil, string> = { tr: "🇹🇷", en: "🇬🇧", ru: "🇷🇺", zh: "🇨🇳" };
+
 // Modül seviyesinde tanımlı: render içinde tanımlanırsa Header her state değişikliğinde
 // (scroll, menü aç/kapa) bu bileşeni yeniden yaratır ve React onu gereksiz yere unmount/remount eder.
-function DilSecici({ cls, dil, ariaLabel }: { cls: string; dil: Dil; ariaLabel: string }) {
+// Bayraklı, açılır panel şeklinde "premium" dil seçici — önceki hali düz metin linkleriydi.
+function DilSecici({ dil, ariaLabel, dark }: { dil: Dil; ariaLabel: string; dark?: boolean }) {
+  const [acik, setAcik] = useState(false);
+  const kutuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!acik) return;
+    const disaTikla = (e: MouseEvent) => { if (kutuRef.current && !kutuRef.current.contains(e.target as Node)) setAcik(false); };
+    const escTusu = (e: KeyboardEvent) => { if (e.key === "Escape") setAcik(false); };
+    document.addEventListener("mousedown", disaTikla);
+    document.addEventListener("keydown", escTusu);
+    return () => { document.removeEventListener("mousedown", disaTikla); document.removeEventListener("keydown", escTusu); };
+  }, [acik]);
+
   return (
-    <div className={cls} aria-label={ariaLabel}>
-      {DILLER.map(d => d === dil
-        ? <span key={d} className="text-white font-semibold" aria-current="true">{DIL_AD[d]}</span>
-        : <Link key={d} href={dilYolu(d)} hrefLang={HREFLANG[d]} lang={HREFLANG[d]} className="text-[#6b7366] hover:text-white transition-colors">{DIL_AD[d]}</Link>)}
+    <div ref={kutuRef} className="relative" aria-label={ariaLabel}>
+      <button type="button" onClick={() => setAcik(p => !p)} aria-expanded={acik} aria-haspopup="listbox"
+        className={`flex items-center gap-1.5 pl-2.5 pr-2 py-1.5 border rounded-full transition-colors duration-200 ${
+          dark ? "border-white/15 hover:border-white/35 text-white" : "border-white/15 hover:border-white/35 text-white"
+        }`}>
+        <Globe size={13} strokeWidth={1.75} className="opacity-70" />
+        <span className="text-[15px] leading-none">{BAYRAK[dil]}</span>
+        <span className="eyebrow text-[10px]">{dil.toUpperCase()}</span>
+        <ChevronDown size={12} strokeWidth={2} className={`opacity-60 transition-transform duration-200 ${acik ? "rotate-180" : ""}`} />
+      </button>
+
+      <ul role="listbox" aria-label={ariaLabel}
+        className="absolute end-0 top-[calc(100%+8px)] min-w-[168px] py-1.5 bg-[#0b0e0b] border border-white/12 rounded-xl shadow-[0_16px_40px_rgba(0,0,0,0.45)] origin-top-right transition-all duration-150 z-10"
+        style={{ opacity: acik ? 1 : 0, transform: acik ? "scale(1)" : "scale(0.96)", pointerEvents: acik ? "auto" : "none" }}>
+        {DILLER.map(d => (
+          <li key={d} role="option" aria-selected={d === dil}>
+            {d === dil ? (
+              <span className="flex items-center gap-2.5 px-3.5 py-2 text-white">
+                <span className="text-[16px] leading-none">{BAYRAK[d]}</span>
+                <span className="eyebrow text-[11px] flex-1">{DIL_AD[d]}</span>
+                <Check size={14} strokeWidth={2.5} className="text-[#e55f28]" />
+              </span>
+            ) : (
+              <Link href={dilYolu(d)} hrefLang={HREFLANG[d]} lang={HREFLANG[d]} onClick={() => setAcik(false)}
+                className="flex items-center gap-2.5 px-3.5 py-2 text-[#9aa294] hover:text-white hover:bg-white/5 transition-colors">
+                <span className="text-[16px] leading-none">{BAYRAK[d]}</span>
+                <span className="eyebrow text-[11px]">{DIL_AD[d]}</span>
+              </Link>
+            )}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -59,7 +105,9 @@ export default function Header({ settings, dil = "tr" }: { settings: Settings | 
           ))}
         </nav>
 
-        <DilSecici cls="hidden md:flex items-center gap-3 ms-auto me-5 text-[11px]" dil={dil} ariaLabel={m.dil} />
+        <div className="hidden md:block ms-auto me-5">
+          <DilSecici dil={dil} ariaLabel={m.dil} />
+        </div>
         <a href={wa} target="_blank" rel="noopener noreferrer nofollow"
           className="hidden md:inline-flex items-center gap-2 bg-[#e55f28] hover:bg-[#c94f1e] text-white text-[10px] font-semibold tracking-[0.14em] uppercase px-5 py-2.5 transition-colors shrink-0">
           {m.nav.teklif}
@@ -88,7 +136,9 @@ export default function Header({ settings, dil = "tr" }: { settings: Settings | 
           ))}
         </nav>
         <div className="flex flex-col gap-3">
-          <DilSecici cls="flex items-center justify-center gap-5 text-[13px] pb-2" dil={dil} ariaLabel={m.dil} />
+          <div className="flex justify-center pb-2">
+            <DilSecici dil={dil} ariaLabel={m.dil} dark />
+          </div>
           <a href={wa} target="_blank" rel="noopener noreferrer nofollow"
             className="flex items-center justify-center gap-2 bg-[#e55f28] text-white text-[10px] font-semibold tracking-[0.14em] uppercase py-4">
             {m.nav.waTeklif}
