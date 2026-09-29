@@ -113,7 +113,7 @@ export async function getTemaGorselleri(): Promise<Record<string, string> | null
     .from("settings")
     .select("value")
     .eq("key", "tema_gorselleri")
-    .single();
+    .maybeSingle();
   return data?.value ?? null;
 }
 

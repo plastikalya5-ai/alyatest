@@ -1,36 +1,19 @@
-// Tüm Cloudinary görselleri — unoptimized img tag ile kullanılacak
+// Anasayfada GERÇEKTEN render edilen sabit vitrin/dekoratif görseller. Önceden burada 25+ eski
+// Cloudinary stok fotoğrafı vardı; yalnızca 7'si (aşağıdaki anahtarlar) Hero/Why/FullscreenFeature
+// içinde kullanılıyordu — geri kalanı hiçbir yerde render edilmiyordu ama "img" prop'u sunucu
+// bileşeninden istemciye geçerken tüm objeyle birlikte sayfa verisine (RSC payload) gömülüyordu.
+// Kullanılmayan anahtarlar kaldırıldı (bkz. TEMA_ALANLARI ile bire bir eşleşme).
 export const IMG = {
-  hero1:     "https://res.cloudinary.com/dy7dekame/image/upload/v1789927646/2_gv5iru.webp",
-  hero2:     "https://res.cloudinary.com/dy7dekame/image/upload/v1789927646/indir_klvc6m.webp",
-  ufo:       "https://res.cloudinary.com/dy7dekame/image/upload/v1789927645/ufo_xaemqc.webp",
-  dantel:    "https://res.cloudinary.com/dy7dekame/image/upload/v1789927645/dantel_d47fze.webp",
-  d3:        "https://res.cloudinary.com/dy7dekame/image/upload/v1789927645/3d_rwe9u7.webp",
-  d3mavi:    "https://res.cloudinary.com/dy7dekame/image/upload/v1789927645/3dmavi_mdddos.webp",
-  sandik:    "https://res.cloudinary.com/dy7dekame/image/upload/v1789927644/sand%C4%B1k_g7bwpa.webp",
-  fikir:     "https://res.cloudinary.com/dy7dekame/image/upload/v1789927644/F%C4%B0K%C4%B0RDEN_forma12_p4jeqv.webp",
-  kaktus:    "https://res.cloudinary.com/dy7dekame/image/upload/v1789927644/kakt%C3%BCs_kozalak_saks%C4%B1_rm5r5d.webp",
-  orgu:      "https://res.cloudinary.com/dy7dekame/image/upload/v1789927644/%C3%B6rg%C3%BC_sepet_rhttya.webp",
-  balkon:    "https://res.cloudinary.com/dy7dekame/image/upload/v1789927644/3d_balkon_saks%C4%B1_pqaq15.webp",
-  venusAsk:  "https://res.cloudinary.com/dy7dekame/image/upload/v1789927644/Ven%C3%BCs_Askili_Saksi_No2_avphmd.webp",
-  ntax:      "https://res.cloudinary.com/dy7dekame/image/upload/v1789927644/ntaxh6wpjalk9kqkys9q.webp",
-  kristal:   "https://res.cloudinary.com/dy7dekame/image/upload/v1789927643/kristal_saks%C4%B1_bdnagp.webp",
-  venus:     "https://res.cloudinary.com/dy7dekame/image/upload/v1789927643/ven%C3%BCs_menek%C5%9Fe_saks%C4%B1_kznydw.webp",
-  kordon:    "https://res.cloudinary.com/dy7dekame/image/upload/v1789927643/Kordon_Dik_Ayakli_Sak_hf24qs.webp",
-  guvec:     "https://res.cloudinary.com/dy7dekame/image/upload/v1789927643/G%C3%BCve%C3%A7_Dik_Ayakli_Saksi_k5tdso.webp",
-  sandikEko: "https://res.cloudinary.com/dy7dekame/image/upload/v1789927643/sandik_eko_yc3nb5.webp",
-  kozKare:   "https://res.cloudinary.com/dy7dekame/image/upload/v1789927643/kozalak_saks%C4%B1_kare_sdhzrz.webp",
-  kozalak:   "https://res.cloudinary.com/dy7dekame/image/upload/v1789927643/kozalak_saks%C4%B1_h3mmdm.webp",
-  klazot:    "https://res.cloudinary.com/dy7dekame/image/upload/v1789927643/klaz%C3%B6t_f%C4%B1r%C3%A7as%C4%B1_dcam99.webp",
-  deterjan:  "https://res.cloudinary.com/dy7dekame/image/upload/v1789927642/Deterjanlik_io5jd7.webp",
-  ahsap:     "https://res.cloudinary.com/dy7dekame/image/upload/v1789927642/ah%C5%9Fap_saks%C4%B1_uxh0sc.webp",
-  casa:      "https://res.cloudinary.com/dy7dekame/image/upload/v1789927642/casa_encheh.webp",
-  camasir:   "https://res.cloudinary.com/dy7dekame/image/upload/v1789927642/%C3%A7ama%C5%9F%C4%B1r_selesi_fq5gvj.webp",
-  cop:       "https://res.cloudinary.com/dy7dekame/image/upload/v1789927642/%C3%87%C3%B6p_Kovasi_aikibm.webp",
-  guvecOval: "https://res.cloudinary.com/dy7dekame/image/upload/v1789927642/G%C3%BCve%C3%A7_Oval_Ayakli_Saks_rxvojz.webp",
+  fikir:    "https://cwhxrusysuumndijapeb.supabase.co/storage/v1/object/public/urun-gorselleri/tema/fikir/1790527824319.png",
+  ufo:      "https://cwhxrusysuumndijapeb.supabase.co/storage/v1/object/public/urun-gorselleri/tema/ufo/1790527881493.png",
+  dantel:   "https://cwhxrusysuumndijapeb.supabase.co/storage/v1/object/public/urun-gorselleri/tema/dantel/1790527954856.png",
+  d3:       "https://cwhxrusysuumndijapeb.supabase.co/storage/v1/object/public/urun-gorselleri/tema/d3/1790528029203.png",
+  venusAsk: "https://cwhxrusysuumndijapeb.supabase.co/storage/v1/object/public/urun-gorselleri/tema/venusAsk/1790528088874.png",
+  kordon:   "https://cwhxrusysuumndijapeb.supabase.co/storage/v1/object/public/urun-gorselleri/tema/kordon/1790528232838.png",
+  hero2:    "https://cwhxrusysuumndijapeb.supabase.co/storage/v1/object/public/urun-gorselleri/tema/hero2/1790528769900.png",
 };
 
 // "Tema Yönetimi" admin ekranında AI ile yeniden tasarlanabilen sabit vitrin/dekoratif görseller.
-// Yalnızca anasayfada gerçekten kullanılan anahtarlar burada listelenir (IMG'deki diğer anahtarlar kodda referans edilmiyor).
 export const TEMA_ALANLARI: { key: keyof typeof IMG; ad: string; aciklama: string }[] = [
   { key: "fikir", ad: "Anasayfa — Hero Sol Zemin Dokusu", aciklama: "Hero bölümünün sol (metin) tarafında soluk arka plan dokusu olarak kullanılır." },
   { key: "ufo", ad: "Anasayfa — Hero Vitrin 1 / \"Neden Biz\"", aciklama: "Hero sağ 2×2 ızgaranın ilk karesi ve \"Neden Biz\" bölümünde tekrar kullanılır." },
