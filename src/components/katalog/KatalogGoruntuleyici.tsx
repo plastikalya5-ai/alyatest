@@ -8,7 +8,10 @@ import { ChevronLeft, ChevronRight, Download, Loader2, Maximize2, Minimize2 } fr
 const HTMLFlipBook = dynamic(() => import("react-pageflip"), { ssr: false }) as unknown as ComponentType<any>;
 
 const OLCEK = 1.6; // render kalitesi — ekran boyutundan bağımsız sabit bir çözünürlük
-const MAX_GENISLIK = 900; // her sayfanın (kitabın yarısının) en fazla piksel genişliği
+// react-pageflip burada HER ZAMAN tek yaprak gösteriyor (iki ayrı sayfa yan yana DEĞİL) — bu
+// katalogda "çift sayfa" görünümü aslında PDF içinde tek görsel olarak birleştirilmiş (bkz. oran
+// tespiti). Bu yüzden MAX_GENISLIK kutunun TAM genişliğidir, yarısı değil.
+const MAX_GENISLIK = 1300;
 
 export default function KatalogGoruntuleyici({ pdfUrl }: { pdfUrl: string }) {
   const [sayfalar, setSayfalar] = useState<string[]>([]);
@@ -33,13 +36,15 @@ export default function KatalogGoruntuleyici({ pdfUrl }: { pdfUrl: string }) {
         setIlerleme({ yuklenen: 0, toplam: belge.numPages });
         const ilkSayfa = await belge.getPage(1);
         const ilkGorunum = ilkSayfa.getViewport({ scale: 1 });
-        setOran(ilkGorunum.width / ilkGorunum.height);
+        setOran(ilkGorunum.width / ilkGorunum.height); // pdf tamamen yüklenene kadar geçici tahmin (yükleniyor ekranı)
 
         const uretilen: string[] = [];
+        const oranlar: number[] = [];
         for (let i = 1; i <= belge.numPages; i++) {
           if (iptal.current) return;
           const sayfa = await belge.getPage(i);
           const gorunum = sayfa.getViewport({ scale: OLCEK });
+          oranlar.push(gorunum.width / gorunum.height);
           const canvas = document.createElement("canvas");
           canvas.width = gorunum.width; canvas.height = gorunum.height;
           const ctx = canvas.getContext("2d");
@@ -49,7 +54,23 @@ export default function KatalogGoruntuleyici({ pdfUrl }: { pdfUrl: string }) {
           if (iptal.current) return;
           setIlerleme({ yuklenen: i, toplam: belge.numPages });
         }
-        if (!iptal.current) setSayfalar(uretilen);
+        if (!iptal.current) {
+          // Kitabın kutusu TEK bir en/boy oranıyla sabitlenir (react-pageflip her sayfa için yeniden
+          // boyutlanmaz); bu yüzden ilk sayfanın (genelde kapak — genellikle tek/dikey) oranı yerine,
+          // sayfaların ÇOĞUNLUĞUNUN oranı kullanılır. Kapak dikey, iç sayfalar (çift sayfa birleşik
+          // görsel — yatay) olduğunda eskiden kutu kapağa göre dikey sabitleniyor, iç sayfalar bu dikey
+          // kutu içinde object-fit:contain ile küçülüp kutunun yaklaşık yarısını boş (beyaz) bırakıyordu.
+          const sayac = new Map<string, { oran: number; adet: number }>();
+          for (const o of oranlar) {
+            const anahtar = o.toFixed(2);
+            const kayit = sayac.get(anahtar);
+            if (kayit) kayit.adet++; else sayac.set(anahtar, { oran: o, adet: 1 });
+          }
+          let enCok = { oran: ilkGorunum.width / ilkGorunum.height, adet: 0 };
+          for (const kayit of sayac.values()) if (kayit.adet > enCok.adet) enCok = kayit;
+          setOran(enCok.oran);
+          setSayfalar(uretilen);
+        }
       } catch (e) {
         console.error("[katalog] PDF render hatası", e);
         if (!iptal.current) setHata("Katalog yüklenirken bir sorun oluştu.");
@@ -95,7 +116,7 @@ export default function KatalogGoruntuleyici({ pdfUrl }: { pdfUrl: string }) {
     ? MAX_GENISLIK
     : mobil
       ? Math.min(560, viewport.w - kenarBosluk)
-      : Math.min(MAX_GENISLIK, Math.round((viewport.w - kenarBosluk) / 2));
+      : Math.min(MAX_GENISLIK, viewport.w - kenarBosluk);
   let yukseklik = Math.round(genislik / oran);
   if (viewport.h > 0) {
     const maxYukseklik = viewport.h - dikeyBosluk;
@@ -120,7 +141,7 @@ export default function KatalogGoruntuleyici({ pdfUrl }: { pdfUrl: string }) {
             ref={kitapRef}
             width={genislik}
             height={yukseklik}
-            minWidth={220} maxWidth={1000}
+            minWidth={220} maxWidth={1400}
             minHeight={280} maxHeight={1400}
             size="fixed"
             showCover
