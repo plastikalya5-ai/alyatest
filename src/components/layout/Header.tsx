@@ -14,7 +14,7 @@ const BAYRAK: Record<Dil, string> = { tr: "🇹🇷", en: "🇬🇧", ru: "🇷�
 // Modül seviyesinde tanımlı: render içinde tanımlanırsa Header her state değişikliğinde
 // (scroll, menü aç/kapa) bu bileşeni yeniden yaratır ve React onu gereksiz yere unmount/remount eder.
 // Bayraklı, açılır panel şeklinde "premium" dil seçici — önceki hali düz metin linkleriydi.
-function DilSecici({ dil, ariaLabel, dark }: { dil: Dil; ariaLabel: string; dark?: boolean }) {
+function DilSecici({ dil, ariaLabel, dark, altDiller }: { dil: Dil; ariaLabel: string; dark?: boolean; altDiller?: Partial<Record<Dil, string>> }) {
   const [acik, setAcik] = useState(false);
   const kutuRef = useRef<HTMLDivElement>(null);
 
@@ -51,7 +51,7 @@ function DilSecici({ dil, ariaLabel, dark }: { dil: Dil; ariaLabel: string; dark
                 <Check size={14} strokeWidth={2.5} className="text-[#e55f28]" />
               </span>
             ) : (
-              <Link href={dilYolu(d)} hrefLang={HREFLANG[d]} lang={HREFLANG[d]} onClick={() => setAcik(false)}
+              <Link href={altDiller?.[d] ?? dilYolu(d)} hrefLang={HREFLANG[d]} lang={HREFLANG[d]} onClick={() => setAcik(false)}
                 className="flex items-center gap-2.5 px-3.5 py-2 text-[#9aa294] hover:text-white hover:bg-white/5 transition-colors">
                 <span className="text-[16px] leading-none">{BAYRAK[d]}</span>
                 <span className="eyebrow text-[11px]">{DIL_AD[d]}</span>
@@ -64,7 +64,10 @@ function DilSecici({ dil, ariaLabel, dark }: { dil: Dil; ariaLabel: string; dark
   );
 }
 
-export default function Header({ settings, dil = "tr" }: { settings: Settings | null; dil?: Dil }) {
+// altDiller: geçerli sayfanın diğer dillerdeki karşılığı (ör. ürün sayfasında aynı ürünün çevirisi).
+// Verilmezse (ör. katalog, hakkımızda gibi yalnızca Türkçe var olan sayfalarda) dil değiştirici o dilin
+// ana sayfasına yönlendirir — bu sayfaların başka dilde karşılığı yoktur.
+export default function Header({ settings, dil = "tr", altDiller }: { settings: Settings | null; dil?: Dil; altDiller?: Partial<Record<Dil, string>> }) {
   const m = M[dil];
   // "Ürünler" mega menü olarak ayrı render ediliyor (bkz. aşağı); geri kalanı düz link.
   const NAV = [
@@ -108,7 +111,7 @@ export default function Header({ settings, dil = "tr" }: { settings: Settings | 
         </nav>
 
         <div className="hidden md:block ms-auto me-5">
-          <DilSecici dil={dil} ariaLabel={m.dil} />
+          <DilSecici dil={dil} ariaLabel={m.dil} altDiller={altDiller} />
         </div>
         <a href={wa} target="_blank" rel="noopener noreferrer nofollow"
           className="hidden md:inline-flex items-center gap-2 bg-[#e55f28] hover:bg-[#c94f1e] text-white text-[10px] font-semibold tracking-[0.14em] uppercase px-5 py-2.5 transition-colors shrink-0">
@@ -139,7 +142,7 @@ export default function Header({ settings, dil = "tr" }: { settings: Settings | 
         </nav>
         <div className="flex flex-col gap-3">
           <div className="flex justify-center pb-2">
-            <DilSecici dil={dil} ariaLabel={m.dil} dark />
+            <DilSecici dil={dil} ariaLabel={m.dil} dark altDiller={altDiller} />
           </div>
           <a href={wa} target="_blank" rel="noopener noreferrer nofollow"
             className="flex items-center justify-center gap-2 bg-[#e55f28] text-white text-[10px] font-semibold tracking-[0.14em] uppercase py-4">

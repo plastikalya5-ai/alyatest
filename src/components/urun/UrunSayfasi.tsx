@@ -6,7 +6,7 @@ import UrunGaleri from "@/components/urun/UrunGaleri";
 import TeklifModal from "@/components/urun/TeklifModal";
 import { bolumYolu, dilYolu, kategoriGoster } from "@/lib/site-metin";
 import type { Settings } from "@/lib/supabase";
-import { DILLER, DIL_AD, HREFLANG, UI, aciklama, jsonLdMetni, kategoriAdi, mevcutDiller, ozellikEtiketi, urunJsonLd, urunYolu, type Dil, type UrunKaydi } from "@/lib/urun-sayfasi";
+import { DILLER, DIL_AD, HREFLANG, UI, aciklama, jsonLdMetni, kategoriAdi, mevcutDiller, ozellikEtiketi, urunJsonLd, urunLinki, urunYolu, type Dil, type UrunKaydi } from "@/lib/urun-sayfasi";
 
 // Sunucu bileşeni: ürün detay sayfası (tüm diller için ortak). İçerik yalnızca veritabanındaki ürün kaydından gelir.
 export default function UrunSayfasi({ urun, dil, settings, benzer, kategoriler = {} }: { urun: UrunKaydi; dil: Dil; settings: Settings | null; benzer: UrunKaydi[]; kategoriler?: Record<string, string> }) {
@@ -18,6 +18,10 @@ export default function UrunSayfasi({ urun, dil, settings, benzer, kategoriler =
   const metin = aciklama(urun, dil);
   const ozellikler = Object.entries(urun.specs || {});
   const diller = mevcutDiller(urun);
+  // Dil değiştirici bu ürünün sayfasında kalmalı: çevirisi varsa o dildeki sayfaya, yoksa (kopya
+  // içerik olmaması için) Türkçe sayfasına gider — önceden Header'ın varsayılanı her zaman ana
+  // sayfaya yönlendiriyordu, bu ürün sayfasında yanlıştı.
+  const altDiller = Object.fromEntries(DILLER.map(d => [d, urunLinki(urun, d)])) as Partial<Record<Dil, string>>;
   const wa = (settings?.whatsapp || "+90 535 761 65 24").replace(/\D/g, "");
   const waUrl = `https://wa.me/${wa}?text=${encodeURIComponent(T.wamesaj(urun.name, urun.code))}`;
 
@@ -28,7 +32,7 @@ export default function UrunSayfasi({ urun, dil, settings, benzer, kategoriler =
       {/* Önceden bu sayfanın kendi, ayrı/sadeleştirilmiş bir header'ı vardı (eski metin logo, mega menü
           ve dil seçici yoktu) — site genelindeki Header ile senkron değildi. Artık paylaşılan Header
           kullanılıyor, böylece logo/mega menü/dil seçici güncellemeleri her sayfada aynı anda geçerli olur. */}
-      <Header settings={settings} dil={dil} />
+      <Header settings={settings} dil={dil} altDiller={altDiller} />
 
       <main className="pt-[68px]">
         <div style={{ paddingInline: "clamp(20px,5vw,80px)", paddingBlock: "clamp(24px,4vw,56px)" }}>
