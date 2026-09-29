@@ -1,14 +1,18 @@
 import type { ReactNode } from "react";
 import type { Settings } from "@/lib/supabase";
+import type { Dil } from "@/lib/diller";
+import { HREFLANG } from "@/lib/diller";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 
 // Kurumsal içerik sayfaları (Hakkımızda, Üretim Süreci, Sertifikalar, KVKK) için ortak sayfa
-// iskeleti — anasayfayla aynı Header/Footer'ı kullanır, şimdilik yalnızca Türkçe.
-export default function KurumsalSayfa({ settings, etiket, baslik, children }: { settings: Settings | null; etiket: string; baslik: string; children: ReactNode }) {
+// iskeleti — anasayfayla aynı Header/Footer'ı kullanır. dil verilmezse (kök /hakkimizda vb.)
+// Türkçe varsayılır; /en, /ru, /zh altındaki karşılıkları dil geçer, böylece dil değiştirici
+// bu sayfalarda da doğru dile kalır (bkz. altDiller).
+export default function KurumsalSayfa({ settings, dil = "tr", altDiller, etiket, baslik, children }: { settings: Settings | null; dil?: Dil; altDiller?: Partial<Record<Dil, string>>; etiket: string; baslik: string; children: ReactNode }) {
   return (
-    <div lang="tr">
-      <Header settings={settings} dil="tr" />
+    <div lang={HREFLANG[dil]}>
+      <Header settings={settings} dil={dil} altDiller={altDiller} />
       <main className="bg-[#eae6dd] min-h-svh pt-[84px]">
         <div style={{ paddingInline: "clamp(20px,5vw,80px)", paddingBlock: "clamp(48px,7vw,96px)" }}>
           <p className="eyebrow text-[#e55f28] mb-3">{etiket}</p>
@@ -18,7 +22,7 @@ export default function KurumsalSayfa({ settings, etiket, baslik, children }: { 
           </div>
         </div>
       </main>
-      <Footer settings={settings} dil="tr" />
+      <Footer settings={settings} dil={dil} />
     </div>
   );
 }

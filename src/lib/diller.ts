@@ -16,3 +16,5 @@ export const urunYolu = (d: Dil, slug: string) => (d === "tr" ? `/urun/${slug}` 
  * için de aynı dilde kalınır (açıklama Türkçe'ye düşer, bkz. aciklama()), Türkçe'ye fırlatılmaz. */
 export const urunLinki = (p: { slug: string; description_i18n?: unknown }, d: Dil) => urunYolu(d, p.slug);
 export const urunUrl = (d: Dil, slug: string) => `${SITE_URL}${urunYolu(d, slug)}`;
+/** Kurumsal sayfa yolu (hakkimizda, uretim-sureci, sertifikalar, kvkk) — ürünlerle aynı örüntü. */
+export const kurumsalYolu = (d: Dil, slug: string) => (d === "tr" ? `/${slug}` : `/${d}/${slug}`);
