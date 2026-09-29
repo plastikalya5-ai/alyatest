@@ -40,7 +40,9 @@ function DilSecici({ dil, ariaLabel, dark, altDiller }: { dil: Dil; ariaLabel: s
       </button>
 
       <ul role="listbox" aria-label={ariaLabel}
-        className="absolute end-0 top-[calc(100%+8px)] min-w-[168px] py-1.5 bg-[#0b0e0b] border border-white/12 rounded-xl shadow-[0_16px_40px_rgba(0,0,0,0.45)] origin-top-right transition-all duration-150 z-10"
+        className={`absolute end-0 min-w-[168px] py-1.5 bg-[#0b0e0b] border border-white/12 rounded-xl shadow-[0_16px_40px_rgba(0,0,0,0.45)] transition-all duration-150 z-10 ${
+          dark ? "bottom-[calc(100%+8px)] origin-bottom-right" : "top-[calc(100%+8px)] origin-top-right"
+        }`}
         style={{ opacity: acik ? 1 : 0, transform: acik ? "scale(1)" : "scale(0.96)", pointerEvents: acik ? "auto" : "none" }}>
         {DILLER.map(d => (
           <li key={d} role="option" aria-selected={d === dil}>
