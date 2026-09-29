@@ -109,7 +109,7 @@ export default function Header({ settings, dil = "tr", altDiller }: { settings: 
           <nav className="hidden md:flex items-center gap-10 absolute left-1/2 -translate-x-1/2">
             <MegaMenu dil={dil} kategoriAd={m.kategori} label={m.nav.urunler} />
             {NAV.map(l => (
-              <a key={l.href} href={l.href} className="eyebrow text-[#9aa294] hover:text-white transition-colors duration-200">
+              <a key={l.href} href={l.href} className="eyebrow text-white/80 hover:text-white transition-colors duration-200">
                 {l.label}
               </a>
             ))}

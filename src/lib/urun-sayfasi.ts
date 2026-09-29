@@ -49,7 +49,10 @@ export async function getBenzer(u: UrunKaydi, n = 4): Promise<UrunKaydi[]> {
   return (data as UrunKaydi[]) ?? [];
 }
 
-export const aciklama = (u: UrunKaydi, d: Dil) => (d === "tr" ? u.description || "" : (u.description_i18n?.[d] || "")).trim();
+// Çevirisi girilmemiş ürünlerde de sayfa boş kalmasın diye Türkçe açıklamaya düşülür — dil
+// değiştiricinin bu sayfada kalabilmesi (bkz. urunLinki) buna bağlı, tamamen boş bir sayfadansa
+// Türkçe içerik göstermek tercih edildi.
+export const aciklama = (u: UrunKaydi, d: Dil) => (d === "tr" ? u.description || "" : (u.description_i18n?.[d] || u.description || "")).trim();
 export const kisalt = (s: string, n: number) => (s.length <= n ? s : s.slice(0, n - 1).replace(/\s+\S*$/, "") + "…");
 
 /** Arayüz metinleri. */

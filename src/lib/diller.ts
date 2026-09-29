@@ -12,6 +12,7 @@ export function mevcutDiller(u: { description_i18n?: Partial<Record<Dil, string>
   return DILLER.filter(d => d === "tr" || (typeof i[d] === "string" && i[d]!.trim().length > 0));
 }
 export const urunYolu = (d: Dil, slug: string) => (d === "tr" ? `/urun/${slug}` : `/${d}/urun/${slug}`);
-/** Ürün kartı bağlantısı: o dilde çeviri varsa çevrilmiş sayfa, yoksa Türkçe sayfa. */
-export const urunLinki = (p: { slug: string; description_i18n?: unknown }, d: Dil) => urunYolu(mevcutDiller({ description_i18n: (p.description_i18n as any) ?? null }).includes(d) ? d : "tr", p.slug);
+/** Ürün kartı bağlantısı: HER ZAMAN o an gezinilen dildeki sayfaya gider — çevirisi olmayan ürünler
+ * için de aynı dilde kalınır (açıklama Türkçe'ye düşer, bkz. aciklama()), Türkçe'ye fırlatılmaz. */
+export const urunLinki = (p: { slug: string; description_i18n?: unknown }, d: Dil) => urunYolu(d, p.slug);
 export const urunUrl = (d: Dil, slug: string) => `${SITE_URL}${urunYolu(d, slug)}`;

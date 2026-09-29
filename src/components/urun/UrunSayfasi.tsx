@@ -18,9 +18,9 @@ export default function UrunSayfasi({ urun, dil, settings, benzer, kategoriler =
   const metin = aciklama(urun, dil);
   const ozellikler = Object.entries(urun.specs || {});
   const diller = mevcutDiller(urun);
-  // Dil değiştirici bu ürünün sayfasında kalmalı: çevirisi varsa o dildeki sayfaya, yoksa (kopya
-  // içerik olmaması için) Türkçe sayfasına gider — önceden Header'ın varsayılanı her zaman ana
-  // sayfaya yönlendiriyordu, bu ürün sayfasında yanlıştı.
+  // Dil değiştirici bu ürünün sayfasında kalmalı: her zaman aynı ürünün o dildeki sayfasına gider
+  // (çevirisi yoksa açıklama Türkçe'ye düşer, bkz. aciklama()) — önceden hem Header'ın varsayılanı
+  // ana sayfaya yönlendiriyordu, hem de çevirisiz ürünlerde o dildeki sayfa hiç üretilmiyordu.
   const altDiller = Object.fromEntries(DILLER.map(d => [d, urunLinki(urun, d)])) as Partial<Record<Dil, string>>;
   const wa = (settings?.whatsapp || "+90 535 761 65 24").replace(/\D/g, "");
   const waUrl = `https://wa.me/${wa}?text=${encodeURIComponent(T.wamesaj(urun.name, urun.code))}`;
