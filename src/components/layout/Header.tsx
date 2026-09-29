@@ -92,44 +92,48 @@ export default function Header({ settings, dil = "tr", altDiller }: { settings: 
 
   return (
     <>
-      <header className={`fixed inset-x-0 top-0 z-80 flex items-center justify-between h-[68px] bg-[#0b0e0b] transition-all duration-500 ${
-        scrolled || open ? "shadow-[0_8px_24px_rgba(11,14,11,0.18)] border-b border-white/8" : "border-b border-transparent"
-      }`} style={{ paddingInline: "clamp(20px,5vw,80px)" }}>
+      <header className="fixed inset-x-0 top-0 z-80 flex items-center h-[84px] transition-all duration-500"
+        style={{ paddingInline: "clamp(20px,5vw,80px)", paddingTop: 14, paddingBottom: 14 }}>
 
-        <Link href={dilYolu(dil)} className="flex items-center shrink-0">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo-white.png" alt="Alya Plastik" className="h-[22px] md:h-[26px] w-auto" />
-        </Link>
+        <div className={`relative w-full h-full flex items-center justify-between rounded-full backdrop-blur-xl transition-all duration-500 border ${
+          scrolled || open ? "bg-[#0b0e0b]/92 border-white/10 shadow-[0_10px_34px_rgba(0,0,0,0.32)]" : "bg-[#0b0e0b]/45 border-white/10"
+        }`} style={{ paddingInline: "clamp(16px,3vw,28px)" }}>
 
-        <nav className="hidden md:flex items-center gap-10 absolute left-1/2 -translate-x-1/2">
-          <MegaMenu dil={dil} kategoriAd={m.kategori} label={m.nav.urunler} />
-          {NAV.map(l => (
-            <a key={l.href} href={l.href} className="eyebrow text-[#6b7366] hover:text-white transition-colors duration-200">
-              {l.label}
-            </a>
-          ))}
-        </nav>
+          <Link href={dilYolu(dil)} className="flex items-center shrink-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-white.png" alt="Alya Plastik" className="h-[20px] md:h-[24px] w-auto" />
+          </Link>
 
-        <div className="hidden md:block ms-auto me-5">
-          <DilSecici dil={dil} ariaLabel={m.dil} altDiller={altDiller} />
+          <nav className="hidden md:flex items-center gap-10 absolute left-1/2 -translate-x-1/2">
+            <MegaMenu dil={dil} kategoriAd={m.kategori} label={m.nav.urunler} />
+            {NAV.map(l => (
+              <a key={l.href} href={l.href} className="eyebrow text-[#9aa294] hover:text-white transition-colors duration-200">
+                {l.label}
+              </a>
+            ))}
+          </nav>
+
+          <div className="hidden md:block ms-auto me-5">
+            <DilSecici dil={dil} ariaLabel={m.dil} altDiller={altDiller} />
+          </div>
+          <a href={wa} target="_blank" rel="noopener noreferrer nofollow"
+            className="hidden md:inline-flex items-center gap-2 bg-[#e55f28] hover:bg-[#c94f1e] text-white text-[10px] font-semibold tracking-[0.14em] uppercase px-5 py-2.5 rounded-full transition-colors shrink-0">
+            {m.nav.teklif}
+          </a>
+
+          <button onClick={() => setOpen(p => !p)} aria-label={m.nav.menu}
+            className="md:hidden flex flex-col items-end justify-center gap-1.5 w-10 h-10 shrink-0">
+            {[0,1,2].map(i => (
+              <span key={i} className="block h-[1.5px] bg-[#eae6dd] rounded-sm transition-all duration-300"
+                style={{ width: i===1?(open?0:18):26, opacity:i===1&&open?0:1,
+                  transform: i===0&&open?"rotate(45deg) translate(5px,5px)":i===2&&open?"rotate(-45deg) translate(5px,-5px)":"none" }} />
+            ))}
+          </button>
         </div>
-        <a href={wa} target="_blank" rel="noopener noreferrer nofollow"
-          className="hidden md:inline-flex items-center gap-2 bg-[#e55f28] hover:bg-[#c94f1e] text-white text-[10px] font-semibold tracking-[0.14em] uppercase px-5 py-2.5 transition-colors shrink-0">
-          {m.nav.teklif}
-        </a>
-
-        <button onClick={() => setOpen(p => !p)} aria-label={m.nav.menu}
-          className="md:hidden flex flex-col items-end justify-center gap-1.5 w-10 h-10 shrink-0">
-          {[0,1,2].map(i => (
-            <span key={i} className="block h-[1.5px] bg-[#eae6dd] rounded-sm transition-all duration-300"
-              style={{ width: i===1?(open?0:18):26, opacity:i===1&&open?0:1,
-                transform: i===0&&open?"rotate(45deg) translate(5px,5px)":i===2&&open?"rotate(-45deg) translate(5px,-5px)":"none" }} />
-          ))}
-        </button>
       </header>
 
       <div className={`fixed inset-0 z-79 md:hidden flex flex-col justify-between transition-opacity duration-350 ${open?"opacity-100 pointer-events-auto":"opacity-0 pointer-events-none"}`}
-        style={{ paddingTop:68, paddingInline:"clamp(20px,5vw,80px)", paddingBottom:32, background:"rgba(11,14,11,0.97)", backdropFilter:"blur(20px)" }}>
+        style={{ paddingTop:84, paddingInline:"clamp(20px,5vw,80px)", paddingBottom:32, background:"rgba(11,14,11,0.97)", backdropFilter:"blur(20px)" }}>
         <nav className="pt-6">
           {NAV.map((l, i) => (
             <a key={l.href} href={l.href} onClick={() => setOpen(false)}

@@ -50,7 +50,7 @@ export default function MegaMenu({ dil, kategoriAd, label }: { dil: Dil; kategor
       {/* Header'daki "Ürünler" linki nav grubunun en solunda; panel ona göre değil, viewport'a göre
           ortalanıyor (position:fixed) — yoksa geniş panel sol kenardan taşardı (bkz. ürün sayfası testi). */}
       <div role="menu" aria-label={label}
-        className="fixed top-[78px] left-1/2 w-[min(760px,86vw)] p-6 bg-[#0b0e0b] border border-white/10 rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.5)] origin-top transition-all duration-200 z-10"
+        className="fixed top-[92px] left-1/2 w-[min(760px,86vw)] p-6 bg-[#0b0e0b] border border-white/10 rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.5)] origin-top transition-all duration-200 z-10"
         style={{ opacity: acik ? 1 : 0, transform: `translateX(-50%) scale(${acik ? 1 : 0.97}) translateY(${acik ? 0 : -6}px)`, pointerEvents: acik ? "auto" : "none" }}>
         <div className="flex items-end justify-between mb-5">
           <div>

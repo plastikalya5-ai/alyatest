@@ -9,7 +9,7 @@ export default function KurumsalSayfa({ settings, etiket, baslik, children }: { 
   return (
     <div lang="tr">
       <Header settings={settings} dil="tr" />
-      <main className="bg-[#eae6dd] min-h-svh pt-[68px]">
+      <main className="bg-[#eae6dd] min-h-svh pt-[84px]">
         <div style={{ paddingInline: "clamp(20px,5vw,80px)", paddingBlock: "clamp(48px,7vw,96px)" }}>
           <p className="eyebrow text-[#e55f28] mb-3">{etiket}</p>
           <h1 className="heading text-[#0b0e0b] mb-10" style={{ fontSize: "clamp(36px,6vw,68px)", lineHeight: 0.98, maxWidth: "18ch" }}>{baslik}</h1>

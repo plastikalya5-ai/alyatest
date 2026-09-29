@@ -21,7 +21,7 @@
 
 /* ── Reset ───────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
-html { overflow-x: hidden; scroll-padding-top: 72px; scroll-behavior: smooth; }
+html { overflow-x: hidden; scroll-padding-top: 96px; scroll-behavior: smooth; }
 html, body { scrollbar-width: none; }
 ::-webkit-scrollbar { display: none; }
 body {

@@ -34,7 +34,7 @@ export default function UrunSayfasi({ urun, dil, settings, benzer, kategoriler =
           kullanılıyor, böylece logo/mega menü/dil seçici güncellemeleri her sayfada aynı anda geçerli olur. */}
       <Header settings={settings} dil={dil} altDiller={altDiller} />
 
-      <main className="pt-[68px]">
+      <main className="pt-[84px]">
         <div style={{ paddingInline: "clamp(20px,5vw,80px)", paddingBlock: "clamp(24px,4vw,56px)" }}>
           <nav aria-label="breadcrumb" className="eyebrow text-[#6b7366] mb-6 flex flex-wrap gap-2">
             <Link href={dilYolu(dil)} className="hover:text-[#0b0e0b]">{T.anasayfa}</Link><span>/</span>

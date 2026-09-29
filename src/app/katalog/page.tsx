@@ -27,7 +27,7 @@ export default async function KatalogPage() {
   return (
     <div lang="tr">
       <Header settings={settings} dil="tr" />
-      <main className="bg-[#0b0e0b] min-h-svh pt-[68px]">
+      <main className="bg-[#0b0e0b] min-h-svh pt-[84px]">
         <div style={{ paddingInline: "clamp(20px,5vw,80px)", paddingBlock: "clamp(32px,5vw,56px)" }}>
           <p className="eyebrow text-[#e55f28] mb-3">— Katalog</p>
           <h1 className="heading text-[#eae6dd] mb-8" style={{ fontSize: "clamp(32px,5vw,56px)", lineHeight: 0.98 }}>Ürün Kataloğumuz</h1>
