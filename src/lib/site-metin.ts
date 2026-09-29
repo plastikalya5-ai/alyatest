@@ -78,7 +78,7 @@ export const M: Record<Dil, SiteMetin> = {
           { ad: "KVKK", href: "/kvkk" },
         ] },
       ],
-      iletisimBaslik: "İletişim", adres: "Başakşehir / İstanbul", lider: y => `${y}'den bu yana plastik ürün üretiminde lider.`, dunyaya: yer => `${yer}'den dünyaya.`,
+      iletisimBaslik: "İletişim", adres: "Başakşehir / İstanbul", lider: y => `${y}'den bu yana plastik ürün üretiminde lider.`, dunyaya: yer => `${yer}'dan dünyaya.`,
       haklar: "Tüm hakları saklıdır.", yerel: "İstanbul OSB · Made in Türkiye 🇹🇷", varsayilanYer: "İstanbul Başakşehir OSB",
     },
     asistan: { selam: "Merhaba! Alya Plastik ürünleri, toplu sipariş veya ihracat hakkında sorularınızı yanıtlayabilirim.", baslik: "ALYA ASİSTAN", alt: "Yapay zeka destekli · yanıtlar hata içerebilir", kapat: "Kapat", ac: "Soru Sor", soru: "Sorunuzu yazın…", yer: "Sorunuzu yazın…", gonder: "GÖNDER", yaziyor: "yazıyor…", hata: "Şu an yanıt veremiyorum, lütfen iletişim formunu kullanın.", baglanti: "Bağlantı hatası oluştu, lütfen tekrar deneyin.", aria: "Alya Plastik asistanı", mesajAria: "Mesajınız" },
