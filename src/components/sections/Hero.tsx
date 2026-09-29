@@ -1,6 +1,6 @@
 import type { Stats, Settings } from "@/lib/supabase";
 import { IMG } from "@/data/images";
-import type { Dil } from "@/lib/urun-sayfasi";
+import { kurumsalYolu, type Dil } from "@/lib/diller";
 import { M } from "@/lib/site-metin";
 
 export default function Hero({ stats, settings, dil = "tr", img = IMG }: { stats: Stats | null; settings: Settings | null; dil?: Dil; img?: typeof IMG }) {
@@ -73,7 +73,7 @@ export default function Hero({ stats, settings, dil = "tr", img = IMG }: { stats
             className="anim-magnetic inline-flex items-center gap-2 bg-[#e55f28] hover:bg-[#c94f1e] text-white text-[11px] font-semibold tracking-[0.14em] uppercase px-7 py-4 transition-colors">
             {h.teklif}
           </a>
-          <a href="/katalog"
+          <a href={kurumsalYolu(dil, "katalog")}
             className="anim-magnetic inline-flex items-center gap-2 border border-[#0b0e0b]/20 hover:border-[#0b0e0b]/50 text-[#0b0e0b] text-[11px] font-semibold tracking-[0.14em] uppercase px-7 py-4 transition-colors">
             {h.katalog}
           </a>

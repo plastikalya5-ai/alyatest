@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Product } from "@/lib/supabase";
 import type { Dil } from "@/lib/diller";
-import { urunLinki, ad } from "@/lib/diller";
+import { urunLinki, ad, kurumsalYolu } from "@/lib/diller";
 import { M, kategoriGoster } from "@/lib/site-metin";
 
 export default function Collection({ products, dil = "tr" }: { products: Product[]; dil?: Dil }) {
@@ -97,7 +97,7 @@ export default function Collection({ products, dil = "tr" }: { products: Product
           </a>
         ))}
 
-        <a href="/katalog" className="relative flex-none flex flex-col justify-end p-6 sm:p-8 bg-[#e55f28]"
+        <a href={kurumsalYolu(dil, "katalog")} className="relative flex-none flex flex-col justify-end p-6 sm:p-8 bg-[#e55f28]"
           style={{ width:"clamp(160px,48vw,260px)", aspectRatio:"0.72", scrollSnapAlign:"start" }}>
           <p className="eyebrow text-white/60 mb-3">{c.tumKatalog}</p>
           <h3 className="heading text-white mb-5" style={{ fontSize:"clamp(26px,5vw,40px)" }}>{c.katalog[0]}<br />{c.katalog[1]}</h3>

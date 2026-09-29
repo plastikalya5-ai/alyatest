@@ -1,8 +1,7 @@
 import type { Product } from "@/lib/supabase";
 import type { Dil } from "@/lib/diller";
-import { urunLinki } from "@/lib/diller";
+import { urunLinki, kurumsalYolu, ad } from "@/lib/diller";
 import { M, kategoriGoster } from "@/lib/site-metin";
-import { ad } from "@/lib/urun-sayfasi";
 
 export default function HorizontalPin({ products, dil = "tr" }: { products: Product[]; dil?: Dil }) {
   const items = products.slice(0, 6);
@@ -54,7 +53,7 @@ export default function HorizontalPin({ products, dil = "tr" }: { products: Prod
             </div>
           ))}
 
-          <a href="/katalog"
+          <a href={kurumsalYolu(dil, "katalog")}
             className="relative flex-none flex flex-col items-start justify-end p-8 bg-[#e55f28]"
             style={{ width: "clamp(200px,22vw,300px)", height: "70svh" }}>
             <p className="eyebrow text-white/60 mb-3 text-[10px]">{p_.b2b}</p>

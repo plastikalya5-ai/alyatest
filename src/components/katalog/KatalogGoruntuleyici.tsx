@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, type ComponentType } from "react";
 import dynamic from "next/dynamic";
 import { ChevronLeft, ChevronRight, Download, Loader2, Maximize2, Minimize2 } from "lucide-react";
+import type { Dil } from "@/lib/diller";
 
 // react-pageflip'in TS tanımları tüm ayar alanlarını zorunlu gösteriyor (kütüphanenin bilinen bir
 // eksikliği) — çalışma zamanında hepsi opsiyonel olduğu için burada gevşek tipleniyor.
@@ -13,7 +14,15 @@ const OLCEK = 1.6; // render kalitesi — ekran boyutundan bağımsız sabit bir
 // tespiti). Bu yüzden MAX_GENISLIK kutunun TAM genişliğidir, yarısı değil.
 const MAX_GENISLIK = 1300;
 
-export default function KatalogGoruntuleyici({ pdfUrl }: { pdfUrl: string }) {
+const METIN: Record<Dil, { hata: string; hazirlaniyor: (y: number, t: number) => string; yukleniyor: string; sayfa: (n: number) => string; onceki: string; sonraki: string; indir: string; tamEkran: string; kucult: string }> = {
+  tr: { hata: "Katalog yüklenirken bir sorun oluştu.", hazirlaniyor: (y, t) => `Sayfalar hazırlanıyor… ${y}/${t}`, yukleniyor: "Katalog yükleniyor…", sayfa: n => `Katalog sayfa ${n}`, onceki: "Önceki sayfa", sonraki: "Sonraki sayfa", indir: "PDF indir", tamEkran: "Tam Ekran", kucult: "Küçült" },
+  en: { hata: "A problem occurred while loading the catalogue.", hazirlaniyor: (y, t) => `Preparing pages… ${y}/${t}`, yukleniyor: "Loading catalogue…", sayfa: n => `Catalogue page ${n}`, onceki: "Previous page", sonraki: "Next page", indir: "Download PDF", tamEkran: "Fullscreen", kucult: "Exit fullscreen" },
+  ru: { hata: "Не удалось загрузить каталог.", hazirlaniyor: (y, t) => `Подготовка страниц… ${y}/${t}`, yukleniyor: "Загрузка каталога…", sayfa: n => `Страница каталога ${n}`, onceki: "Предыдущая страница", sonraki: "Следующая страница", indir: "Скачать PDF", tamEkran: "Во весь экран", kucult: "Свернуть" },
+  zh: { hata: "加载目录时出现问题。", hazirlaniyor: (y, t) => `正在准备页面… ${y}/${t}`, yukleniyor: "目录加载中…", sayfa: n => `目录第 ${n} 页`, onceki: "上一页", sonraki: "下一页", indir: "下载 PDF", tamEkran: "全屏", kucult: "退出全屏" },
+};
+
+export default function KatalogGoruntuleyici({ pdfUrl, dil = "tr" }: { pdfUrl: string; dil?: Dil }) {
+  const t = METIN[dil];
   const [sayfalar, setSayfalar] = useState<string[]>([]);
   const [oran, setOran] = useState(0.72); // genişlik/yükseklik
   const [ilerleme, setIlerleme] = useState({ yuklenen: 0, toplam: 0 });
@@ -73,10 +82,11 @@ export default function KatalogGoruntuleyici({ pdfUrl }: { pdfUrl: string }) {
         }
       } catch (e) {
         console.error("[katalog] PDF render hatası", e);
-        if (!iptal.current) setHata("Katalog yüklenirken bir sorun oluştu.");
+        if (!iptal.current) setHata(t.hata);
       }
     })();
     return () => { iptal.current = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pdfUrl]);
 
   useEffect(() => {
@@ -133,7 +143,7 @@ export default function KatalogGoruntuleyici({ pdfUrl }: { pdfUrl: string }) {
       {sayfalar.length === 0 ? (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: "80px 0", color: "#9aa294" }}>
           <Loader2 size={28} className="animate-spin" />
-          <p className="eyebrow" style={{ fontSize: 11 }}>{ilerleme.toplam ? `Sayfalar hazırlanıyor… ${ilerleme.yuklenen}/${ilerleme.toplam}` : "Katalog yükleniyor…"}</p>
+          <p className="eyebrow" style={{ fontSize: 11 }}>{ilerleme.toplam ? t.hazirlaniyor(ilerleme.yuklenen, ilerleme.toplam) : t.yukleniyor}</p>
         </div>
       ) : (
         <>
@@ -165,28 +175,28 @@ export default function KatalogGoruntuleyici({ pdfUrl }: { pdfUrl: string }) {
             {sayfalar.map((src, i) => (
               <div key={i} className="katalog-sayfa" style={{ background: "#fff" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={src} alt={`Katalog sayfa ${i + 1}`} style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
+                <img src={src} alt={t.sayfa(i + 1)} style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
               </div>
             ))}
           </HTMLFlipBook>
 
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
-            <button type="button" aria-label="Önceki sayfa" onClick={() => kitapRef.current?.pageFlip()?.flipPrev()}
+            <button type="button" aria-label={t.onceki} onClick={() => kitapRef.current?.pageFlip()?.flipPrev()}
               className="text-[#eae6dd] border border-[#eae6dd]/25 hover:border-[#eae6dd]/60 rounded-full p-2.5 transition-colors">
               <ChevronLeft size={16} />
             </button>
             <span className="eyebrow text-[#9aa294]" style={{ fontSize: 11, minWidth: 64, textAlign: "center" }}>{aktif + 1} / {sayfalar.length}</span>
-            <button type="button" aria-label="Sonraki sayfa" onClick={() => kitapRef.current?.pageFlip()?.flipNext()}
+            <button type="button" aria-label={t.sonraki} onClick={() => kitapRef.current?.pageFlip()?.flipNext()}
               className="text-[#eae6dd] border border-[#eae6dd]/25 hover:border-[#eae6dd]/60 rounded-full p-2.5 transition-colors">
               <ChevronRight size={16} />
             </button>
             <a href={pdfUrl} download target="_blank" rel="noopener noreferrer"
               className="eyebrow text-[#eae6dd] border border-[#eae6dd]/25 hover:border-[#eae6dd]/60 rounded-full px-4 py-2.5 flex items-center gap-2 transition-colors" style={{ fontSize: 11 }}>
-              <Download size={14} />PDF indir
+              <Download size={14} />{t.indir}
             </a>
             <button type="button" onClick={tamEkranDegistir}
               className="eyebrow text-[#eae6dd] border border-[#eae6dd]/25 hover:border-[#eae6dd]/60 rounded-full px-4 py-2.5 flex items-center gap-2 transition-colors" style={{ fontSize: 11 }}>
-              {tamEkran ? <Minimize2 size={14} /> : <Maximize2 size={14} />}{tamEkran ? "Küçült" : "Tam Ekran"}
+              {tamEkran ? <Minimize2 size={14} /> : <Maximize2 size={14} />}{tamEkran ? t.kucult : t.tamEkran}
             </button>
           </div>
         </>

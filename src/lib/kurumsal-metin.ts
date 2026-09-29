@@ -250,3 +250,11 @@ export const KVKK: Record<Dil, KvkkMetin> = {
     not_: "本文为通用告知范本；建议根据贵公司自身的数据处理活动，交由法律顾问审核后使用。",
   },
 };
+
+export type KatalogMetin = { etiket: string; baslik: string; aciklama: string; hazirlaniyor: string };
+export const KATALOG: Record<Dil, KatalogMetin> = {
+  tr: { etiket: "Katalog", baslik: "Ürün Kataloğumuz", aciklama: "Alya Plastik ürün kataloğunu sayfa sayfa çevirerek inceleyin.", hazirlaniyor: "Katalog şu anda hazırlanıyor — kısa süre sonra burada yayınlanacak." },
+  en: { etiket: "Catalogue", baslik: "Our Product Catalogue", aciklama: "Browse the Alya Plastik product catalogue page by page.", hazirlaniyor: "The catalogue is being prepared — it will be published here shortly." },
+  ru: { etiket: "Каталог", baslik: "Наш каталог продукции", aciklama: "Листайте каталог продукции Alya Plastik постранично.", hazirlaniyor: "Каталог сейчас готовится — скоро будет опубликован здесь." },
+  zh: { etiket: "产品目录", baslik: "我们的产品目录", aciklama: "逐页浏览 Alya Plastik 产品目录。", hazirlaniyor: "目录正在准备中，即将在此发布。" },
+};
