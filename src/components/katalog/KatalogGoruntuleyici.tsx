@@ -8,7 +8,7 @@ import { ChevronLeft, ChevronRight, Download, Loader2, Maximize2, Minimize2 } fr
 const HTMLFlipBook = dynamic(() => import("react-pageflip"), { ssr: false }) as unknown as ComponentType<any>;
 
 const OLCEK = 1.6; // render kalitesi — ekran boyutundan bağımsız sabit bir çözünürlük
-const MAX_GENISLIK = 520; // her sayfanın (kitabın yarısının) en fazla piksel genişliği
+const MAX_GENISLIK = 900; // her sayfanın (kitabın yarısının) en fazla piksel genişliği
 
 export default function KatalogGoruntuleyici({ pdfUrl }: { pdfUrl: string }) {
   const [sayfalar, setSayfalar] = useState<string[]>([]);
@@ -87,7 +87,10 @@ export default function KatalogGoruntuleyici({ pdfUrl }: { pdfUrl: string }) {
   const MOBIL_ESIK = 768;
   const mobil = viewport.w > 0 && viewport.w < MOBIL_ESIK;
   const kenarBosluk = mobil ? 24 : 40;
-  const dikeyBosluk = tamEkran ? 110 : mobil ? 230 : 320;
+  // Sayfa kaydırılabilir (min-h-svh) — kitabın tek ekrana sığması ZORUNLU değil (zaten sığmıyor,
+  // footer ekranın altında kalıyor), bu yüzden yalnızca sabit üst alan (header) için küçük bir pay
+  // bırakılır; önceki değerler (320/230) kitabı gereksiz yere küçültüyordu.
+  const dikeyBosluk = tamEkran ? 100 : mobil ? 160 : 150;
   let genislik = viewport.w === 0
     ? MAX_GENISLIK
     : mobil
@@ -117,8 +120,8 @@ export default function KatalogGoruntuleyici({ pdfUrl }: { pdfUrl: string }) {
             ref={kitapRef}
             width={genislik}
             height={yukseklik}
-            minWidth={220} maxWidth={900}
-            minHeight={280} maxHeight={1200}
+            minWidth={220} maxWidth={1000}
+            minHeight={280} maxHeight={1400}
             size="fixed"
             showCover
             usePortrait
