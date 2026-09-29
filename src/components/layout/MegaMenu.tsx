@@ -56,16 +56,16 @@ export default function MegaMenu({ dil, kategoriAd, label }: { dil: Dil; kategor
         style={{ opacity: acik ? 1 : 0, transform: `translateX(-50%) scale(${acik ? 1 : 0.97}) translateY(${acik ? 0 : -6}px)`, pointerEvents: acik ? "auto" : "none" }}>
         <div className="flex items-end justify-between mb-5">
           <div>
-            <span className="eyebrow text-[#e55f28]">{t.baslik}</span>
-            <p className="text-[#9aa294] text-xs mt-1.5">{t.alt}</p>
+            <span className="eyebrow text-[#e55f28]" style={{ fontSize: 12 }}>{t.baslik}</span>
+            <p className="text-[#9aa294] mt-1.5" style={{ fontSize: 13.5 }}>{t.alt}</p>
           </div>
           {/* Düz <a>: Collection bileşeni ?kategori= parametresini yalnızca mount anında okuyor
               (bkz. Collection.tsx). Next <Link> ile aynı sayfada kalınarak yapılan bir geçiş bu
               effect'i yeniden tetiklemediğinden seçili kategori güncellenmiyordu — tam sayfa
               yenilemesi (<a>) her tıklamada doğru filtrelenmiş listeyle mount olmasını garantiler. */}
           <a href={bolumYolu(dil, "collection")}
-            className="eyebrow text-white/70 hover:text-white flex items-center gap-1.5 shrink-0 transition-colors">
-            {t.tumu} <ArrowRight size={12} />
+            className="eyebrow text-white/70 hover:text-white flex items-center gap-1.5 shrink-0 transition-colors" style={{ fontSize: 12 }}>
+            {t.tumu} <ArrowRight size={13} />
           </a>
         </div>
 
@@ -78,12 +78,12 @@ export default function MegaMenu({ dil, kategoriAd, label }: { dil: Dil; kategor
                 <img src={k.gorsel} alt={kategoriAd[k.slug] || k.slug}
                   className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.08]" />
                 {k.yeni && (
-                  <span className="absolute top-2 start-2 bg-[#e55f28] text-white text-[8.5px] font-bold tracking-[0.1em] uppercase px-1.5 py-0.5 rounded-full">
+                  <span className="absolute top-2 start-2 bg-[#e55f28] text-white text-[9.5px] font-bold tracking-[0.1em] uppercase px-1.5 py-0.5 rounded-full">
                     {t.yeni}
                   </span>
                 )}
               </div>
-              <span className="eyebrow text-[#9aa294] group-hover:text-white transition-colors text-center" style={{ fontSize: 9.5 }}>
+              <span className="eyebrow text-[#9aa294] group-hover:text-white transition-colors text-center" style={{ fontSize: 12 }}>
                 {kategoriAd[k.slug] || k.slug}
               </span>
             </a>
