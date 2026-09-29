@@ -2,13 +2,14 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AdminTopBar from '@/components/admin/TopBar'
-import { Activity, Package, MessageSquare, Settings, Eye, Tag } from 'lucide-react'
+import { Activity, Package, MessageSquare, Settings, Eye, Tag, Palette, Users } from 'lucide-react'
 
 const sb = createClient()
 
 const ICONS: Record<string,any> = {
   products: Package, contact_submissions: MessageSquare,
   settings: Settings, site_visits: Eye, categories: Tag,
+  product_variants: Palette, personel: Users,
 }
 
 const ACTION_LABELS: Record<string,{l:string;c:string}> = {
