@@ -12,12 +12,15 @@ export default function Hero({ stats, settings, dil = "tr", img = IMG }: { stats
   ];
 
   return (
-    <section id="hero" className="relative grain overflow-hidden bg-[#eae6dd] min-h-svh grid grid-cols-1 md:grid-cols-2"
+    <section id="hero" className="relative grain overflow-hidden bg-[#eae6dd] min-h-[88svh] md:min-h-svh grid grid-cols-1 md:grid-cols-2"
       data-bg="#eae6dd"
       >
 
       {/* ── Sol: İçerik ────────────────────────────────── */}
-      <div className="relative z-10 flex flex-col justify-end"
+      {/* Mobilde (tek sütun, sağ görsel sütunu yok) justify-end + tam ekran yükseklik header
+          ile başlık arasında büyük, boş bir alan bırakıyordu — mobilde içerik dikeyde
+          ortalanır, md+ üzerinde (yanında ürün görseli olduğu için) alta yaslı kalır. */}
+      <div className="relative z-10 flex flex-col justify-center md:justify-end"
         style={{ paddingInline: "clamp(20px,5vw,80px)", paddingBottom: "clamp(48px,8vh,100px)", paddingTop: 100 }}>
 
         {/* BG sadece sola */}
