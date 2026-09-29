@@ -39,7 +39,7 @@ export const M: Record<Dil, SiteMetin> = {
       ogAciklama: "1968'den bu yana İstanbul OSB'de plastik ürün üretimi. Saksı, sepet, sandık, banyo ve bahçe ürünleri. 200+ model, 20+ ülke ihracat.",
     },
     nav: { urunler: "Ürünler", koleksiyon: "Koleksiyon", neden: "Neden Alya", iletisim: "İletişim", teklif: "Teklif Al →", waTeklif: "WhatsApp ile Teklif Al →", menu: "Menü" },
-    hero: { since: y => `${y}'den beri İstanbul'da üretim`, satir: ["İSTANBUL'DA", "USTALIKLA", "ÜRETİYORUZ."], aciklama: y => `Saksı, sepet ve depolama ürünlerini kendi kalıp ve enjeksiyon hatlarımızda üretiyoruz — ${y} yıldır aynı çatı altında.`, teklif: "Teklif Al →", katalog: "Kataloğa Bak", yil: "Yıl Deneyim", model: "Ürün Modeli", ulke: "İhracat Ülkesi", koleksiyon: "KOLEKSİYON 2024/25", kaydir: "KAYDIR", alt: "Alya Plastik plastik ürün koleksiyonu" },
+    hero: { since: y => `${y}'den beri · İstanbul`, satir: ["KÖKLÜ GEÇMİŞ.", "GÜÇLÜ", "ÜRETİM."], aciklama: () => `Saksı, sepet ve depolama ürünlerini kendi kalıp ve enjeksiyon hatlarımızda üretiyoruz.`, teklif: "Teklif Al →", katalog: "Kataloğa Bak", yil: "Yıl Deneyim", model: "Ürün Modeli", ulke: "İhracat Ülkesi", koleksiyon: "KOLEKSİYON 2024/25", kaydir: "KAYDIR", alt: "Alya Plastik plastik ürün koleksiyonu" },
     marquee: ["Plastik Saksı", "Sepet", "Sandık", "B2B", "İhracat", "1968", "Türkiye", "200+ Model", "20+ Ülke", "İstanbul OSB", "Yerli Üretim", "ISO Sertifikalı"],
     featured: { etiket: "— Öne Çıkan Ürünler", baslik: "KOLEKSİYON", tum: "Tüm Ürünler →", yeni: "Yeni" },
     pin: { surukle: "Sürükle", baslik: ["TÜM", "FORM", "LAR."], urun: "ürün", b2b: "B2B Teklif", katalog: ["KATALOG", "İSTE"], form: "Formu Doldur →", mobEtiket: "Koleksiyon", mobBaslik: "TÜM FORMLAR.", yeni: "YENİ" },
