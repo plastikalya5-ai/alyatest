@@ -51,13 +51,13 @@ export default function Hero({ stats, settings, dil = "tr", img = IMG }: { stats
               (Not: inline style yerine Tailwind sınıfı kullanılıyor — inline style medya sorgusu
               içeren bir sınıfça ASLA ezilemez, bkz. Hero grid-template-columns geçmişi.) */}
           <div className="overflow-hidden">
-            <h1 className="anim-hero-line heading text-[#0b0e0b] text-[clamp(56px,8vw,120px)] md:text-[clamp(34px,4.5vw,118px)]">{h.satir[0]}</h1>
+            <h1 className="anim-hero-line heading text-[#0b0e0b] text-[clamp(32px,9.5vw,120px)] md:text-[clamp(34px,4.5vw,118px)]">{h.satir[0]}</h1>
           </div>
           <div className="overflow-hidden">
-            <h1 className="anim-hero-line heading text-[#0b0e0b] text-[clamp(56px,8vw,120px)] md:text-[clamp(34px,4.5vw,118px)]">{h.satir[1]}</h1>
+            <h1 className="anim-hero-line heading text-[#0b0e0b] text-[clamp(32px,9.5vw,120px)] md:text-[clamp(34px,4.5vw,118px)]">{h.satir[1]}</h1>
           </div>
           <div className="overflow-hidden">
-            <h1 className="anim-hero-line heading text-[#e55f28] text-[clamp(56px,8vw,120px)] md:text-[clamp(34px,4.5vw,118px)]">{h.satir[2]}</h1>
+            <h1 className="anim-hero-line heading text-[#e55f28] text-[clamp(32px,9.5vw,120px)] md:text-[clamp(34px,4.5vw,118px)]">{h.satir[2]}</h1>
           </div>
         </div>
 

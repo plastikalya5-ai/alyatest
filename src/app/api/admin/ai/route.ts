@@ -11,6 +11,7 @@ import { gorselTasarla, type GorselStil } from '@/lib/ai-gorsel'
 import { gorunum360Uret } from '@/lib/ai-360'
 import { TEMA_ALAN_ANAHTARLARI } from '@/data/images'
 import { supabaseAdmin } from '@/lib/notify'
+import { gorselSikistir } from '@/lib/gorsel-sikistir'
 
 export const maxDuration = 60 // Vercel Hobby plan üst sınırı
 
@@ -27,6 +28,7 @@ const YETKI: Record<string, string[]> = {
   urun_360_uret: ['yonetim'],
   urun_360_kaydet: ['yonetim'],
   tema_gorsel_yukle: ['yonetim'],
+  gorsel_toplu_sikistir: ['yonetim'],
   basvuru_analiz: ['dashboard'],
   asistan: [],                      // her personel; veri erişimi zaten RLS ile sınırlı
   ozet: [],                         // yalnızca yetkili olduğu modüllerin verisi kullanılır
@@ -46,7 +48,8 @@ export async function POST(req: NextRequest) {
   if (!(action in YETKI)) return NextResponse.json({ error: 'Geçersiz eylem' }, { status: 400 })
 
   const y = await modulGerekli(YETKI[action]); if (y.hata) return y.hata
-  if (!aiAktif()) return NextResponse.json({ error: 'AI özelliği henüz yapılandırılmamış (OPENAI_API_KEY).', kapali: true }, { status: 503 })
+  // gorsel_toplu_sikistir OpenAI kullanmaz (yalnızca Storage'daki mevcut dosyaları sıkıştırır) — AI anahtarı gerektirmez.
+  if (action !== 'gorsel_toplu_sikistir' && !aiAktif()) return NextResponse.json({ error: 'AI özelliği henüz yapılandırılmamış (OPENAI_API_KEY).', kapali: true }, { status: 503 })
 
   // Kullanıcı başına saatlik sınır (maliyet koruması)
   if (!(await oranSiniri(`ai:${y.user.id}`, 80, 3600, false))) return NextResponse.json({ error: 'Saatlik AI kullanım sınırına ulaştın, biraz sonra tekrar dene.' }, { status: 429 })
@@ -117,8 +120,9 @@ export async function POST(req: NextRequest) {
         try { bytes = Buffer.from(body.b64, 'base64') } catch { return NextResponse.json({ error: 'Görsel çözümlenemedi' }, { status: 400 }) }
         if (!bytes.length || bytes.length > 15 * 1024 * 1024) return NextResponse.json({ error: 'Görsel boyutu geçersiz' }, { status: 400 })
         const admin = supabaseAdmin()
-        const yol = `${body.urun_id}/${Date.now()}.png`
-        const up = await admin.storage.from('urun-gorselleri').upload(yol, bytes, { contentType: 'image/png', upsert: false })
+        const sik = await gorselSikistir(bytes, 1200)
+        const yol = `${body.urun_id}/${Date.now()}.webp`
+        const up = await admin.storage.from('urun-gorselleri').upload(yol, sik.bytes, { contentType: sik.contentType, upsert: false })
         if (up.error) { console.error('[urun_gorsel_kaydet] upload', up.error.message); return NextResponse.json({ error: 'Görsel depoya yüklenemedi.' }, { status: 502 }) }
         const { data: pub } = admin.storage.from('urun-gorselleri').getPublicUrl(yol)
         const eskiGorsel: string | null = urun.image_url || null
@@ -141,8 +145,9 @@ export async function POST(req: NextRequest) {
         try { bytes = Buffer.from(body.b64, 'base64') } catch { return NextResponse.json({ error: 'Görsel çözümlenemedi' }, { status: 400 }) }
         if (!bytes.length || bytes.length > 15 * 1024 * 1024) return NextResponse.json({ error: 'Görsel boyutu geçersiz' }, { status: 400 })
         const admin = supabaseAdmin()
-        const yol = `renkler/${varyant.product_id}/varyant-${varyant.id}-${Date.now()}.png`
-        const up = await admin.storage.from('urun-gorselleri').upload(yol, bytes, { contentType: 'image/png', upsert: false })
+        const sik = await gorselSikistir(bytes, 1200)
+        const yol = `renkler/${varyant.product_id}/varyant-${varyant.id}-${Date.now()}.webp`
+        const up = await admin.storage.from('urun-gorselleri').upload(yol, sik.bytes, { contentType: sik.contentType, upsert: false })
         if (up.error) { console.error('[varyant_gorsel_kaydet] upload', up.error.message); return NextResponse.json({ error: 'Görsel depoya yüklenemedi.' }, { status: 502 }) }
         const { data: pub } = admin.storage.from('urun-gorselleri').getPublicUrl(yol)
         const { error } = await admin.from('product_variants').update({ gorsel: pub.publicUrl }).eq('id', body.variant_id)
@@ -171,8 +176,9 @@ export async function POST(req: NextRequest) {
           let bytes: Buffer
           try { bytes = Buffer.from(kareler[i], 'base64') } catch { return NextResponse.json({ error: `Kare ${i + 1} çözümlenemedi` }, { status: 400 }) }
           if (!bytes.length || bytes.length > 15 * 1024 * 1024) return NextResponse.json({ error: `Kare ${i + 1} boyutu geçersiz` }, { status: 400 })
-          const yol = `${body.urun_id}/360-${damga}/${i}.png`
-          const up = await admin.storage.from('urun-gorselleri').upload(yol, bytes, { contentType: 'image/png', upsert: false })
+          const sik = await gorselSikistir(bytes, 1000)
+          const yol = `${body.urun_id}/360-${damga}/${i}.webp`
+          const up = await admin.storage.from('urun-gorselleri').upload(yol, sik.bytes, { contentType: sik.contentType, upsert: false })
           if (up.error) { console.error('[urun_360_kaydet] upload', i, up.error.message); return NextResponse.json({ error: 'Kareler depoya yüklenemedi.' }, { status: 502 }) }
           const { data: pub } = admin.storage.from('urun-gorselleri').getPublicUrl(yol)
           urls.push(pub.publicUrl)
@@ -190,11 +196,35 @@ export async function POST(req: NextRequest) {
         try { bytes = Buffer.from(body.b64, 'base64') } catch { return NextResponse.json({ error: 'Görsel çözümlenemedi' }, { status: 400 }) }
         if (!bytes.length || bytes.length > 15 * 1024 * 1024) return NextResponse.json({ error: 'Görsel boyutu geçersiz' }, { status: 400 })
         const admin = supabaseAdmin()
-        const yol = `tema/${body.alan}/${Date.now()}.png`
-        const up = await admin.storage.from('urun-gorselleri').upload(yol, bytes, { contentType: 'image/png', upsert: false })
+        const sik = await gorselSikistir(bytes, 1920)
+        const yol = `tema/${body.alan}/${Date.now()}.webp`
+        const up = await admin.storage.from('urun-gorselleri').upload(yol, sik.bytes, { contentType: sik.contentType, upsert: false })
         if (up.error) { console.error('[tema_gorsel_yukle] upload', up.error.message); return NextResponse.json({ error: 'Görsel depoya yüklenemedi.' }, { status: 502 }) }
         const { data: pub } = admin.storage.from('urun-gorselleri').getPublicUrl(yol)
         return NextResponse.json({ ok: true, url: pub.publicUrl })
+      }
+      case 'gorsel_toplu_sikistir': {
+        // Depoda halihazırda duran (AI ile üretilmiş, sıkıştırılmamış) eski görselleri sıkıştırır.
+        // Aynı yol korunur (DB'deki URL referansları bozulmaz) — yalnızca baytlar ve content-type değişir.
+        const yollar: string[] = Array.isArray(body.yollar) ? body.yollar.slice(0, 15).filter((x: any) => typeof x === 'string' && x.length < 300) : []
+        if (!yollar.length) return NextResponse.json({ error: 'Yol listesi gerekli' }, { status: 400 })
+        const admin = supabaseAdmin()
+        const sonuclar: { yol: string; eski?: number; yeni?: number; atlandi?: boolean; hata?: string }[] = []
+        for (const yol of yollar) {
+          try {
+            const dl = await admin.storage.from('urun-gorselleri').download(yol)
+            if (dl.error || !dl.data) { sonuclar.push({ yol, hata: dl.error?.message || 'indirilemedi' }); continue }
+            const giris = Buffer.from(await dl.data.arrayBuffer())
+            if (giris.length < 220 * 1024) { sonuclar.push({ yol, eski: giris.length, atlandi: true }); continue }
+            const maxKenar = yol.startsWith('tema/') ? 1920 : 1200
+            const sik = await gorselSikistir(giris, maxKenar)
+            if (sik.bytes.length >= giris.length) { sonuclar.push({ yol, eski: giris.length, atlandi: true }); continue }
+            const up = await admin.storage.from('urun-gorselleri').upload(yol, sik.bytes, { contentType: sik.contentType, upsert: true })
+            if (up.error) { sonuclar.push({ yol, hata: up.error.message }); continue }
+            sonuclar.push({ yol, eski: giris.length, yeni: sik.bytes.length })
+          } catch (e: any) { sonuclar.push({ yol, hata: e?.message || 'bilinmeyen hata' }) }
+        }
+        return NextResponse.json({ ok: true, sonuclar })
       }
       case 'basvuru_analiz': {
         if (typeof body.id !== 'string') return NextResponse.json({ error: 'Başvuru id gerekli' }, { status: 400 })
