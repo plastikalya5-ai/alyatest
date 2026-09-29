@@ -45,7 +45,7 @@ export default function MegaMenu({ dil, kategoriAd, label }: { dil: Dil; kategor
   return (
     <div ref={kutuRef} className="relative" onMouseEnter={ac} onMouseLeave={kapatGecikmeli}>
       <button type="button" onClick={() => setAcik(p => !p)} aria-expanded={acik} aria-haspopup="true"
-        className="eyebrow text-white/80 hover:text-white transition-colors duration-200 flex items-center gap-1.5">
+        className="eyebrow text-white/80 hover:text-white transition-colors duration-200 flex items-center gap-1.5" style={{ fontSize: 12.5 }}>
         {label}
       </button>
 

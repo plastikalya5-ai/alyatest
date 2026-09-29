@@ -1,6 +1,7 @@
 import { guvenliUrl, type Settings } from "@/lib/supabase";
 import type { Dil } from "@/lib/urun-sayfasi";
 import { M } from "@/lib/site-metin";
+import IletisimPopup from "@/components/sections/IletisimPopup";
 
 export default function Footer({ settings, dil = "tr" }: { settings: Settings | null; dil?: Dil }) {
   const s = settings, m = M[dil].altbilgi;
@@ -54,10 +55,8 @@ export default function Footer({ settings, dil = "tr" }: { settings: Settings | 
                 className="anim-magnetic inline-flex items-center gap-2 bg-[#e55f28] hover:bg-[#c94f1e] text-white text-[10px] font-semibold tracking-[0.14em] uppercase px-5 py-3 transition-colors">
                 WhatsApp →
               </a>
-              <a href="#contact"
-                className="anim-magnetic inline-flex items-center gap-2 border border-[#eae6dd]/15 hover:border-[#e55f28] text-[#eae6dd] text-[10px] font-semibold tracking-[0.14em] uppercase px-5 py-3 transition-colors">
-                {m.iletisimBaslik} →
-              </a>
+              <IletisimPopup settings={s} dil={dil} label={`${m.iletisimBaslik} →`}
+                className="anim-magnetic inline-flex items-center gap-2 border border-[#eae6dd]/15 hover:border-[#e55f28] text-[#eae6dd] text-[10px] font-semibold tracking-[0.14em] uppercase px-5 py-3 transition-colors" />
             </div>
             {sosyal.length > 0 && (
               <div className="flex flex-wrap gap-x-5 gap-y-2 mt-7">
