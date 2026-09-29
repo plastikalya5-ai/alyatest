@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Product } from "@/lib/supabase";
 import type { Dil } from "@/lib/diller";
-import { urunLinki } from "@/lib/diller";
+import { urunLinki, ad } from "@/lib/diller";
 import { M, kategoriGoster } from "@/lib/site-metin";
 
 export default function Collection({ products, dil = "tr" }: { products: Product[]; dil?: Dil }) {
@@ -77,7 +77,7 @@ export default function Collection({ products, dil = "tr" }: { products: Product
             style={{ width:"clamp(220px,65vw,380px)", aspectRatio:"0.72", scrollSnapAlign:"start", background:BG[i%4], display:"block" }}>
 
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={item.image_url} alt={item.name}
+            <img src={item.image_url} alt={ad(item, dil)}
               className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
 
             <div className="absolute inset-0" style={{ background:"linear-gradient(to top, rgba(11,14,11,0.95) 0%, rgba(11,14,11,0.25) 45%, transparent 100%)" }} />
@@ -87,7 +87,7 @@ export default function Collection({ products, dil = "tr" }: { products: Product
                 <p className="eyebrow text-[#e55f28] text-[9px]">{item.code}</p>
                 {item.is_new && <span className="eyebrow text-white bg-[#e55f28] text-[9px] px-1.5">{c.yeni}</span>}
               </div>
-              <h3 className="heading text-[#eae6dd]" style={{ fontSize:"clamp(22px,5vw,36px)", marginBottom:3 }}>{item.name.toUpperCase()}</h3>
+              <h3 className="heading text-[#eae6dd]" style={{ fontSize:"clamp(22px,5vw,36px)", marginBottom:3 }}>{ad(item, dil).toUpperCase()}</h3>
               <p className="text-[#6b7366] text-xs">{kategoriGoster(dil, item.category)}</p>
             </div>
 

@@ -2,11 +2,12 @@
 import { useEffect, useState } from "react";
 import type { Dil } from "@/lib/urun-sayfasi";
 import { M } from "@/lib/site-metin";
+import { ad } from "@/lib/diller";
 
 // Ürün detay sayfasındaki "Teklif iste" butonuyla açılan popup form. Sayfadan ayrılmadan
 // /api/contact'a gönderir; hangi ürün için istendiği "product" alanında iletilir.
 export default function TeklifModal({ urun, dil = "tr", className, style, children }: {
-  urun: { name: string; code: string };
+  urun: { name: string; code: string; name_i18n?: Partial<Record<Dil, string>> | null };
   dil?: Dil;
   className?: string;
   style?: React.CSSProperties;
@@ -18,7 +19,7 @@ export default function TeklifModal({ urun, dil = "tr", className, style, childr
   const [loading, setLoading] = useState(false);
   const [sub, setSub] = useState("");
   const [error, setError] = useState("");
-  const urunAdi = `${urun.name} (${urun.code})`;
+  const urunAdi = `${ad(urun, dil)} (${urun.code})`;
 
   useEffect(() => {
     if (!acik) return;

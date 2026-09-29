@@ -1,6 +1,6 @@
 import type { Product } from "@/lib/supabase";
 import type { Dil } from "@/lib/diller";
-import { urunLinki } from "@/lib/diller";
+import { urunLinki, ad } from "@/lib/diller";
 import { M, kategoriGoster } from "@/lib/site-metin";
 
 export default function FeaturedProducts({ products, dil = "tr" }: { products: Product[]; dil?: Dil }) {
@@ -30,7 +30,7 @@ export default function FeaturedProducts({ products, dil = "tr" }: { products: P
               style={{ background: i % 2 === 0 ? "#181d18" : "#1e241e" }}>
 
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={p.image_url} alt={p.name}
+              <img src={p.image_url} alt={ad(p, dil)}
                 className="tilt-card-inner product-spin absolute inset-0 w-full h-full object-cover transition-transform duration-700" />
 
               <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-400"
@@ -38,7 +38,7 @@ export default function FeaturedProducts({ products, dil = "tr" }: { products: P
 
               <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-2 opacity-0 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-400">
                 <p className="eyebrow text-[#e55f28] text-[9px] mb-1">{p.code}</p>
-                <p className="font-semibold text-white" style={{ fontSize: "clamp(12px,1.4vw,16px)" }}>{p.name}</p>
+                <p className="font-semibold text-white" style={{ fontSize: "clamp(12px,1.4vw,16px)" }}>{ad(p, dil)}</p>
               </div>
 
               <div className="absolute top-3 left-3 flex gap-1.5">

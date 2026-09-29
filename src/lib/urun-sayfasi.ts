@@ -1,10 +1,10 @@
 import { supabase, type Product } from "@/lib/supabase";
-export { SITE_URL, DILLER, DIL_AD, HREFLANG, isDil, mevcutDiller, urunYolu, urunLinki, urunUrl, type Dil } from "@/lib/diller";
-import { DILLER, HREFLANG, SITE_URL, urunYolu, urunUrl, mevcutDiller, type Dil } from "@/lib/diller";
+export { SITE_URL, DILLER, DIL_AD, HREFLANG, isDil, mevcutDiller, urunYolu, urunLinki, urunUrl, ad, etiketAdi, type Dil } from "@/lib/diller";
+import { DILLER, HREFLANG, SITE_URL, urunYolu, urunUrl, mevcutDiller, ad, type Dil } from "@/lib/diller";
 
 
-export type UrunKaydi = Product & { description_i18n: Partial<Record<Dil, string>> | null };
-const SUTUNLAR = "id,code,name,slug,category,subcategory,description,image_url,images,gorunum_360,model_3d_url,specs,renkler,tags,is_featured,is_new,sort_order,created_at,updated_at,description_i18n";
+export type UrunKaydi = Product & { description_i18n: Partial<Record<Dil, string>> | null; name_i18n: Partial<Record<Dil, string>> | null };
+const SUTUNLAR = "id,code,name,slug,category,subcategory,description,image_url,images,gorunum_360,model_3d_url,specs,renkler,tags,is_featured,is_new,sort_order,created_at,updated_at,description_i18n,name_i18n";
 
 /** Slug yalnızca küçük harf, rakam ve tire içerir; başka bir şey veritabanı sorgusuna hiç girmez. */
 export const slugGecerli = (s: string) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(s) && s.length <= 120;
@@ -72,12 +72,12 @@ export function urunJsonLd(u: UrunKaydi, d: Dil, kategori?: string) {
   return {
     "@context": "https://schema.org",
     "@graph": [
-      { "@type": "Product", "@id": `${urunUrl(d, u.slug)}#product`, name: u.name, sku: u.code, category: kategori || u.category, description: kisalt(aciklama(u, d), 500), image: resimler, url: urunUrl(d, u.slug), inLanguage: HREFLANG[d],
+      { "@type": "Product", "@id": `${urunUrl(d, u.slug)}#product`, name: ad(u, d), sku: u.code, category: kategori || u.category, description: kisalt(aciklama(u, d), 500), image: resimler, url: urunUrl(d, u.slug), inLanguage: HREFLANG[d],
         brand: { "@type": "Brand", name: "Alya Plastik" }, manufacturer: { "@type": "Organization", name: "Alya Plastik", url: SITE_URL }, ...(ozellik.length ? { additionalProperty: ozellik } : {}) },
       { "@type": "BreadcrumbList", itemListElement: [
         { "@type": "ListItem", position: 1, name: UI[d].anasayfa, item: d === "tr" ? SITE_URL : `${SITE_URL}/${d}` },
         { "@type": "ListItem", position: 2, name: UI[d].urunler, item: `${SITE_URL}${d === "tr" ? "" : `/${d}`}/#collection` },
-        { "@type": "ListItem", position: 3, name: u.name, item: urunUrl(d, u.slug) },
+        { "@type": "ListItem", position: 3, name: ad(u, d), item: urunUrl(d, u.slug) },
       ] },
     ],
   };

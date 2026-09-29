@@ -257,4 +257,10 @@ export const bolumYolu = (d: Dil, id: string) => `${d === "tr" ? "/" : `/${d}`}#
 /** Anasayfadaki ürün koleksiyonunu belirli bir kategori seçiliyken açan link (mega menü, footer). */
 export const kategoriYolu = (d: Dil, kategori: string) => `${dilYolu(d)}?kategori=${kategori}#collection`;
 /** Ürün kategori adı: sözlükte varsa çeviri, yoksa veritabanındaki ad/slug. */
-export const kategoriGoster = (d: Dil, slug: string | null | undefined, harita?: Record<string, string>) => (slug ? M[d].kategori[slug] || harita?.[slug] || slug : "");
+/** "saksı" gibi Türkçe karakterli değerleri harita anahtarlarıyla ("saksi") eşleştirmek için normalize eder. */
+const kategoriAnahtar = (s: string) => s.toLocaleLowerCase("tr-TR").replace(/[çğıöşü]/g, c => ({ ç: "c", ğ: "g", ı: "i", ö: "o", ş: "s", ü: "u" } as Record<string, string>)[c]);
+export const kategoriGoster = (d: Dil, slug: string | null | undefined, harita?: Record<string, string>) => {
+  if (!slug) return "";
+  const k = kategoriAnahtar(slug);
+  return M[d].kategori[slug] || M[d].kategori[k] || harita?.[slug] || harita?.[k] || slug;
+};

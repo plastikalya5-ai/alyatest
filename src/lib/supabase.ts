@@ -25,6 +25,8 @@ export type Product = {
   is_new: boolean;
   sort_order: number;
   created_at: string;
+  name_i18n?: Record<string, string> | null;
+  description_i18n?: Record<string, string> | null;
 };
 
 export type Category = {

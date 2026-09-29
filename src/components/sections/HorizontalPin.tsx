@@ -2,6 +2,7 @@ import type { Product } from "@/lib/supabase";
 import type { Dil } from "@/lib/diller";
 import { urunLinki } from "@/lib/diller";
 import { M, kategoriGoster } from "@/lib/site-metin";
+import { ad } from "@/lib/urun-sayfasi";
 
 export default function HorizontalPin({ products, dil = "tr" }: { products: Product[]; dil?: Dil }) {
   const items = products.slice(0, 6);
@@ -37,13 +38,13 @@ export default function HorizontalPin({ products, dil = "tr" }: { products: Prod
                 background: i % 2 === 0 ? "#0b0e0b" : "#111511",
               }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={p.image_url} alt={p.name}
+              <img src={p.image_url} alt={ad(p, dil)}
                 className="tilt-card-inner absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
               <div className="absolute bottom-0 left-0 right-0 p-6"
                 style={{ background: "linear-gradient(to top, rgba(11,14,11,0.95), transparent)" }}>
                 <p className="eyebrow text-[#e55f28] text-[9px] mb-1">{p.code}</p>
                 <h3 className="heading text-[#eae6dd]" style={{ fontSize: "clamp(20px,3vw,32px)" }}>
-                  {p.name.toUpperCase()}
+                  {ad(p, dil).toUpperCase()}
                 </h3>
                 {p.is_new && <span className="inline-block mt-2 eyebrow bg-[#e55f28] text-white px-2 py-0.5 text-[8px]">{p_.yeni}</span>}
               </div>
@@ -81,12 +82,12 @@ export default function HorizontalPin({ products, dil = "tr" }: { products: Prod
               className="anim-stagger-child relative overflow-hidden aspect-[3/4]"
               style={{ background: i % 2 === 0 ? "#0b0e0b" : "#111511" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={p.image_url} alt={p.name}
+              <img src={p.image_url} alt={ad(p, dil)}
                 className="absolute inset-0 w-full h-full object-cover" />
               <div className="absolute bottom-0 left-0 right-0 p-3"
                 style={{ background: "linear-gradient(to top, rgba(11,14,11,0.9), transparent)" }}>
                 <p className="eyebrow text-[#e55f28] text-[8px] mb-0.5">{p.code}</p>
-                <p className="heading text-[#eae6dd] text-[14px]">{p.name}</p>
+                <p className="heading text-[#eae6dd] text-[14px]">{ad(p, dil)}</p>
               </div>
             </a>
           ))}

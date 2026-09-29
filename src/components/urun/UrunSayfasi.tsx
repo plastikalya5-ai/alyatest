@@ -6,7 +6,7 @@ import UrunGaleri from "@/components/urun/UrunGaleri";
 import TeklifModal from "@/components/urun/TeklifModal";
 import { bolumYolu, dilYolu, kategoriGoster } from "@/lib/site-metin";
 import type { Settings } from "@/lib/supabase";
-import { DILLER, DIL_AD, HREFLANG, UI, aciklama, jsonLdMetni, kategoriAdi, mevcutDiller, ozellikEtiketi, urunJsonLd, urunLinki, urunYolu, type Dil, type UrunKaydi } from "@/lib/urun-sayfasi";
+import { DILLER, DIL_AD, HREFLANG, UI, ad, aciklama, etiketAdi, jsonLdMetni, kategoriAdi, mevcutDiller, ozellikEtiketi, urunJsonLd, urunLinki, urunYolu, type Dil, type UrunKaydi } from "@/lib/urun-sayfasi";
 
 // Sunucu bileşeni: ürün detay sayfası (tüm diller için ortak). İçerik yalnızca veritabanındaki ürün kaydından gelir.
 export default function UrunSayfasi({ urun, dil, settings, benzer, kategoriler = {} }: { urun: UrunKaydi; dil: Dil; settings: Settings | null; benzer: UrunKaydi[]; kategoriler?: Record<string, string> }) {
@@ -18,12 +18,13 @@ export default function UrunSayfasi({ urun, dil, settings, benzer, kategoriler =
   const metin = aciklama(urun, dil);
   const ozellikler = Object.entries(urun.specs || {});
   const diller = mevcutDiller(urun);
+  const urunAdi = ad(urun, dil);
   // Dil değiştirici bu ürünün sayfasında kalmalı: her zaman aynı ürünün o dildeki sayfasına gider
   // (çevirisi yoksa açıklama Türkçe'ye düşer, bkz. aciklama()) — önceden hem Header'ın varsayılanı
   // ana sayfaya yönlendiriyordu, hem de çevirisiz ürünlerde o dildeki sayfa hiç üretilmiyordu.
   const altDiller = Object.fromEntries(DILLER.map(d => [d, urunLinki(urun, d)])) as Partial<Record<Dil, string>>;
   const wa = (settings?.whatsapp || "+90 535 761 65 24").replace(/\D/g, "");
-  const waUrl = `https://wa.me/${wa}?text=${encodeURIComponent(T.wamesaj(urun.name, urun.code))}`;
+  const waUrl = `https://wa.me/${wa}?text=${encodeURIComponent(T.wamesaj(urunAdi, urun.code))}`;
 
   return (
     <div lang={HREFLANG[dil]} dir={rtl ? "rtl" : "ltr"}>
@@ -39,15 +40,15 @@ export default function UrunSayfasi({ urun, dil, settings, benzer, kategoriler =
           <nav aria-label="breadcrumb" className="eyebrow text-[#6b7366] mb-6 flex flex-wrap gap-2">
             <Link href={dilYolu(dil)} className="hover:text-[#0b0e0b]">{T.anasayfa}</Link><span>/</span>
             <Link href={bolumYolu(dil, "collection")} className="hover:text-[#0b0e0b]">{T.urunler}</Link><span>/</span>
-            <span className="text-[#0b0e0b]">{urun.name}</span>
+            <span className="text-[#0b0e0b]">{urunAdi}</span>
           </nav>
 
           <div className="grid gap-10 lg:grid-cols-2 lg:gap-16">
-            <UrunGaleri model3dUrl={urun.model_3d_url} kareler360={kareler360} resimler={resimler} renkler={urun.renkler} alt={`${urun.name} — ${urun.code}`} />
+            <UrunGaleri model3dUrl={urun.model_3d_url} kareler360={kareler360} resimler={resimler} renkler={urun.renkler} alt={`${urunAdi} — ${urun.code}`} />
 
             <div>
               <p className="eyebrow text-[#e55f28] mb-3">{kat}{altKat ? ` · ${altKat}` : ""}{urun.is_new && <span className="ms-2 text-white bg-[#e55f28] px-1.5">{T.yeni}</span>}</p>
-              <h1 className="heading text-[#0b0e0b]" style={{ fontSize: "clamp(38px,6vw,76px)", lineHeight: 0.95 }}><span lang="tr" dir="ltr">{urun.name}</span></h1>
+              <h1 className="heading text-[#0b0e0b]" style={{ fontSize: "clamp(38px,6vw,76px)", lineHeight: 0.95 }}><span lang={HREFLANG[dil]} dir="ltr">{urunAdi}</span></h1>
               <p className="eyebrow text-[#6b7366] mt-3">{T.kod}: <span dir="ltr" className="text-[#0b0e0b]">{urun.code}</span></p>
               {metin && <p className="text-[#3c4238] leading-relaxed mt-6" style={{ fontSize: "clamp(15px,1.6vw,17px)", maxWidth: "60ch", whiteSpace: "pre-line" }}>{metin}</p>}
 
@@ -60,7 +61,7 @@ export default function UrunSayfasi({ urun, dil, settings, benzer, kategoriler =
                   </dl>
                 </div>)}
 
-              {urun.tags?.length > 0 && <p className="mt-6 flex flex-wrap gap-2">{urun.tags.slice(0, 12).map(t => <span key={t} className="eyebrow text-[#6b7366] border border-[#0b0e0b]/15 px-2 py-1">{t}</span>)}</p>}
+              {urun.tags?.length > 0 && <p className="mt-6 flex flex-wrap gap-2">{urun.tags.slice(0, 12).map(t => <span key={t} className="eyebrow text-[#6b7366] border border-[#0b0e0b]/15 px-2 py-1">{etiketAdi(t, dil)}</span>)}</p>}
 
               <div className="mt-10 p-5 bg-[#0b0e0b] text-[#eae6dd]">
                 <p className="text-sm mb-4 opacity-80">{T.b2b}</p>
@@ -87,8 +88,8 @@ export default function UrunSayfasi({ urun, dil, settings, benzer, kategoriler =
                   <li key={b.id}>
                     <Link href={urunYolu(mevcutDiller(b).includes(dil) ? dil : "tr", b.slug)} className="block bg-[#e3ddcf] hover:bg-[#d8d1c1] transition-colors">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={b.image_url} alt={b.name} loading="lazy" className="w-full aspect-square object-contain p-4" />
-                      <span className="block p-3"><span className="eyebrow text-[#e55f28] block">{b.code}</span><span lang="tr" className="block font-semibold mt-1">{b.name}</span></span>
+                      <img src={b.image_url} alt={ad(b, dil)} loading="lazy" className="w-full aspect-square object-contain p-4" />
+                      <span className="block p-3"><span className="eyebrow text-[#e55f28] block">{b.code}</span><span lang={HREFLANG[dil]} className="block font-semibold mt-1">{ad(b, dil)}</span></span>
                     </Link>
                   </li>))}
               </ul>
