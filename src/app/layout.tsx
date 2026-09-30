@@ -82,11 +82,13 @@ export const metadata: Metadata = {
   // verification: { google: "xxx" },
 
   // ── Icons ─────────────────────────────────────────────
+  // Not: "/icon.svg" burada bilerek KALDIRILDI — public/icon.svg gerçek marka
+  // logosundan (koyu lacivert + turuncu iki dağ) farklı, eski/placeholder tek
+  // renkli bir üçgendi ve tarayıcılar SVG favicon'u ico'ya tercih ettiği için
+  // yanlış ikon görünüyordu. favicon.ico ve apple-touch-icon.png (src/app/icon.png
+  // ve apple-icon.png'den — asıl logo) doğru ikonu taşıyor.
   icons: {
-    icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/icon.svg", type: "image/svg+xml" },
-    ],
+    icon: [{ url: "/favicon.ico", sizes: "any" }],
     apple: "/apple-touch-icon.png",
   },
 
