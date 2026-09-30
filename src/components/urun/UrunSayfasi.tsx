@@ -61,6 +61,40 @@ export default function UrunSayfasi({ urun, dil, settings, benzer, kategoriler =
                   </dl>
                 </div>)}
 
+              {/* Kutu/koli bilgisi — eski siteden (alyaplastik.com/products/N) taşınan "Ürün Bilgisi"
+                  tablosu. Sadece veritabanında paket_bilgisi kaydı olan (eşleşmesi doğrulanmış)
+                  ürünlerde gösterilir; her satır aynı modelin farklı kutu/beden seçeneğini temsil eder. */}
+              {urun.paket_bilgisi && urun.paket_bilgisi.length > 0 && (
+                <div className="mt-8">
+                  <h2 className="eyebrow text-[#6b7366] mb-3">{T.paketBaslik}</h2>
+                  <div className="overflow-x-auto border border-[#0b0e0b]/15">
+                    <table className="w-full text-sm" dir="ltr">
+                      <thead>
+                        <tr className="border-b border-[#0b0e0b]/15 bg-[#0b0e0b]/[0.03]">
+                          <th className="text-start font-semibold text-[#6b7366] px-3 py-2.5 whitespace-nowrap">{T.paketKod}</th>
+                          <th className="text-start font-semibold text-[#6b7366] px-3 py-2.5 whitespace-nowrap">{T.paketAdet}</th>
+                          <th className="text-start font-semibold text-[#6b7366] px-3 py-2.5 whitespace-nowrap">{T.paketKutuHacmi}</th>
+                          <th className="text-start font-semibold text-[#6b7366] px-3 py-2.5 whitespace-nowrap">{T.paketKutuAgirligi}</th>
+                          <th className="text-start font-semibold text-[#6b7366] px-3 py-2.5 whitespace-nowrap">{T.paketOlculer}</th>
+                          <th className="text-start font-semibold text-[#6b7366] px-3 py-2.5 whitespace-nowrap">{T.paketHacim}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {urun.paket_bilgisi.slice(0, 20).map((p, i) => (
+                          <tr key={p.kod || i} className="border-b border-[#0b0e0b]/10 last:border-b-0">
+                            <td className="px-3 py-2.5 font-medium text-[#0b0e0b] whitespace-nowrap">{p.kod}</td>
+                            <td className="px-3 py-2.5 text-[#0b0e0b]">{p.adet}</td>
+                            <td className="px-3 py-2.5 text-[#0b0e0b]">{p.kutu_hacmi}</td>
+                            <td className="px-3 py-2.5 text-[#0b0e0b]">{p.kutu_agirligi}</td>
+                            <td className="px-3 py-2.5 text-[#0b0e0b] whitespace-nowrap">{p.olculer}</td>
+                            <td className="px-3 py-2.5 text-[#0b0e0b]">{p.hacim}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>)}
+
               {urun.tags?.length > 0 && <p className="mt-6 flex flex-wrap gap-2">{urun.tags.slice(0, 12).map(t => <span key={t} className="eyebrow text-[#6b7366] border border-[#0b0e0b]/15 px-2 py-1">{etiketAdi(t, dil)}</span>)}</p>}
 
               <div className="mt-10 p-5 bg-[#0b0e0b] text-[#eae6dd]">
