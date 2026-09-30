@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { ARACLAR, araciCalistir, bugunISO } from '@/lib/ai-admin'
+import { ARACLAR, araciCalistir, asistanYanit, bugunISO, type Konusma } from '@/lib/ai-admin'
 import { MUH_ARACLAR, muhAraci, mevzuatBaglami } from '@/lib/ai-muhasebe'
 import type { AiArac } from '@/lib/ai'
 
@@ -17,9 +17,34 @@ const ARAC_MOD: Record<string, string[]> = {
   finans_ozet: ['muhasebe'], fatura_ozet: ['muhasebe'], kdv_ozet: ['muhasebe'], kasa_akis: ['muhasebe'], yaslandirma: ['muhasebe'],
   cari_ozet: ['muhasebe', 'muhasebe_cari', 'satis'], satis_analiz: ['satis', 'muhasebe'], acik_siparisler: ['satis', 'sevkiyat'],
   kritik_stok: ['stok', 'uretim', 'satinalma', 'kalite'], uretim_durumu: ['uretim'], ziyaret_ozet: ['dashboard'],
+  guncel_kur: ['muhasebe', 'satis', 'satinalma', 'dashboard'],
+  hesapla: ['muhasebe'], fatura_ara: ['muhasebe'], islem_ara: ['muhasebe'],
 }
-/** Metin asistanı için: yalnızca kullanıcının modüllerine uyan ERP araçları. */
-export const araclariSuz = (moduller: string[]): AiArac[] => ARACLAR.filter(a => var_(moduller, ...(ARAC_MOD[a.function.name] || [])))
+// Muhasebe modülünün kendi sohbetinde (MUH_ARACLAR) bulunan, genel ERP araç listesinde (ARACLAR) olmayan
+// derin araçlar (hesapla, fatura_ara, islem_ara) — Veri Asistanı'nın da bir muhasebeci gibi kullanabilmesi için.
+const MUH_EK_ARACLAR = MUH_ARACLAR.filter(a => !ARACLAR.some(x => x.function.name === a.function.name))
+/** Metin asistanı için: yalnızca kullanıcının modüllerine uyan ERP araçları (+ muhasebe yetkisi varsa derin muhasebe araçları). */
+export const araclariSuz = (moduller: string[]): AiArac[] => [...ARACLAR, ...MUH_EK_ARACLAR].filter(a => var_(moduller, ...(ARAC_MOD[a.function.name] || [])))
+
+/**
+ * "Veri Asistanı" (Panelin genel AI sohbeti) için tam paket: kullanıcının yetkisine uyan araçlar +
+ * (muhasebe yetkisi varsa) hesapla/fatura_ara/islem_ara araçlarını da muhAraci ile çalıştırabilen
+ * yürütücü + güncel mevzuat bilgi tabanı bağlamı. Böylece bu genel asistan da muhasebe konularında
+ * "her şeyi bilen" bir asistan gibi davranabilir, ayrı Muhasebe AI sohbetiyle aynı veri tabanını kullanır.
+ */
+export async function genelAsistanYanit(sb: SupabaseClient, gecmis: Konusma[], moduller: string[]) {
+  const araclar = araclariSuz(moduller)
+  const calistir = (sb: SupabaseClient, ad: string, a: Record<string, any>) =>
+    (ad === 'hesapla' || ad === 'fatura_ara' || ad === 'islem_ara') ? muhAraci(sb, ad, a) : araciCalistir(sb, ad, a)
+  let ekSistem = ''
+  if (var_(moduller, 'muhasebe')) {
+    try {
+      const kb = await mevzuatBaglami(sb)
+      ekSistem = `\n\nGÜNCEL MEVZUAT BİLGİ TABANI (${kb.adet} kayıt; en eski doğrulama: ${kb.enEskiDogrulama || '-'}) — vergi/SGK/oran/limit gibi mevzuat değerleri İÇİN YALNIZCA bunu kullan, hafızandan sayı verme; "hesapla" aracıyla hesapla, kendi kafandan toplama/çarpma yapma:\n${kb.metin.slice(0, 12000) || '(bilgi tabanı boş)'}${kb.uyarilar.length ? `\nUYARILAR (kullanıcıya bildir): ${kb.uyarilar.slice(0, 6).join('; ')}` : ''}`
+    } catch { /* mevzuat okunamazsa asistan yine de çalışsın, sadece mevzuat bağlamı olmadan */ }
+  }
+  return asistanYanit(sb, gecmis, araclar, calistir, ekSistem)
+}
 
 /* ───────────────────────── Birime özel ek araçlar ───────────────────────── */
 const EK_ARACLAR: Record<string, AiArac> = {
@@ -93,7 +118,8 @@ export async function birimAraciCalistir(sb: SupabaseClient, birim: Birim, m: st
   if (!izinliBirimler(m).includes(birim)) return 'HATA: Bu birim için yetkiniz yok.'
   if (!ADLAR(birimAraclari(birim, m)).includes(ad)) return 'HATA: Bu birimde bu araç kullanılamıyor.'
   if (ad in EK_ARACLAR) return ekAraci(sb, ad, args)
-  if (birim === 'muhasebe') return muhAraci(sb, ad, args)
+  // hesapla/fatura_ara/islem_ara yalnızca muhAraci'de tanımlı — 'genel' birimde de araclariSuz üzerinden görünebilirler.
+  if (birim === 'muhasebe' || ad === 'hesapla' || ad === 'fatura_ara' || ad === 'islem_ara') return muhAraci(sb, ad, args)
   return araciCalistir(sb, ad, args)
 }
 

@@ -15,6 +15,7 @@ const ONERILER = [
   'Açık siparişler ve termini yaklaşanlar',
   'Üretimdeki emirlerin durumu',
   'Son 7 günde site ziyareti nasıl?',
+  'Güncel dolar/euro kuru ne, genel olarak yorumun ne?',
 ]
 
 export default function AsistanPage() {
@@ -40,7 +41,7 @@ export default function AsistanPage() {
     <div style={{ flex: 1, overflow: 'auto' }}>
       <AdminTopBar title="AI Asistan" />
       <Page>
-        <PageHead title="Veri Asistanı" sub="İşletme verilerini Türkçe sor. Yalnızca okur; yetkin olmayan verilere erişemez. Cevaplar yapay zeka ile üretilir, önemli kararlardan önce ilgili ekrandan doğrula."
+        <PageHead title="Veri Asistanı" sub="İşletme verilerini (muhasebe, satış, stok, üretim...) Türkçe sor, yorumunu iste; güncel döviz kuru ve genel ekonomi konularında da görüş verir. Yalnızca okur; yetkin olmayan verilere erişemez. Cevaplar yapay zeka ile üretilir, önemli kararlardan önce ilgili ekrandan doğrula."
           actions={msgs.length > 0 && <button className="adm-btn-ghost" onClick={() => setMsgs([])}><Trash2 size={13} />Temizle</button>} />
         <SesliAsistan />
         <Card pad={0}>
