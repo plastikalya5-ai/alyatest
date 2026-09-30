@@ -16,7 +16,8 @@ import Model3D from '@/components/urun/Model3D'
 const GORSEL_STIL = { studyo: 'Stüdyo', yasam: 'Yaşam alanı' } as const
 type GorselStil = keyof typeof GORSEL_STIL
 
-const bos = { code: '', name: '', slug: '', category: '', subcategory: '', description: '', image_url: '', images: [] as string[], model_3d_url: '' as string | null, tags: [] as string[], specs: [] as { k: string; v: string }[], barkod: '', is_featured: false, is_new: false, sort_order: 0, description_i18n: {} as Record<string, any> }
+const bos = { code: '', name: '', slug: '', category: '', subcategory: '', description: '', image_url: '', images: [] as string[], model_3d_url: '' as string | null, tags: [] as string[], specs: [] as { k: string; v: string }[], paket_bilgisi: [] as { kod: string; adet: string; kutu_hacmi: string; kutu_agirligi: string; olculer: string; hacim: string }[], barkod: '', is_featured: false, is_new: false, sort_order: 0, description_i18n: {} as Record<string, any> }
+const BOS_PAKET_SATIRI = { kod: '', adet: '', kutu_hacmi: '', kutu_agirligi: '', olculer: '', hacim: '' }
 const MODEL_3D_UZANTILAR = ['glb', 'gltf', 'obj', 'stl', 'fbx']
 const slugla = (s: string) => s.toLocaleLowerCase('tr').replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ş/g, 's').replace(/ü/g, 'u').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 
@@ -214,7 +215,7 @@ export default function AdminUrunlerPage() {
   const openNew = () => { setEditing(null); setSlugElle(false); setForm({ ...bos, sort_order: products.length + 1, category: cats[0]?.slug || '' }); setModal(true) }
   const openEdit = (p: any) => {
     setEditing(p); setSlugElle(true)
-    setForm({ code: p.code || '', name: p.name || '', slug: p.slug || '', category: p.category || '', subcategory: p.subcategory || '', description: p.description || '', image_url: p.image_url || '', images: p.images || [], model_3d_url: p.model_3d_url || null, tags: p.tags || [], specs: Object.entries(p.specs || {}).map(([k, v]) => ({ k, v: String(v) })), barkod: p.barkod || '', is_featured: !!p.is_featured, is_new: !!p.is_new, sort_order: p.sort_order || 0, description_i18n: p.description_i18n || {} })
+    setForm({ code: p.code || '', name: p.name || '', slug: p.slug || '', category: p.category || '', subcategory: p.subcategory || '', description: p.description || '', image_url: p.image_url || '', images: p.images || [], model_3d_url: p.model_3d_url || null, tags: p.tags || [], specs: Object.entries(p.specs || {}).map(([k, v]) => ({ k, v: String(v) })), paket_bilgisi: (p.paket_bilgisi || []).map((x: any) => ({ kod: x.kod || '', adet: x.adet || '', kutu_hacmi: x.kutu_hacmi || '', kutu_agirligi: x.kutu_agirligi || '', olculer: x.olculer || '', hacim: x.hacim || '' })), barkod: p.barkod || '', is_featured: !!p.is_featured, is_new: !!p.is_new, sort_order: p.sort_order || 0, description_i18n: p.description_i18n || {} })
     setModal(true)
   }
   async function save(e: React.FormEvent) {
@@ -223,7 +224,8 @@ export default function AdminUrunlerPage() {
     if (products.some(p => p.slug === form.slug && p.id !== editing?.id)) return toast.show('Bu slug başka üründe kullanılıyor', true)
     if (form.barkod && products.some(p => p.barkod === form.barkod && p.id !== editing?.id)) return toast.show('Bu barkod başka üründe kayıtlı', true)
     setBusy(true)
-    const payload: any = { code: form.code.trim(), name: form.name.trim(), slug: form.slug.trim(), category: form.category, subcategory: form.subcategory || null, description: form.description || null, image_url: form.image_url || '', images: form.images, tags: form.tags, specs: Object.fromEntries(form.specs.filter((s: any) => s.k.trim()).map((s: any) => [s.k.trim(), s.v])), barkod: form.barkod || null, description_i18n: form.description_i18n || {}, is_featured: form.is_featured, is_new: form.is_new, sort_order: +form.sort_order || 0, updated_at: new Date().toISOString() }
+    const paketTemiz = form.paket_bilgisi.filter((s: any) => Object.values(s).some((v: any) => String(v).trim()))
+    const payload: any = { code: form.code.trim(), name: form.name.trim(), slug: form.slug.trim(), category: form.category, subcategory: form.subcategory || null, description: form.description || null, image_url: form.image_url || '', images: form.images, tags: form.tags, specs: Object.fromEntries(form.specs.filter((s: any) => s.k.trim()).map((s: any) => [s.k.trim(), s.v])), paket_bilgisi: paketTemiz.length ? paketTemiz : null, barkod: form.barkod || null, description_i18n: form.description_i18n || {}, is_featured: form.is_featured, is_new: form.is_new, sort_order: +form.sort_order || 0, updated_at: new Date().toISOString() }
     const { error } = editing ? await web.from('products').update(payload).eq('id', editing.id) : await web.from('products').insert(payload)
     setBusy(false)
     if (error) return toast.show(error.message, true)
@@ -341,6 +343,7 @@ export default function AdminUrunlerPage() {
           </> : <p style={{ fontSize: 12.5, color: 'var(--adm-tx3)', margin: 0 }}>Aktif reçete yok. <Link href="/admin/dashboard/uretim/recete" style={{ color: 'var(--adm-ac)', fontWeight: 700 }}>Reçete oluştur →</Link></p>}
           {dx.fyt.length > 0 && <><Divider label="Fiyat listeleri" />{d.fiyatListeleri.map((l: any) => { const f = dx.fyt.filter((k: any) => k.fiyat_listesi_id === l.id); return f.length ? <InfoRow key={l.id} k={l.ad + (l.varsayilan ? ' (varsayılan)' : '')} v={f.map((k: any) => fmt(k.fiyat)).join(' – ')} /> : null })}</>}
           {Object.keys(dp.specs || {}).length > 0 && <><Divider label="Teknik özellikler" />{Object.entries(dp.specs).map(([k, v]) => <InfoRow key={k} k={k} v={String(v)} />)}</>}
+          {(dp.paket_bilgisi || []).length > 0 && <><Divider label="Ürün Bilgisi (Kutu/Koli)" />{dp.paket_bilgisi.map((s: any, i: number) => <InfoRow key={s.kod || i} k={s.kod || `Satır ${i + 1}`} v={`${s.adet ? `${s.adet} adet` : ''}${s.olculer ? ` · ${s.olculer} cm` : ''}${s.kutu_hacmi ? ` · ${s.kutu_hacmi} m³` : ''}${s.kutu_agirligi ? ` · ${s.kutu_agirligi} kg` : ''}${s.hacim ? ` · ${s.hacim} L` : ''}`} />)}</>}
           {(dp.tags || []).length > 0 && <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 14 }}>{dp.tags.map((t: string) => <span key={t} className="adm-chip">#{t}</span>)}</div>}
           <p style={{ fontSize: 11, color: 'var(--adm-tx3)', marginTop: 16 }}>Oluşturma: {fmtDate(dp.created_at)}{dp.updated_at ? ` · Güncelleme: ${fmtDate(dp.updated_at)}` : ''}</p>
         </div>}
@@ -409,6 +412,21 @@ export default function AdminUrunlerPage() {
         <Divider label="Teknik özellikler" />
         {form.specs.map((s: any, i: number) => <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6 }}><input className="adm-inp" placeholder="Özellik (örn. Hacim)" value={s.k} onChange={e => setForm((f: any) => ({ ...f, specs: f.specs.map((x: any, j: number) => j === i ? { ...x, k: e.target.value } : x) }))} /><input className="adm-inp" placeholder="Değer (örn. 5 lt)" value={s.v} onChange={e => setForm((f: any) => ({ ...f, specs: f.specs.map((x: any, j: number) => j === i ? { ...x, v: e.target.value } : x) }))} /><button type="button" className="adm-btn-danger" style={{ padding: '4px 9px' }} onClick={() => setForm((f: any) => ({ ...f, specs: f.specs.filter((_: any, j: number) => j !== i) }))}><X size={12} /></button></div>)}
         <button type="button" className="adm-btn-ghost" style={{ fontSize: 12 }} onClick={() => setForm((f: any) => ({ ...f, specs: [...f.specs, { k: '', v: '' }] }))}><Plus size={12} />Özellik ekle</button>
+
+        <Divider label="Ürün Bilgisi (Kutu/Koli)" />
+        <p style={{ fontSize: 12, color: 'var(--adm-tx3)', margin: '0 0 10px' }}>Ürün sayfasında "Ürün Bilgisi" tablosu olarak gösterilir — her satır aynı modelin farklı bir kutu/beden seçeneğidir (ör. eski sitedeki ALY-111/ALY-112 gibi).</p>
+        {form.paket_bilgisi.map((s: any, i: number) => (
+          <div key={i} style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr) auto', gap: 8, marginBottom: 6 }}>
+            <input className="adm-inp" placeholder="Kod (ALY-111)" value={s.kod} onChange={e => setForm((f: any) => ({ ...f, paket_bilgisi: f.paket_bilgisi.map((x: any, j: number) => j === i ? { ...x, kod: e.target.value } : x) }))} />
+            <input className="adm-inp" placeholder="Ürün Adedi" value={s.adet} onChange={e => setForm((f: any) => ({ ...f, paket_bilgisi: f.paket_bilgisi.map((x: any, j: number) => j === i ? { ...x, adet: e.target.value } : x) }))} />
+            <input className="adm-inp" placeholder="Kutu Hacmi (m³)" value={s.kutu_hacmi} onChange={e => setForm((f: any) => ({ ...f, paket_bilgisi: f.paket_bilgisi.map((x: any, j: number) => j === i ? { ...x, kutu_hacmi: e.target.value } : x) }))} />
+            <input className="adm-inp" placeholder="Kutu Ağırlığı (kg)" value={s.kutu_agirligi} onChange={e => setForm((f: any) => ({ ...f, paket_bilgisi: f.paket_bilgisi.map((x: any, j: number) => j === i ? { ...x, kutu_agirligi: e.target.value } : x) }))} />
+            <input className="adm-inp" placeholder="Ölçüler (29x16x14.5)" value={s.olculer} onChange={e => setForm((f: any) => ({ ...f, paket_bilgisi: f.paket_bilgisi.map((x: any, j: number) => j === i ? { ...x, olculer: e.target.value } : x) }))} />
+            <input className="adm-inp" placeholder="Hacim (L)" value={s.hacim} onChange={e => setForm((f: any) => ({ ...f, paket_bilgisi: f.paket_bilgisi.map((x: any, j: number) => j === i ? { ...x, hacim: e.target.value } : x) }))} />
+            <button type="button" className="adm-btn-danger" style={{ padding: '4px 9px' }} onClick={() => setForm((f: any) => ({ ...f, paket_bilgisi: f.paket_bilgisi.filter((_: any, j: number) => j !== i) }))}><X size={12} /></button>
+          </div>
+        ))}
+        <button type="button" className="adm-btn-ghost" style={{ fontSize: 12 }} onClick={() => setForm((f: any) => ({ ...f, paket_bilgisi: [...f.paket_bilgisi, { ...BOS_PAKET_SATIRI }] }))}><Plus size={12} />Kutu/koli satırı ekle</button>
       </Modal>
 
       <Modal open={!!gorselAi} onClose={() => setGorselAi(null)} width={640} title="AI ile Görseli Yeniden Tasarla"
