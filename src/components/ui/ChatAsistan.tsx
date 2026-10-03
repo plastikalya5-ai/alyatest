@@ -51,7 +51,7 @@ export default function ChatAsistan({ dil = "tr" }: { dil?: Dil }) {
     <>
       {acik && (
         <div role="dialog" aria-label={t.aria}
-          style={{ position: "fixed", zIndex: 95, right: "clamp(12px,3vw,40px)", bottom: 84, width: "min(360px, calc(100vw - 24px))", height: "min(480px, calc(100vh - 120px))", display: "flex", flexDirection: "column", background: "#0b0e0b", color: "#eae6dd", border: "1px solid rgba(234,230,221,.15)", boxShadow: "0 20px 60px rgba(0,0,0,.45)" }}>
+          style={{ position: "fixed", zIndex: 95, right: "clamp(12px,3vw,40px)", bottom: 68, width: "min(360px, calc(100vw - 24px))", height: "min(480px, calc(100vh - 120px))", display: "flex", flexDirection: "column", background: "#0b0e0b", color: "#eae6dd", border: "1px solid rgba(234,230,221,.15)", boxShadow: "0 20px 60px rgba(0,0,0,.45)" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", borderBottom: "1px solid rgba(234,230,221,.12)" }}>
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: ".04em" }}>{t.baslik}</div>
@@ -74,7 +74,7 @@ export default function ChatAsistan({ dil = "tr" }: { dil?: Dil }) {
         </div>
       )}
       <button onClick={() => setAcik(o => !o)} aria-label={acik ? t.kapat : t.ac}
-        style={{ position: "fixed", zIndex: 95, right: "clamp(12px,3vw,40px)", bottom: 24, background: "#0b0e0b", color: "#eae6dd", border: "1px solid #e55f28", padding: "12px 18px", fontSize: 11, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", cursor: "pointer", boxShadow: "0 10px 30px rgba(0,0,0,.35)" }}>
+        style={{ position: "fixed", zIndex: 95, right: "clamp(12px,3vw,40px)", bottom: 16, background: "#0b0e0b", color: "#eae6dd", border: "1px solid #e55f28", padding: "10px 14px", fontSize: 10, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", cursor: "pointer", boxShadow: "0 10px 30px rgba(0,0,0,.35)" }}>
         {acik ? t.kapat : t.ac}
       </button>
     </>

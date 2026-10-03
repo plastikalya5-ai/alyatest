@@ -98,7 +98,7 @@ export default function Header({ settings, dil = "tr", altDiller }: { settings: 
         style={{ paddingInline: "clamp(20px,5vw,80px)", paddingTop: 14, paddingBottom: 14 }}>
 
         <div className={`relative w-full h-full flex items-center justify-between rounded-full backdrop-blur-xl transition-all duration-500 border ${
-          scrolled || open ? "bg-[#0b0e0b]/92 border-white/10 shadow-[0_10px_34px_rgba(0,0,0,0.32)]" : "bg-[#0b0e0b]/45 border-white/10"
+          scrolled || open ? "bg-[#0b0e0b]/92 border-white/10 shadow-[0_10px_34px_rgba(0,0,0,0.32)]" : "bg-[#0b0e0b]/85 border-white/10"
         }`} style={{ paddingInline: "clamp(16px,3vw,28px)" }}>
 
           <Link href={dilYolu(dil)} className="flex items-center shrink-0">
