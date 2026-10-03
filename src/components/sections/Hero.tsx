@@ -29,7 +29,7 @@ export default function Hero({ stats, settings, dil = "tr", img = IMG }: { stats
           <img src={img.fikir} alt={h.alt}
             className="absolute inset-0 w-full h-full object-cover opacity-[0.09]"
             style={{ objectPosition: "30% center" }} />
-          <div className="absolute inset-0"
+          <div className="absolute inset-0 hidden md:block"
             style={{ background: "linear-gradient(to right, rgba(234,230,221,0.97) 0%, rgba(234,230,221,0.88) 100%)" }} />
         </div>
 
@@ -123,12 +123,12 @@ export default function Hero({ stats, settings, dil = "tr", img = IMG }: { stats
       </div>
 
       {/* Mobilde ürün görseli */}
-      <div className="absolute right-0 top-[22%] w-[42%] h-[48%] z-[11] pointer-events-none md:hidden"
-        style={{ background: "radial-gradient(closest-side, rgba(193,120,73,0.45) 0%, rgba(193,120,73,0.18) 62%, rgba(193,120,73,0) 100%)" }}>
+      <div className="absolute right-0 top-[6%] w-[46%] h-[42%] z-[5] pointer-events-none md:hidden"
+        style={{ background: "radial-gradient(closest-side, rgba(193,120,73,0.35) 0%, rgba(193,120,73,0.12) 62%, rgba(193,120,73,0) 100%)" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={img.kordon} alt="Alya Plastik ALY-110"
           className="js-hero-product w-full h-full object-contain"
-          style={{ mixBlendMode: "multiply", filter: "contrast(1.25) saturate(1.1) drop-shadow(0 24px 40px rgba(11,14,11,0.25))" }} />
+          style={{ WebkitMaskImage: "radial-gradient(closest-side, #000 62%, transparent 100%)", maskImage: "radial-gradient(closest-side, #000 62%, transparent 100%)" }} />
       </div>
 
       {/* Alt progress çizgisi */}
