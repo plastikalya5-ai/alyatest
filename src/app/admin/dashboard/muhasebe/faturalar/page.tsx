@@ -254,7 +254,7 @@ export default function FaturalarPage() {
     })
     const aday = norm(b.satici || '')
     const cari = aday ? cariler.find(c => { const n = norm(c.ad); return n && (n === aday || n.includes(aday) || aday.includes(n)) }) : null
-    const pb = ['TRY', 'USD', 'EUR', 'GBP'].includes(b.para_birimi) ? b.para_birimi : 'TRY'
+    const pb = ['TRY', 'USD', 'EUR', 'GBP', 'RUB'].includes(b.para_birimi) ? b.para_birimi : 'TRY'
     setForm((f: any) => ({ ...f, no: b.belge_no || f.no, tarih: b.tarih || f.tarih, para_birimi: pb, kur: pb === 'TRY' ? '1' : f.kur, cari_id: cari?.id || f.cari_id, notlar: [f.notlar, b.notlar && `AI notu: ${b.notlar}`].filter(Boolean).join('\n') }))
     if (kalemDoldur.length) setKalemler(kalemDoldur)
     const hesap = kalemDoldur.reduce((t, k) => t + k.miktar * k.birim_fiyat * (1 + k.kdv_orani / 100), 0)
@@ -350,7 +350,7 @@ export default function FaturalarPage() {
           <Field label="Tarih"><input type="date" className="adm-inp" value={form.tarih || ''} onChange={e => setForm((f: any) => ({ ...f, tarih: e.target.value }))} /></Field>
           <Field label="Vade"><input type="date" className="adm-inp" value={form.vade || ''} onChange={e => setForm((f: any) => ({ ...f, vade: e.target.value }))} /></Field>
           <Field label="Cari" span={2}><select className="adm-inp" value={form.cari_id || ''} onChange={e => { const c = cariler.find(x => x.id === e.target.value); setForm((f: any) => ({ ...f, cari_id: e.target.value })); if (c && !form.vade) { /* vade önerisi yok */ } }}><option value="">— Seçin —</option>{cariSec.map(c => <option key={c.id} value={c.id}>{c.ad}</option>)}</select></Field>
-          <Field label="Para Birimi"><select className="adm-inp" value={form.para_birimi} onChange={e => setForm((f: any) => ({ ...f, para_birimi: e.target.value, kur: e.target.value === 'TRY' ? '1' : f.kur }))}>{['TRY', 'USD', 'EUR', 'GBP'].map(p => <option key={p}>{p}</option>)}</select></Field>
+          <Field label="Para Birimi"><select className="adm-inp" value={form.para_birimi} onChange={e => setForm((f: any) => ({ ...f, para_birimi: e.target.value, kur: e.target.value === 'TRY' ? '1' : f.kur }))}>{['TRY', 'USD', 'EUR', 'GBP', 'RUB'].map(p => <option key={p}>{p}</option>)}</select></Field>
           {form.para_birimi !== 'TRY' ? <Field label={`Kur (1 ${form.para_birimi} = ₺)`}><input type="number" step="0.0001" className="adm-inp" value={form.kur} onChange={e => setForm((f: any) => ({ ...f, kur: e.target.value }))} /></Field> : <div />}
         </FormGrid>
 

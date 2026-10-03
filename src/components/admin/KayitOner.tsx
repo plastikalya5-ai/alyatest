@@ -134,7 +134,7 @@ export default function KayitOner({ belge, onClose, toast }: { belge: { ad: stri
               <select className="adm-inp" value={cariId} onChange={e => { setCariId(e.target.value); if (e.target.value) setYeniCari(false) }}><option value="">— Seçilmedi —</option>{cariListe.map((c: any) => <option key={c.id} value={c.id}>{c.ad}</option>)}</select>
               {!cariId && f.cari_unvan && <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12, marginTop: 4 }}><input type="checkbox" checked={yeniCari} onChange={e => setYeniCari(e.target.checked)} />"{f.cari_unvan}" için yeni {cariTip === 'tedarikci' ? 'tedarikçi' : 'müşteri'} carisi oluştur</label>}
             </Field>
-            <Field label="Para birimi"><select className="adm-inp" value={f.para_birimi} onChange={e => setF((x: any) => ({ ...x, para_birimi: e.target.value }))}>{['TRY', 'USD', 'EUR', 'GBP'].map(p => <option key={p}>{p}</option>)}</select></Field>
+            <Field label="Para birimi"><select className="adm-inp" value={f.para_birimi} onChange={e => setF((x: any) => ({ ...x, para_birimi: e.target.value }))}>{['TRY', 'USD', 'EUR', 'GBP', 'RUB'].map(p => <option key={p}>{p}</option>)}</select></Field>
             {f.para_birimi !== 'TRY' ? <Field label={`Kur (1 ${f.para_birimi} = ₺)`}><input type="number" step="0.0001" className="adm-inp" value={f.kur} onChange={e => setF((x: any) => ({ ...x, kur: e.target.value }))} /></Field> : <div />}
           </FormGrid>
           <Divider label="Kalemler (KDV hariç birim fiyat)" />

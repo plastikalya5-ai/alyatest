@@ -1,7 +1,7 @@
 // Fiyat teklifi ortak tipler ve hesaplar. Sunucudaki rpc_teklif_kaydet ile AYNI yuvarlama kuralı: her satır 2 ondalığa yuvarlanır.
 export type TKalem = { variant_id: string; urun_adi: string; aciklama: string; miktar: number; birim: string; birim_fiyat: number; iskonto_yuzde: number }
 export type Dil = 'tr' | 'en'
-export const PARA = ['TRY', 'USD', 'EUR', 'GBP']
+export const PARA = ['TRY', 'USD', 'EUR', 'GBP', 'RUB']
 export const DURUM: Record<string, { l: string; tone: 'muted' | 'blue' | 'green' | 'red' | 'amber' }> = {
   taslak: { l: 'Taslak', tone: 'muted' }, gonderildi: { l: 'Gönderildi', tone: 'blue' }, kabul: { l: 'Kabul edildi', tone: 'green' }, red: { l: 'Reddedildi', tone: 'red' }, iptal: { l: 'İptal', tone: 'muted' },
 }

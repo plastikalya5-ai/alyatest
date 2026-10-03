@@ -298,7 +298,7 @@ export default function SatinalmaPage() {
           <Field label="Beklenen teslim"><input type="date" className="adm-inp" value={form.beklenen_teslim || ''} onChange={e => setForm((f: any) => ({ ...f, beklenen_teslim: e.target.value }))} /></Field>
         </FormGrid>
         <FormGrid cols={4}>
-          <Field label="Para birimi"><select className="adm-inp" value={form.para_birimi || 'TRY'} onChange={e => setForm((f: any) => ({ ...f, para_birimi: e.target.value }))}>{['TRY', 'USD', 'EUR', 'GBP'].map(p => <option key={p}>{p}</option>)}</select></Field>
+          <Field label="Para birimi"><select className="adm-inp" value={form.para_birimi || 'TRY'} onChange={e => setForm((f: any) => ({ ...f, para_birimi: e.target.value }))}>{['TRY', 'USD', 'EUR', 'GBP', 'RUB'].map(p => <option key={p}>{p}</option>)}</select></Field>
           {(form.para_birimi || 'TRY') !== 'TRY' ? <Field label={`Kur (1 ${form.para_birimi} = ? ₺)`}><input type="number" step="0.0001" min="0" className="adm-inp" value={form.kur || ''} onChange={e => setForm((f: any) => ({ ...f, kur: e.target.value }))} /></Field> : <div />}
           <Field label="Ek maliyet (₺)" hint="Nakliye, gümrük, sigorta; teslimde maliyete eklenir"><input type="number" step="0.01" min="0" className="adm-inp" value={form.masraf_tl ?? ''} onChange={e => setForm((f: any) => ({ ...f, masraf_tl: e.target.value }))} /></Field>
           <Field label="Ek maliyet notu"><input className="adm-inp" maxLength={300} value={form.masraf_notu || ''} onChange={e => setForm((f: any) => ({ ...f, masraf_notu: e.target.value }))} /></Field>
