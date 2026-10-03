@@ -123,12 +123,12 @@ export default function Hero({ stats, settings, dil = "tr", img = IMG }: { stats
       </div>
 
       {/* Mobilde ürün görseli */}
-      <div className="absolute right-0 top-[8%] w-[40%] h-[60%] z-[5] pointer-events-none md:hidden"
-        style={{ background: "radial-gradient(closest-side, rgba(193,120,73,0.55) 0%, rgba(193,120,73,0.22) 62%, rgba(193,120,73,0) 100%)" }}>
+      <div className="absolute right-0 top-[22%] w-[42%] h-[48%] z-[11] pointer-events-none md:hidden"
+        style={{ background: "radial-gradient(closest-side, rgba(193,120,73,0.45) 0%, rgba(193,120,73,0.18) 62%, rgba(193,120,73,0) 100%)" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={img.kordon} alt="Alya Plastik ALY-110"
           className="js-hero-product w-full h-full object-contain"
-          style={{ filter: "drop-shadow(0 40px 80px rgba(11,14,11,0.18))" }} />
+          style={{ mixBlendMode: "multiply", filter: "contrast(1.25) saturate(1.1) drop-shadow(0 24px 40px rgba(11,14,11,0.25))" }} />
       </div>
 
       {/* Alt progress çizgisi */}
