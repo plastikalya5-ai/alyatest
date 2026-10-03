@@ -16,7 +16,20 @@ async function yetkiliMi() {
   const { data: role } = profile?.role_id ? await sb.from('roller').select('moduller').eq('id', profile.role_id).single() : { data: null }
   const moduller: string[] = role?.moduller || []
   if (!(moduller.includes('*') || moduller.includes('yonetim'))) return { hata: NextResponse.json({ error: 'Yetkiniz yok' }, { status: 403 }) }
-  return { sb, user, admin: createServiceClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!) }
+  return { sb, user, tam: moduller.includes('*'), admin: createServiceClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!) }
+}
+
+// Yetki yükseltme koruması: tam yetkili (*) olmayan bir yönetici, tam yetkili bir hesabı değiştiremez
+// (şifre sıfırlama, pasife alma, silme, rol değiştirme) ve kimseye tam yetkili rol veremez.
+const TAM_YETKI_HATA = () => NextResponse.json({ error: 'Tam yetkili hesaplar ve roller için tam yetki gerekir' }, { status: 403 })
+async function rolTamMi(admin: any, roleId?: string | null) {
+  if (!roleId) return false
+  const { data } = await admin.from('roller').select('moduller').eq('id', roleId).maybeSingle()
+  return (data?.moduller || []).includes('*')
+}
+async function hedefTamMi(admin: any, userId: string) {
+  const { data } = await admin.from('admin_profiles').select('role_id').eq('id', userId).maybeSingle()
+  return rolTamMi(admin, data?.role_id)
 }
 
 export async function GET() {
@@ -51,7 +64,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const y = await yetkiliMi(); if (y.hata) return y.hata
-  const { sb, user, admin } = y as any
+  const { sb, user, admin, tam } = y as any
   const body = await req.json()
   const { action } = body
   const ip = istemciIp(req)
@@ -66,6 +79,7 @@ export async function POST(req: NextRequest) {
       const { email, full_name, role_id, password } = body
       if (!email) return NextResponse.json({ error: 'E-posta gerekli' }, { status: 400 })
       if (!password || password.length < 8) return NextResponse.json({ error: 'Şifre en az 8 karakter olmalı' }, { status: 400 })
+      if (!tam && await rolTamMi(admin, role_id)) return TAM_YETKI_HATA()
       const { data, error } = await admin.auth.admin.createUser({
         email, password, email_confirm: true,
         user_metadata: { full_name: full_name || null },
@@ -78,6 +92,7 @@ export async function POST(req: NextRequest) {
     if (action === 'reset_password') {
       // Personelin şifresini unutması/kaybetmesi durumunda admin buradan anında yeni bir şifre belirleyip iletebilir.
       const { id, password } = body
+      if (!tam && await hedefTamMi(admin, id)) return TAM_YETKI_HATA()
       if (!password || password.length < 8) return NextResponse.json({ error: 'Şifre en az 8 karakter olmalı' }, { status: 400 })
       const { error } = await admin.auth.admin.updateUserById(id, { password, email_confirm: true })
       if (error) throw new Error(error.message)
@@ -86,6 +101,7 @@ export async function POST(req: NextRequest) {
     }
     if (action === 'role') {
       const { id, role_id } = body
+      if (!tam && (await rolTamMi(admin, role_id) || await hedefTamMi(admin, id))) return TAM_YETKI_HATA()
       if (id === user.id) {
         // Kendi rolünü yönetim yetkisi olmayan bir role çevirip panelden kilitlenmeyi engelle
         const { data: yeni } = role_id ? await sb.from('roller').select('moduller').eq('id', role_id).single() : { data: null }
@@ -99,6 +115,7 @@ export async function POST(req: NextRequest) {
     }
     if (action === 'rename') {
       const { id, full_name } = body
+      if (!tam && await hedefTamMi(admin, id)) return TAM_YETKI_HATA()
       const r = await sb.from('admin_profiles').update({ full_name }).eq('id', id)
       if (r.error) throw new Error(r.error.message)
       return NextResponse.json({ ok: true })
@@ -106,6 +123,7 @@ export async function POST(req: NextRequest) {
     if (action === 'ban' || action === 'unban') {
       const { id } = body
       if (id === user.id) return NextResponse.json({ error: 'Kendi hesabını pasife alamazsın' }, { status: 400 })
+      if (!tam && await hedefTamMi(admin, id)) return TAM_YETKI_HATA()
       const { error } = await admin.auth.admin.updateUserById(id, { ban_duration: action === 'ban' ? '876000h' : 'none' })
       if (error) throw new Error(error.message)
       await yoneticiOlayi(kim, action === 'ban' ? 'kullanici_pasif' : 'kullanici_aktif', await hedef(id), ip)
@@ -114,6 +132,7 @@ export async function POST(req: NextRequest) {
     if (action === 'delete') {
       const { id } = body
       if (id === user.id) return NextResponse.json({ error: 'Kendi hesabını silemezsin' }, { status: 400 })
+      if (!tam && await hedefTamMi(admin, id)) return TAM_YETKI_HATA()
       const silinen = await hedef(id)
       const { error } = await admin.auth.admin.deleteUser(id)
       if (error) throw new Error(error.message)

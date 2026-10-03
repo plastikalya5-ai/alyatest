@@ -64,6 +64,13 @@ export async function POST(req: NextRequest) {
   if ((op === 'update' || op === 'delete') && !id)
     return NextResponse.json({ error: 'Kayıt id gerekli' }, { status: 400 })
 
+  // Rol tanımları (yetki matrisi) yalnızca tam yetkili (*) yöneticiler tarafından değiştirilebilir: yetki yükseltmeyi önler.
+  if (table === 'roller') {
+    const { data: prof } = await sb.from('admin_profiles').select('role_id').eq('id', user.id).maybeSingle()
+    const { data: rol } = prof?.role_id ? await sb.from('roller').select('moduller').eq('id', prof.role_id).maybeSingle() : { data: null }
+    if (!(rol?.moduller || []).includes('*')) return NextResponse.json({ error: 'Rolleri değiştirmek için tam yetki gerekir' }, { status: 403 })
+  }
+
   let r: any
   if (op === 'insert') {
     r = await sb.from(table).insert(withCreatedBy(table, data, user.id)).select()

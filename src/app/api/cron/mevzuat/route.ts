@@ -1,15 +1,19 @@
+import crypto from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { topluKontrol } from '@/lib/mevzuat-takip'
 import { notify } from '@/lib/notify'
 
 export const maxDuration = 60
 
+const sha = (s: string) => crypto.createHash('sha256').update(s).digest()
+
 // Vercel Cron (vercel.json) her gün çağırır; CRON_SECRET tanımlıysa Vercel "Authorization: Bearer <CRON_SECRET>" gönderir.
 // Her çalışmada en uzun süredir kontrol edilmeyen 8 kayıt işlenir (26+ kayıt birkaç günde döner).
 export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET
   if (!secret) return NextResponse.json({ error: 'CRON_SECRET tanımlı değil' }, { status: 503 })
-  if (req.headers.get('authorization') !== `Bearer ${secret}`) return NextResponse.json({ error: 'Yetkisiz' }, { status: 401 })
+  const m = /^Bearer (.+)$/.exec(req.headers.get('authorization') || '')
+  if (!m || !crypto.timingSafeEqual(sha(m[1]), sha(secret))) return NextResponse.json({ error: 'Yetkisiz' }, { status: 401 })
 
   try {
     const sonuclar = await topluKontrol(8)

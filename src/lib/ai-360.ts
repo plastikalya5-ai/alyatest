@@ -1,4 +1,5 @@
 import { AiHata } from '@/lib/ai'
+import { guvenliUrl } from '@/lib/mevzuat-takip'
 
 // Ürün fotoğrafından AI ile "360° döner galeri" kareleri üretir (OpenAI Images edit — gpt-image-1).
 // Not: Bu gerçek bir 3D model/mesh DEĞİLDİR — kaynak fotoğraftan, farklı açılardan çekilmiş gibi görünen
@@ -72,8 +73,12 @@ export async function gorunum360Uret(imageUrl: string, kareSayisi: KareSayisi = 
   let kaynak: ArrayBuffer
   let kaynakTip = 'image/png'
   try {
-    const r = await fetch(imageUrl, { signal: AbortSignal.timeout(15000) })
+    // SSRF koruması: yalnızca genel https adresleri, yönlendirme yok, indirmeden önce boyut kontrolü
+    const hedef = guvenliUrl(imageUrl)
+    if (!hedef) throw new Error('adres geçersiz')
+    const r = await fetch(hedef, { signal: AbortSignal.timeout(15000), redirect: 'error' })
     if (!r.ok) throw new Error(String(r.status))
+    if (Number(r.headers.get('content-length') || 0) > 15 * 1024 * 1024) throw new Error('çok büyük')
     kaynakTip = r.headers.get('content-type')?.split(';')[0] || kaynakTip
     kaynak = await r.arrayBuffer()
   } catch {

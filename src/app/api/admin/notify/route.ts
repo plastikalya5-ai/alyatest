@@ -23,14 +23,17 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const red = await yetkili(); if (red) return red
   const { channel, to } = await req.json()
-  if (!to || !['email', 'whatsapp'].includes(channel))
+  if (!to || typeof to !== 'string' || !['email', 'whatsapp'].includes(channel))
     return NextResponse.json({ error: 'Alıcı adres/numara gerekli' }, { status: 400 })
+  // Tek alıcı: e-posta için basit adres, WhatsApp için telefon numarası (başlık/çoklu alıcı enjeksiyonunu engeller)
+  const gecerli = channel === 'email' ? /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(to) && to.length <= 254 : /^\+?[0-9 ()-]{7,20}$/.test(to)
+  if (!gecerli) return NextResponse.json({ error: 'Geçersiz alıcı' }, { status: 400 })
   const text = 'Alya Plastik admin paneli test bildirimi. Bu mesajı aldıysan kanal çalışıyor ✓'
   try {
     if (channel === 'email') await sendEmail(to, 'Alya Plastik — test bildirimi', text)
     else await sendWhatsApp('test', to, text, {})
     return NextResponse.json({ ok: true })
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'Gönderilemedi' }, { status: 502 })
+    console.error('[notify]', e?.message); return NextResponse.json({ error: 'Gönderilemedi' }, { status: 502 })
   }
 }

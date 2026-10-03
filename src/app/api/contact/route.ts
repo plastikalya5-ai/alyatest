@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
   if (hata || !veri) return NextResponse.json({ error: hata }, { status: 400 })
 
   // DB tabanlı oran sınırı: aynı IP saatte en fazla 5 gönderim (spam/DDoS koruması).
-  if (!(await oranSiniri(`contact:${istemciIp(req)}`, 5, 3600))) {
+  if (!(await oranSiniri(`contact:${istemciIp(req)}`, 5, 3600, false))) {
     return NextResponse.json({ error: 'Çok fazla istek gönderildi, lütfen daha sonra tekrar deneyin.' }, { status: 429 })
   }
 
