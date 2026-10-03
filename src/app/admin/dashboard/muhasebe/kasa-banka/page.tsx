@@ -96,7 +96,7 @@ export default function KasaBankaPage() {
   const kasaT = sum(aktif.filter(h => h.tip === 'kasa'), tl)
   const bankaT = sum(aktif.filter(h => h.tip === 'banka'), tl)
   const kurEksik = aktif.some(h => kasaPb(h) !== 'TRY' && !kurlar[kasaPb(h)])
-  const dovizToplam = (['USD', 'EUR'] as const).map(pb => ({ pb, t: sum(aktif.filter(h => kasaPb(h) === pb), h => +h.bakiye) })).filter(x => aktif.some(h => kasaPb(h) === x.pb))
+  const dovizToplam = (['USD', 'EUR', 'RUB'] as const).map(pb => ({ pb, t: sum(aktif.filter(h => kasaPb(h) === pb), h => +h.bakiye) })).filter(x => aktif.some(h => kasaPb(h) === x.pb))
   const girisAy = sum(Object.values(H), (x: any) => x.girisTl), cikisAy = sum(Object.values(H), (x: any) => x.cikisTl)
   const secili = hesaplar.find(h => h.id === sec) || null
 
@@ -198,14 +198,14 @@ export default function KasaBankaPage() {
     try {
       const r = await fetch('/api/admin/kurlar'); const j = await r.json()
       if (!r.ok) throw new Error(j.error || 'Kurlar alınamadı')
-      setKurModal((m: any) => ({ ...m, USD: j.USD ? String(j.USD) : m.USD, EUR: j.EUR ? String(j.EUR) : m.EUR, kaynak: 'tcmb', tarih: j.tarih }))
+      setKurModal((m: any) => ({ ...m, USD: j.USD ? String(j.USD) : m.USD, EUR: j.EUR ? String(j.EUR) : m.EUR, RUB: j.RUB ? String(j.RUB) : m.RUB, kaynak: 'tcmb', tarih: j.tarih }))
       toast.show(`TCMB döviz satış kuru getirildi${j.tarih ? ` (${j.tarih})` : ''} — kaydetmeyi unutmayın`)
     } catch (err: any) { toast.show(err.message, true) }
     setBusy(false)
   }
   async function kaydetKurlar(e: React.FormEvent) {
     e.preventDefault(); if (busy || !kurModal) return
-    const rows = (['USD', 'EUR'] as const).filter(pb => kurModal[pb] !== '' && kurModal[pb] != null).map(pb => ({ para_birimi: pb, kur: +String(kurModal[pb]).replace(',', '.'), kaynak: kurModal.kaynak || 'manuel', guncelleme: new Date().toISOString() }))
+    const rows = (['USD', 'EUR', 'RUB'] as const).filter(pb => kurModal[pb] !== '' && kurModal[pb] != null).map(pb => ({ para_birimi: pb, kur: +String(kurModal[pb]).replace(',', '.'), kaynak: kurModal.kaynak || 'manuel', guncelleme: new Date().toISOString() }))
     if (!rows.length || rows.some(r => !(r.kur > 0))) { toast.show('Geçerli bir kur girin', true); return }
     setBusy(true)
     const r: any = await muh.from('doviz_kurlari').upsert(rows)
@@ -228,7 +228,7 @@ export default function KasaBankaPage() {
       <Page>
         <PageHead title="Nakit Yönetimi" sub="Kasa ve banka hesapları, hesaplar arası virman, hareket geçmişi"
           actions={<>
-            <button className="adm-btn-ghost" onClick={() => setKurModal({ USD: kurlar.USD ? String(kurlar.USD) : '', EUR: kurlar.EUR ? String(kurlar.EUR) : '', kaynak: 'manuel' })}><Coins size={14} />Döviz Kurları</button>
+            <button className="adm-btn-ghost" onClick={() => setKurModal({ USD: kurlar.USD ? String(kurlar.USD) : '', EUR: kurlar.EUR ? String(kurlar.EUR) : '', RUB: kurlar.RUB ? String(kurlar.RUB) : '', kaynak: 'manuel' })}><Coins size={14} />Döviz Kurları</button>
             <button className="adm-btn-ghost" onClick={() => setVirman({ from: aktif[0]?.id || '', to: aktif[1]?.id || '', tutar: '', hedefTutar: '', tarih: todayISO(), not: '' })} disabled={aktif.length < 2}><ArrowLeftRight size={14} />Virman</button>
             <button className="adm-btn" onClick={openNew}><Plus size={14} />Hesap Ekle</button>
           </>} />
@@ -293,7 +293,7 @@ export default function KasaBankaPage() {
         </div>
         <FormGrid>
           <Field label="Hesap Adı *" span={2}><input className="adm-inp" required autoFocus value={form.ad} onChange={e => setForm((f: any) => ({ ...f, ad: e.target.value }))} placeholder={form.tip === 'kasa' ? 'Merkez Kasa' : 'Ziraat TL Vadesiz'} /></Field>
-          <Field label="Para Birimi" span={2} hint={editing ? 'Para birimi hesap açıldıktan sonra değiştirilemez' : 'Dolar/Euro kasası için USD veya EUR seçin; bakiye kendi para biriminde tutulur'}><select className="adm-inp" disabled={!!editing} value={form.para_birimi} onChange={e => setForm((f: any) => ({ ...f, para_birimi: e.target.value }))}>{PB.map(p => <option key={p} value={p}>{PB_AD[p]}</option>)}</select></Field>
+          <Field label="Para Birimi" span={2} hint={editing ? 'Para birimi hesap açıldıktan sonra değiştirilemez' : 'Dolar/Euro/Ruble kasası için ilgili para birimini seçin; bakiye kendi para biriminde tutulur'}><select className="adm-inp" disabled={!!editing} value={form.para_birimi} onChange={e => setForm((f: any) => ({ ...f, para_birimi: e.target.value }))}>{PB.map(p => <option key={p} value={p}>{PB_AD[p]}</option>)}</select></Field>
           {form.tip === 'banka' && <>
             <Field label="Banka"><input className="adm-inp" value={form.banka_adi} onChange={e => setForm((f: any) => ({ ...f, banka_adi: e.target.value }))} /></Field>
             <Field label="IBAN" hint={form.iban && !ibanGecerli(form.iban) ? 'Geçersiz IBAN' : undefined}><input className="adm-inp" value={form.iban} onChange={e => setForm((f: any) => ({ ...f, iban: e.target.value.toUpperCase() }))} placeholder="TR00 0000 ..." style={form.iban && !ibanGecerli(form.iban) ? { borderColor: 'var(--adm-red)' } : undefined} /></Field>
@@ -335,6 +335,7 @@ export default function KasaBankaPage() {
           <p style={{ gridColumn: 'span 2', margin: 0, fontSize: 12.5, color: 'var(--adm-tx2)' }}>Döviz hesaplarının TL karşılığı (toplam nakit, raporlar) ve yeni hareketlerin varsayılan kuru buradan alınır. 1 döviz = kaç TL:</p>
           <Field label="1 USD = (₺)"><input type="number" step="0.0001" min="0" className="adm-inp" value={kurModal.USD} onChange={e => setKurModal((m: any) => ({ ...m, USD: e.target.value, kaynak: 'manuel' }))} placeholder="41,00" /></Field>
           <Field label="1 EUR = (₺)"><input type="number" step="0.0001" min="0" className="adm-inp" value={kurModal.EUR} onChange={e => setKurModal((m: any) => ({ ...m, EUR: e.target.value, kaynak: 'manuel' }))} placeholder="48,00" /></Field>
+          <Field label="1 RUB = (₺)"><input type="number" step="0.0001" min="0" className="adm-inp" value={kurModal.RUB ?? ''} onChange={e => setKurModal((m: any) => ({ ...m, RUB: e.target.value, kaynak: 'manuel' }))} placeholder="0,59" /></Field>
           <div style={{ gridColumn: 'span 2', display: 'flex', alignItems: 'center', gap: 10 }}>
             <button type="button" className="adm-btn-ghost" onClick={tcmbGetir} disabled={busy}><Download size={13} />TCMB’den getir (döviz satış)</button>
             <span style={{ fontSize: 11.5, color: 'var(--adm-tx3)' }}>{kurRows.length ? `Son güncelleme: ${kurRows.map((r: any) => `${r.para_birimi} ${new Date(r.guncelleme).toLocaleDateString('tr-TR')}`).join(' · ')}` : 'Henüz kur girilmedi'}</span>

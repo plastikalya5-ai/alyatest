@@ -1,16 +1,16 @@
 import { muh } from '@/lib/muhasebe-client'
 
-// Kasa/banka hesapları TRY, USD veya EUR olabilir. Hesabın bakiyesi KENDİ para biriminde tutulur; işlemin `tutar` alanı her zaman
+// Kasa/banka hesapları TRY, USD, EUR veya RUB olabilir. Hesabın bakiyesi KENDİ para biriminde tutulur; işlemin `tutar` alanı her zaman
 // TL karşılığıdır (raporlar ve cari bakiye buna göre çalışır), `doviz_tutari` + `kur` ise döviz hesabındaki gerçek tutardır.
-export const PB = ['TRY', 'USD', 'EUR'] as const
+export const PB = ['TRY', 'USD', 'EUR', 'RUB'] as const
 export type Pb = (typeof PB)[number]
-export const PB_AD: Record<Pb, string> = { TRY: 'Türk Lirası (₺)', USD: 'ABD Doları ($)', EUR: 'Euro (€)' }
-export const PB_SIM: Record<Pb, string> = { TRY: '₺', USD: '$', EUR: '€' }
-export const kasaPb = (k: any): Pb => (k?.para_birimi === 'USD' || k?.para_birimi === 'EUR' ? k.para_birimi : 'TRY')
+export const PB_AD: Record<Pb, string> = { TRY: 'Türk Lirası (₺)', USD: 'ABD Doları ($)', EUR: 'Euro (€)', RUB: 'Rus Rublesi (₽)' }
+export const PB_SIM: Record<Pb, string> = { TRY: '₺', USD: '$', EUR: '€', RUB: '₽' }
+export const kasaPb = (k: any): Pb => (k?.para_birimi === 'USD' || k?.para_birimi === 'EUR' || k?.para_birimi === 'RUB' ? k.para_birimi : 'TRY')
 export const trKasa = (k: any) => kasaPb(k) === 'TRY'
 const yuvarla = (n: number) => Math.round(n * 100) / 100
 
-/** doviz_kurlari tablosundan güncel kurlar ({TRY:1, USD?, EUR?}). */
+/** doviz_kurlari tablosundan güncel kurlar ({TRY:1, USD?, EUR?, RUB?}). */
 export async function kurlariYukle(): Promise<Record<string, number>> {
   const rows = await muh.all('doviz_kurlari', '*').catch(() => [])
   const o: Record<string, number> = { TRY: 1 }
