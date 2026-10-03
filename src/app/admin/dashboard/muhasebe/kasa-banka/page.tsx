@@ -10,6 +10,20 @@ import { Sparkline } from '@/components/admin/erp/charts'
 import { Plus, Pencil, Trash2, Landmark, Wallet, ArrowLeftRight, Copy, Scale, ArrowUpRight, ArrowDownRight, SlidersHorizontal, Power, Coins, Download } from 'lucide-react'
 import { PB, PB_AD, PB_SIM, kasaPb, kurlariYukle, islemAlan, paraGoster } from '@/lib/doviz'
 
+// "3.759.758,49" · "3759758,49" · "3759758.49" · "3,759,758.49" gibi yazımların hepsini sayıya çevirir (boş/geçersiz → NaN)
+function trSayi(raw: string): number {
+  let t = String(raw ?? '').replace(/[\s₺$€£TLtl]/g, '')
+  if (!t || !/^-?[\d.,]+$/.test(t)) return NaN
+  const nokta = (t.match(/\./g) || []).length, virgul = (t.match(/,/g) || []).length
+  if (nokta && virgul) { // ikisi de var: sonuncusu ondalık ayracıdır
+    const ond = t.lastIndexOf(',') > t.lastIndexOf('.') ? ',' : '.'
+    t = ond === ',' ? t.replace(/\./g, '').replace(',', '.') : t.replace(/,/g, '')
+  } else if (virgul) t = virgul > 1 ? t.replace(/,/g, '') : t.replace(',', '.')
+  else if (nokta > 1 || /^-?\d{1,3}\.\d{3}$/.test(t)) t = t.replace(/\./g, '') // 3.759.758 / 3.759 → binlik ayracı
+  const n = Number(t)
+  return isFinite(n) ? n : NaN
+}
+
 // TR IBAN doğrulama (mod 97)
 function ibanGecerli(v: string) {
   const s = v.replace(/\s/g, '').toUpperCase()
@@ -169,7 +183,7 @@ export default function KasaBankaPage() {
 
   async function kaydetDuzeltme(e: React.FormEvent) {
     e.preventDefault(); if (busy || !duzelt) return
-    const pb = kasaPb(duzelt.hesap), yeni = +duzelt.yeni, fark = +(yeni - +duzelt.hesap.bakiye).toFixed(2)
+    const pb = kasaPb(duzelt.hesap), yeni = trSayi(duzelt.yeni), fark = +(yeni - +duzelt.hesap.bakiye).toFixed(2)
     if (isNaN(yeni) || Math.abs(fark) < 0.005) { toast.show('Bakiye zaten aynı', true); return }
     if (pb !== 'TRY' && !kurlar[pb]) { toast.show(`Önce ${pb} kurunu girin (Döviz Kurları)`, true); return }
     setBusy(true)
@@ -267,7 +281,7 @@ export default function KasaBankaPage() {
           <DataGrid rows={[]} cols={cols} rowKey={r => r.id} csvName={`hareketler-${secili.ad}`} title={<span>{secili.ad} — Hareketler</span>} storageKey="kasa-hareket"
             server={{ deps: [secili.id, islemler.length, secili.bakiye], fetch: ({ page, size, q, sort }) => muh.page('v_kasa_hareket', '*', { build: (x: any) => x.eq('kasa_hesap_id', secili.id), search: q, searchIn: ['aciklama', 'kategori'], sort: sort || { key: 'tarih', dir: 'desc' }, tieBreak: 'created_at', page, size }) }}
             searchPlaceholder="Açıklama, kategori..."
-            actions={<button className="adm-btn-ghost" style={{ fontSize: 12 }} onClick={() => setDuzelt({ hesap: secili, yeni: String(secili.bakiye), not: '' })}><SlidersHorizontal size={13} />Bakiye Düzelt</button>}
+            actions={<button className="adm-btn-ghost" style={{ fontSize: 12 }} onClick={() => setDuzelt({ hesap: secili, yeni: String(Math.round((+secili.bakiye || 0) * 100) / 100).replace('.', ','), not: '' })}><SlidersHorizontal size={13} />Bakiye Düzelt</button>}
             emptyTitle="Bu hesapta hareket yok" emptySub="Gelir/Gider ekranında bu hesabı seçerek işlem gir" />
         )}
       </Page>
@@ -311,7 +325,7 @@ export default function KasaBankaPage() {
         footer={<><button type="button" className="adm-btn-ghost" onClick={() => setDuzelt(null)}>İptal</button><button type="submit" className="adm-btn" disabled={busy}>Düzelt</button></>}>
         {duzelt && <FormGrid cols={1}>
           <p style={{ margin: 0, fontSize: 12.5, color: 'var(--adm-tx2)' }}><b>{duzelt.hesap.ad}</b> sistem bakiyesi: {paraGoster(duzelt.hesap.bakiye, kasaPb(duzelt.hesap))}. Gerçek (sayım/ekstre) bakiyeyi gir; fark, kâr/zarara yansımayan bir düzeltme hareketi olarak yazılır.</p>
-          <Field label={`Gerçek Bakiye (${PB_SIM[kasaPb(duzelt.hesap)]})`} hint={`Fark: ${paraGoster((+duzelt.yeni || 0) - +duzelt.hesap.bakiye, kasaPb(duzelt.hesap))}`}><input type="number" step="0.01" required autoFocus className="adm-inp" value={duzelt.yeni} onChange={e => setDuzelt((d: any) => ({ ...d, yeni: e.target.value }))} style={{ fontSize: 16, fontWeight: 700 }} /></Field>
+          <Field label={`Gerçek Bakiye (${PB_SIM[kasaPb(duzelt.hesap)]})`} hint={isNaN(trSayi(duzelt.yeni)) ? 'Tutarı rakamla yazın, örn. 3.759.758,49' : `Girilen: ${paraGoster(trSayi(duzelt.yeni), kasaPb(duzelt.hesap))} · Fark: ${paraGoster(trSayi(duzelt.yeni) - +duzelt.hesap.bakiye, kasaPb(duzelt.hesap))}`}><input type="text" inputMode="decimal" autoComplete="off" required autoFocus className="adm-inp" value={duzelt.yeni} onChange={e => setDuzelt((d: any) => ({ ...d, yeni: e.target.value }))} style={{ fontSize: 16, fontWeight: 700 }} /></Field>
           <Field label="Not"><input className="adm-inp" value={duzelt.not} onChange={e => setDuzelt((d: any) => ({ ...d, not: e.target.value }))} placeholder="Sayım farkı, mutabakat..." /></Field>
         </FormGrid>}
       </Modal>
