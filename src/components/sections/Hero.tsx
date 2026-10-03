@@ -27,7 +27,7 @@ export default function Hero({ stats, settings, dil = "tr", img = IMG }: { stats
         <div className="js-hero-bg absolute inset-0 origin-center" style={{ transform: "scale(1.06)", willChange: "transform" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={img.fikir} alt={h.alt}
-            className="absolute inset-0 w-full h-full object-cover opacity-[0.09]"
+            className="absolute inset-0 w-full h-full object-cover opacity-[0.09] hidden md:block"
             style={{ objectPosition: "30% center" }} />
           <div className="absolute inset-0 hidden md:block"
             style={{ background: "linear-gradient(to right, rgba(234,230,221,0.97) 0%, rgba(234,230,221,0.88) 100%)" }} />
@@ -123,7 +123,7 @@ export default function Hero({ stats, settings, dil = "tr", img = IMG }: { stats
       </div>
 
       {/* Mobilde ürün görseli */}
-      <div className="absolute right-0 top-[6%] w-[46%] h-[42%] z-[5] pointer-events-none md:hidden"
+      <div className="absolute right-0 top-[9%] w-[44%] h-[22%] z-[5] pointer-events-none md:hidden"
         style={{ background: "radial-gradient(closest-side, rgba(193,120,73,0.35) 0%, rgba(193,120,73,0.12) 62%, rgba(193,120,73,0) 100%)" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={img.kordon} alt="Alya Plastik ALY-110"
