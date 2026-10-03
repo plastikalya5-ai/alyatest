@@ -43,10 +43,10 @@ export default function UrunSayfasi({ urun, dil, settings, benzer, kategoriler =
             <span className="text-[#0b0e0b]">{urunAdi}</span>
           </nav>
 
-          <div className="grid gap-10 lg:grid-cols-2 lg:gap-16">
+          <div className="grid gap-10 grid-cols-1 min-w-0 lg:grid-cols-2 lg:gap-16">
             <UrunGaleri model3dUrl={urun.model_3d_url} kareler360={kareler360} resimler={resimler} renkler={urun.renkler} alt={`${urunAdi} — ${urun.code}`} />
 
-            <div>
+            <div className="min-w-0">
               <p className="eyebrow text-[#e55f28] mb-3">{kat}{altKat ? ` · ${altKat}` : ""}{urun.is_new && <span className="ms-2 text-white bg-[#e55f28] px-1.5">{T.yeni}</span>}</p>
               <h1 className="heading text-[#0b0e0b]" style={{ fontSize: "clamp(38px,6vw,76px)", lineHeight: 0.95 }}><span lang={HREFLANG[dil]} dir="ltr">{urunAdi}</span></h1>
               <p className="eyebrow text-[#6b7366] mt-3">{T.kod}: <span dir="ltr" className="text-[#0b0e0b]">{urun.code}</span></p>

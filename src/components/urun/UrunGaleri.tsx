@@ -25,8 +25,8 @@ export default function UrunGaleri({
   function thumbSec(idx: number) { setRenkGorsel(null); setSecili(idx); }
 
   return (
-    <div>
-      <div className="bg-[#e3ddcf] flex items-center justify-center" style={{ aspectRatio: "1 / 1" }}>
+    <div className="min-w-0 w-full max-w-full">
+      <div className="bg-[#e3ddcf] flex items-center justify-center overflow-hidden w-full max-w-full" style={{ aspectRatio: "1 / 1" }}>
         {renkGorsel ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={renkGorsel} alt={alt} className="w-full h-full object-contain" style={{ padding: "clamp(16px,4vw,48px)" }} />

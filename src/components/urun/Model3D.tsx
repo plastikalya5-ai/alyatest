@@ -30,8 +30,9 @@ export default function Model3D({ url, alt, className, style }: { url: string; a
         const kamera = new THREE.PerspectiveCamera(40, genislik / yukseklik, 0.01, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        renderer.setSize(genislik, yukseklik);
+        renderer.setSize(genislik, yukseklik, false);
         kutu.innerHTML = "";
+        renderer.domElement.style.cssText = "display:block;width:100%;height:100%";
         kutu.appendChild(renderer.domElement);
 
         sahne.add(new THREE.HemisphereLight(0xffffff, 0x444444, 2.2));
@@ -84,13 +85,16 @@ export default function Model3D({ url, alt, className, style }: { url: string; a
 
         const boyutlandir = () => {
           const g = kutu.clientWidth || 300, h = kutu.clientHeight || 300;
-          kamera.aspect = g / h; kamera.updateProjectionMatrix(); renderer.setSize(g, h);
+          kamera.aspect = g / h; kamera.updateProjectionMatrix(); renderer.setSize(g, h, false);
         };
         window.addEventListener("resize", boyutlandir);
+        const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(boyutlandir) : null;
+        ro?.observe(kutu);
 
         temizle = () => {
           cancelAnimationFrame(raf);
           window.removeEventListener("resize", boyutlandir);
+          ro?.disconnect();
           controls.dispose();
           renderer.dispose();
           kutu.innerHTML = "";
@@ -104,8 +108,8 @@ export default function Model3D({ url, alt, className, style }: { url: string; a
   }, [url]);
 
   return (
-    <div className={className} style={{ position: "relative", ...style }} role="img" aria-label={alt || "3D model önizleme"}>
-      <div ref={kutuRef} style={{ width: "100%", height: "100%" }} />
+    <div className={className} style={{ position: "relative", overflow: "hidden", minWidth: 0, maxWidth: "100%", ...style }} role="img" aria-label={alt || "3D model önizleme"}>
+      <div ref={kutuRef} style={{ position: "absolute", inset: 0, overflow: "hidden" }} />
       {yukleniyor && !hata && (
         <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "#6b7366" }}>Model yükleniyor…</div>
       )}
