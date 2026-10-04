@@ -15,6 +15,7 @@ import {
 // Tüm toplamlar veritabanında hesaplanır (rpc_finans_ozet) — kayıt sayısı milyonlara çıksa da sayfa anında açılır.
 export default function MuhasebeGenelPage() {
   const [donem, setDonem] = useState<Donem>('bu_ay')
+  const [secildi, setSecildi] = useState(false) // kullanıcı dönemi kendisi seçtiyse otomatik geçiş yapma
   const [grafik, setGrafik] = useState<'aylik' | 'net'>('aylik')
   const [loading, setLoading] = useState(true)
   const [hata, setHata] = useState('')
@@ -32,9 +33,11 @@ export default function MuhasebeGenelPage() {
         muh.all('kasa_banka_hesaplari', 'id,ad,tip,bakiye,aktif,para_birimi'),
       ])
       setO(ozet); setSon(s.data || []); setKasalar(k)
+      // Varsayılan "Bu Ay"da hiç işlem yoksa (ay başı / veri henüz girilmedi) boş ekran yerine "Bu Yıl"a geç.
+      if (donem === 'bu_ay' && !secildi && !(+(ozet?.donem?.gelir || 0)) && !(+(ozet?.donem?.gider || 0))) setDonem('yil')
     } catch (e: any) { setHata(e.message || 'Özet alınamadı') }
     setLoading(false)
-  }, [R.from, R.to, R.pFrom, R.pTo])
+  }, [R.from, R.to, R.pFrom, R.pTo, donem, secildi])
   useEffect(() => { load() }, [load])
 
   const aylar = useMemo(() => sonAylar(12), [])
@@ -74,7 +77,7 @@ export default function MuhasebeGenelPage() {
       <Page>
         <PageHead title="Finansal Durum" sub={`Nakit bazlı özet · ${donemLabel}${R.from ? ` (${fmtDate(R.from)} – ${fmtDate(R.to)})` : ''}`}
           actions={<>
-            <Tabs tabs={DONEMLER.map(d => ({ v: d.v, l: d.l }))} value={donem} onChange={v => setDonem(v as Donem)} />
+            <Tabs tabs={DONEMLER.map(d => ({ v: d.v, l: d.l }))} value={donem} onChange={v => { setSecildi(true); setDonem(v as Donem) }} />
             <button className="adm-btn-ghost" onClick={load} title="Yenile"><RefreshCw size={14} style={loading ? { animation: 'admSpin 1s linear infinite' } : undefined} /></button>
           </>} />
 
