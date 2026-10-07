@@ -121,8 +121,12 @@ export default function UrunSayfasi({ urun, dil, settings, benzer, kategoriler =
                 {benzer.map(b => (
                   <li key={b.id}>
                     <Link href={urunYolu(mevcutDiller(b).includes(dil) ? dil : "tr", b.slug)} className="block bg-[#e3ddcf] hover:bg-[#d8d1c1] transition-colors">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={b.image_url} alt={ad(b, dil)} loading="lazy" className="w-full aspect-square object-contain p-4" />
+                      {b.image_url?.startsWith("https://") ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={b.image_url} alt={ad(b, dil)} loading="lazy" className="w-full aspect-square object-contain p-4" />
+                      ) : (
+                        <div className="w-full aspect-square flex items-center justify-center p-4 text-center text-[#0b0e0b]/40 font-semibold" aria-hidden="true">{b.code}</div>
+                      )}
                       <span className="block p-3"><span className="eyebrow text-[#e55f28] block">{b.code}</span><span lang={HREFLANG[dil]} className="block font-semibold mt-1">{ad(b, dil)}</span></span>
                     </Link>
                   </li>))}

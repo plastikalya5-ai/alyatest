@@ -45,8 +45,11 @@ const anahtar = (k: string) => k.toLocaleLowerCase("tr-TR").replace(/[çğıöş
 export const ozellikEtiketi = (k: string, d: Dil) => OZ[anahtar(k)]?.[d] || (k.charAt(0).toLocaleUpperCase(d === "tr" ? "tr-TR" : undefined) + k.slice(1));
 
 export async function getBenzer(u: UrunKaydi, n = 4): Promise<UrunKaydi[]> {
-  const { data } = await supabase.from("products").select(SUTUNLAR).eq("category", u.category).neq("id", u.id).order("sort_order", { ascending: true }).limit(n);
-  return (data as UrunKaydi[]) ?? [];
+  // Önce fotoğrafı olan benzer ürünler gösterilir (fotoğrafsız kayıtlar boş kutu olarak görünmesin)
+  const { data } = await supabase.from("products").select(SUTUNLAR).eq("category", u.category).neq("id", u.id).order("sort_order", { ascending: true }).limit(60);
+  const l = (data as UrunKaydi[]) ?? [];
+  const resimli = (x: UrunKaydi) => typeof x.image_url === "string" && x.image_url.startsWith("https://");
+  return [...l.filter(resimli), ...l.filter(x => !resimli(x))].slice(0, n);
 }
 
 // Çevirisi girilmemiş ürünlerde de sayfa boş kalmasın diye Türkçe açıklamaya düşülür — dil
