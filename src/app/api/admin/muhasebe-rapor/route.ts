@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   try {
     const r = await raporUret(y.sb, tip, donem)
     const buf = await raporExcelBuffer(r)
-    const ad = `${tip === 'kdv' ? 'kdv-hazirlik' : 'aylik-rapor'}-${donem}.xlsx`
+    const ad = `${tip === 'kdv' ? 'kdv-hazirlik' : tip === 'kdv_liste' ? 'indirilecek-kdv-listesi' : 'aylik-rapor'}-${donem}.xlsx`
     return new NextResponse(buf as ArrayBuffer, { headers: { 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Content-Disposition': `attachment; filename="${ad}"`, 'Cache-Control': 'no-store' } })
   } catch (e: any) {
     if (e instanceof AiHata) return NextResponse.json({ error: e.message }, { status: e.durum })

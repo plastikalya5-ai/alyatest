@@ -338,7 +338,7 @@ export default function MuhasebeAiPage() {
             <style>{`@media print { body * { visibility: hidden !important; } #rapor-alani, #rapor-alani * { visibility: visible !important; } #rapor-alani { position: absolute; left: 0; top: 0; width: 100%; padding: 16px; background: #fff; color: #000; } .no-print { display: none !important; } }`}</style>
             <Card pad={16}>
               <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                <Field label="Rapor"><select className="adm-inp" value={raporTip} onChange={e => { setRaporTip(e.target.value); setRapor(null); setYorum('') }}><option value="kdv">KDV beyan hazırlık özeti</option><option value="aylik">Aylık yönetim raporu</option></select></Field>
+                <Field label="Rapor"><select className="adm-inp" value={raporTip} onChange={e => { setRaporTip(e.target.value); setRapor(null); setYorum('') }}><option value="kdv">KDV beyan hazırlık özeti</option><option value="kdv_liste">İndirilecek KDV listesi (fatura fatura)</option><option value="aylik">Aylık yönetim raporu</option></select></Field>
                 <Field label="Dönem"><input type="month" className="adm-inp" value={raporDonem} onChange={e => { setRaporDonem(e.target.value); setRapor(null); setYorum('') }} /></Field>
                 <button className="adm-btn" disabled={raporBusy || !raporDonem} onClick={raporOlustur}>{raporBusy ? 'Hazırlanıyor…' : 'Raporu oluştur'}</button>
               </div>
