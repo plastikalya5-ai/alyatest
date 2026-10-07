@@ -32,7 +32,7 @@ export default function ZiyaretcilerPage() {
       else if (donem !== 'tumu') { const d = new Date(); d.setDate(d.getDate() - (+donem - 1)); s = s.gte('gun', iso(d)) }
       if (cihazF) s = s.eq('cihaz', cihazF)
       const term = q.replace(/[,()%*\\:]/g, ' ').trim()
-      if (term) s = s.or(`page.ilike.%${term}%,kaynak.ilike.%${term}%,country.ilike.%${term}%`)
+      if (term) { const t = term.replace(/[,()%*\\]/g, ' ').trim(); if (t) s = s.or(`page.ilike.%${t}%,kaynak.ilike.%${t}%,country.ilike.%${t}%`) }
       s = s.order(sort ? sort.key : 'visited_at', { ascending: sort ? sort.dir === 'asc' : false }).order('id', { ascending: false }).range(page * size, page * size + size - 1)
       const { data, count, error } = await s
       if (error) throw new Error(error.message)
