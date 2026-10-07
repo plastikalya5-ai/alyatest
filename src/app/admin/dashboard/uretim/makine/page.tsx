@@ -1,4 +1,5 @@
 'use client'
+import { useAcParam } from '@/lib/ac-param'
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import AdminTopBar from '@/components/admin/TopBar'
@@ -74,6 +75,8 @@ export default function MakinePage() {
   }
 
   const x = detay ? M[detay.id] : null
+
+  useAcParam(!loading, id => { const m = d.makineler.find((x: any) => x.id === id); if (m) openEdit(m) })
 
   return (
     <div style={{ flex: 1, overflow: 'auto' }}>

@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import AdminTopBar from '@/components/admin/TopBar'
+import { useAcParam } from '@/lib/ac-param'
 import { web } from '@/lib/web-data'
 import { fmt, fmtN, fmtDate } from '@/lib/fmt'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Modal, Field, FormGrid, Card, useToast } from '@/components/admin/erp/ui'
@@ -142,6 +143,8 @@ export default function TaleplerPage() {
     { key: 'du', label: 'Durum', width: 130, sort: t => t.durum, render: t => <Badge tone={DURUM[t.durum]?.tone}>{DURUM[t.durum]?.l}</Badge> },
   ]
   const enUcuzToplam = aktif ? enIyi(aktif.id) : null
+
+  useAcParam(!loading, id => { if (talepler.some((x: any) => x.id === id)) { setSecili(id); setTf(null) } })
 
   return (
     <div style={{ flex: 1, overflow: 'auto' }}>

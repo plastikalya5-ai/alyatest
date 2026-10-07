@@ -1,4 +1,5 @@
 'use client'
+import { useAcParam } from '@/lib/ac-param'
 import { useEffect, useMemo, useState } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
 import { erp } from '@/lib/erp-client'
@@ -170,6 +171,8 @@ export default function HammaddePage() {
     { key: 'uretim', label: 'Üretimde Bekleyen', align: 'right', sort: v => v.uretimde, render: v => v.uretimde ? fmtN(v.uretimde, 0) : '—', hideSm: true },
     { key: 'durum', label: 'Durum', sort: v => v.serbest, render: v => v.serbest < 0 ? <Badge tone="red">Açık: {fmtN(-v.serbest, 0)} eksik</Badge> : +v.stock <= 0 ? <Badge tone="red">Tükendi</Badge> : <Badge tone="green">Yeterli</Badge> },
   ]
+
+  useAcParam(!loading, id => { const h = d.hammaddeler.find((x: any) => x.id === id); if (h) openEdit(h) })
 
   return (
     <div style={{ flex: 1, overflow: 'auto' }}>

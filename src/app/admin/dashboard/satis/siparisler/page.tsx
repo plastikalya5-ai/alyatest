@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import AdminTopBar from '@/components/admin/TopBar'
+import { useAcParam } from '@/lib/ac-param'
 import { erp } from '@/lib/erp-client'
 import { web } from '@/lib/web-data'
 import { muh } from '@/lib/muhasebe-client'
@@ -215,6 +216,8 @@ export default function SatisSiparisleriPage() {
 
   const dS = detay ? d.siparisler.find((s: any) => s.id === detay.id) || detay : null
   const dd = dS ? S[dS.id] : null
+
+  useAcParam(!loading, id => { const r = d.siparisler.find((x: any) => x.id === id); if (r) setDetay(r) })
 
   return (
     <div style={{ flex: 1, overflow: 'auto' }}>

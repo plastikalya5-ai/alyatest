@@ -1,4 +1,5 @@
 'use client'
+import { useAcParam } from '@/lib/ac-param'
 import { useMemo, useState } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
 import { erp } from '@/lib/erp-client'
@@ -121,6 +122,8 @@ export default function KalipPage() {
   ]
 
   const dk = detay ? K[detay.id] : null
+
+  useAcParam(!loading, id => { const k = d.kaliplar.find((x: any) => x.id === id); if (k) openEdit(k) })
 
   return (
     <div style={{ flex: 1, overflow: 'auto' }}>

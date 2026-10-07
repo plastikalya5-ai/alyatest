@@ -1,4 +1,5 @@
 'use client'
+import { useAcParam } from '@/lib/ac-param'
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import AdminTopBar from '@/components/admin/TopBar'
@@ -217,6 +218,8 @@ export default function UretimEmirleriPage() {
   const kalanSaat = hiz > 0 && dE?.durum === 'uretimde' ? Math.max(+dE.planlanan_miktar - +dE.uretilen_miktar, 0) / hiz : null
   const dTuketim = dE?.recete_id ? emirIhtiyac(dE, d.receteKalemleri, d.hammaddeler, +dE.uretilen_miktar + +dE.fire_miktar) : []
   const dKalan = dE?.recete_id ? emirIhtiyac(dE, d.receteKalemleri, d.hammaddeler) : []
+
+  useAcParam(!loading, id => { const e = d.emirler.find((x: any) => x.id === id); if (e) { setDetay(e); setDTab('ozet'); setGiris(girisBos) } })
 
   return (
     <div style={{ flex: 1, overflow: 'auto' }}>

@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
+import { useAcParam } from '@/lib/ac-param'
 import { erp } from '@/lib/erp-client'
 import { web } from '@/lib/web-data'
 import { useModuller } from '@/lib/use-moduller'
@@ -223,6 +224,8 @@ export default function SatinalmaPage() {
     if (!detay?.id) { setRetler([]); return }
     web.from('satinalma_ret_kayitlari').select('*').eq('siparis_id', detay.id).order('created_at', { ascending: false }).then(({ data }: any) => setRetler(data || []))
   }, [detay?.id, d.satinalmaKalemleri]) // eslint-disable-line
+
+  useAcParam(!loading, id => { const r = d.satinalma.find((x: any) => x.id === id); if (r) setDetay(r) })
 
   return (
     <div style={{ flex: 1, overflow: 'auto' }}>

@@ -1,4 +1,5 @@
 'use client'
+import { useAcParam } from '@/lib/ac-param'
 import { useMemo, useState } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
 import { erp } from '@/lib/erp-client'
@@ -133,6 +134,8 @@ export default function FirePage() {
     { key: 'maliyet', label: 'Maliyet Etkisi', align: 'right', sort: r => r.maliyet, render: r => r.maliyet ? <Money v={r.maliyet} bold={false} /> : <span style={{ color: 'var(--adm-tx3)' }}>—</span>, total: rs => <Money v={sum(rs, (r: any) => r.maliyet)} tone="red" />, csv: r => r.maliyet },
     { key: 'act', label: '', width: 50, align: 'right', render: r => r.src !== 'hat' ? <button className="adm-btn-danger" style={{ padding: '4px 7px' }} onClick={ev => { ev.stopPropagation(); del(r) }}><Trash2 size={12} /></button> : null },
   ]
+
+  useAcParam(!loading, id => { const r = satirlar.find((x: any) => x.id === 'f' + id); if (r) setDetay(r) })
 
   return (
     <div style={{ flex: 1, overflow: 'auto' }}>

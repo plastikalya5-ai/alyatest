@@ -1,6 +1,7 @@
 'use client'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
+import { useAcParam } from '@/lib/ac-param'
 import { web } from '@/lib/web-data'
 import { Page, PageHead, Badge, Modal, Field, FormGrid, Tabs, Card, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
@@ -116,6 +117,8 @@ export default function IhracatEvraklariPage() {
       <button className="adm-btn-danger" style={{ padding: '3px 7px' }} onClick={() => sil(r)}><Trash2 size={12} /></button></span> },
   ]
   const s = ed ? hesapla(ed.v) : null
+
+  useAcParam(!loading, async id => { let r = evraklar.find((x: any) => x.id === id); if (!r) r = (await web.from('ihracat_evraklari').select('id,tur,no,siparis_id,dil,musteri,toplam,para_birimi,created_at,updated_at').eq('id', id).maybeSingle()).data; if (r) ac(r) })
 
   return (
     <div style={{ flex: 1, overflow: 'auto' }}>

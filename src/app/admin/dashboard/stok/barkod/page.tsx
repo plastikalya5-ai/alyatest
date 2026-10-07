@@ -1,4 +1,5 @@
 'use client'
+import { useAcParam } from '@/lib/ac-param'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
 import { erp } from '@/lib/erp-client'
@@ -176,6 +177,8 @@ export default function BarkodPage() {
   const cur = MODES.find(m => m.v === mode)!
   const todayMov = recent.filter(r => new Date(r.created_at).toDateString() === new Date().toDateString())
   const toplamAdet = lines.reduce((s, l) => s + l.miktar, 0)
+
+  useAcParam(!loading, id => { const it = catalog.find(i => i.tip === 'variant' && i.id === id); if (it) addItem(it) })
 
   return (
     <div style={{ flex: 1, overflow: 'auto' }}>

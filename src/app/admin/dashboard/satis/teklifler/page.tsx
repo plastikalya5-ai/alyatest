@@ -1,6 +1,7 @@
 'use client'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
+import { useAcParam } from '@/lib/ac-param'
 import { web } from '@/lib/web-data'
 import { aiIstek, AiKapali } from '@/lib/ai-client'
 import { useUretim, byId } from '@/lib/uretim-utils'
@@ -163,6 +164,8 @@ export default function TekliflerPage() {
     { key: 'act', label: '', width: 90, align: 'right', render: t => <span style={{ display: 'inline-flex', gap: 4 }} onClick={e => e.stopPropagation()}><button className="adm-btn-ghost" style={{ padding: '3px 7px' }} title="Kopyala" onClick={() => kopya(t)}><Copy size={12} /></button>{t.durum !== 'kabul' && <button className="adm-btn-danger" style={{ padding: '3px 7px' }} onClick={() => sil(t)}><Trash2 size={12} /></button>}</span> },
   ]
   const s = ed ? teklifHesapla(ed.kalemler, ed.f.kdv_orani) : null
+
+  useAcParam(!yuk, async id => { let r = liste.find((x: any) => x.id === id); if (!r) r = (await web.from('teklifler').select('*').eq('id', id).maybeSingle()).data; if (r) ac(r) })
 
   return (
     <div style={{ flex: 1, overflow: 'auto' }}>

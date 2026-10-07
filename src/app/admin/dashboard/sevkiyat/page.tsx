@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
+import { useAcParam } from '@/lib/ac-param'
 import { erp } from '@/lib/erp-client'
 import { fmtN, fmtInt, fmtDate, todayISO } from '@/lib/fmt'
 import { useUretim, byId, sevkEdilen, SIPARIS_ACIK } from '@/lib/uretim-utils'
@@ -167,6 +168,8 @@ export default function SevkiyatPage() {
   useEffect(() => { if (!detay?.id) { setDLedger([]); return } ledgerAl(detay.id).then(setDLedger) }, [detay?.id, d.sevkiyatlar]) // eslint-disable-line
   const dK = dS ? kalemlerDen(dLedger) : []
   const dI = dS ? ihrBy[dS.id] : null
+
+  useAcParam(!loading, id => { const r = d.sevkiyatlar.find((x: any) => x.id === id); if (r) setDetay(r) })
 
   return (
     <div style={{ flex: 1, overflow: 'auto' }}>

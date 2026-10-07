@@ -1,4 +1,5 @@
 'use client'
+import { useAcParam } from '@/lib/ac-param'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
 import { erp } from '@/lib/erp-client'
@@ -87,6 +88,8 @@ export default function StokHareketleriPage() {
     { key: 'depo', label: 'Depo', render: m => depo[m.depo_id]?.ad || '—', csv: m => depo[m.depo_id]?.ad || '', hidden: true },
     { key: 'aciklama', sortKey: 'aciklama', label: 'Açıklama', render: m => <span style={{ color: 'var(--adm-tx3)', fontSize: 12 }}>{m.aciklama || ''}</span>, csv: m => m.aciklama, hideSm: true },
   ]
+
+  useAcParam(true, id => { erp.from('v_stok_defteri').select('*').eq('id', id).limit(1).then((r: any) => { const m = r?.data?.[0]; if (m) setDetay(m) }).catch(() => {}) })
 
   return (
     <div style={{ flex: 1, overflow: 'auto' }}>

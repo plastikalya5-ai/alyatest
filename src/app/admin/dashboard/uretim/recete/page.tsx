@@ -1,4 +1,5 @@
 'use client'
+import { useAcParam } from '@/lib/ac-param'
 import { useMemo, useState } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
 import { erp } from '@/lib/erp-client'
@@ -105,6 +106,8 @@ export default function RecetePage() {
   const dc = detay ? C[detay.id] : null
   const nAdet = Math.max(+adet || 0, 0)
   const uretilebilir = dc?.satirlar.length ? Math.floor(Math.min(...dc.satirlar.map((s: any) => (+s.miktar > 0 ? s.stok / +s.miktar : Infinity)))) : 0
+
+  useAcParam(!loading, id => { const r = d.receteler.find((x: any) => x.id === id); if (r) openDuzenle(r) })
 
   return (
     <div style={{ flex: 1, overflow: 'auto' }}>
