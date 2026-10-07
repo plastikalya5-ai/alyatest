@@ -64,6 +64,9 @@ export const ARACLAR: AiArac[] = [
   { type: 'function', function: { name: 'cari_ozet', description: 'Cari hesap bakiyeleri: TL, USD ve EUR için ayrı ayrı toplam alacak/borç, borçlu cari sayısı ve en büyük borç/alacaklar (negatif = şirketin carisine borcu, pozitif = carinin şirkete borcu); ayrıca faturaya göre açık ve vadesi geçmiş toplamlar. "USD borçlarım", "EUR alacaklarım" gibi sorular için bunu kullan.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
   { type: 'function', function: { name: 'stok_durumu', description: 'Güncel STOK miktarları: hammaddeler (kg/adet) ve mamul ürün stokları (adet, ebat/renk dağılımıyla). arama ile ürün/hammadde adına göre süzülür; mekan ile iç/dış mekan ayrılır. "Stokta ne kadar X var", "dış mekan saksı stoğu", "boya stokları" gibi sorular için bunu kullan.', parameters: { type: 'object', properties: { arama: { type: 'string', description: 'Ürün/hammadde adı veya kodundan bir parça (boş bırakılırsa özet)' }, tur: { type: 'string', enum: ['hammadde', 'mamul', 'hepsi'] }, mekan: { type: 'string', enum: ['ic', 'dis'], description: 'ic = iç mekan ürünleri, dis = dış mekan ürünleri' } }, additionalProperties: false } } },
   { type: 'function', function: { name: 'cari_ara', description: 'Bir kişi/firmanın (müşteri veya tedarikçi) borç/alacak/bakiye sorusunda HER ZAMAN ilk bu aracı kullan (fatura bulunamaması bakiyenin olmadığı anlamına gelmez; eski program bakiyeleri faturasız olabilir). Cari hesabı ada/koda göre arar (Türkçe karakterden bağımsız); her biri için TL, USD ve EUR bakiyesini döndürür (negatif = şirket borçlu, pozitif = cari şirkete borçlu). En fazla 12 kayıt.', parameters: { type: 'object', properties: { arama: { type: 'string' } }, required: ['arama'], additionalProperties: false } } },
+  { type: 'function', function: { name: 'cari_ekstre', description: 'Bir carinin (müşteri/tedarikçi) hareket dökümü: eski programdan gelen geçmiş hareketler (TL/USD/EUR borç-alacak), güncel faturaları ve ödeme/tahsilat işlemleri. "X ile ne işlemlerimiz var / ekstresi / ne zaman ödedik" soruları için.', parameters: { type: 'object', properties: { arama: { type: 'string', description: 'Cari adı veya kodu' }, adet: { type: 'integer', description: 'Eski hareketlerden en son kaç satır (varsayılan 15, en çok 40)' } }, required: ['arama'], additionalProperties: false } } },
+  { type: 'function', function: { name: 'cek_senet_liste', description: 'Çek/senet listesi: durum (portfoyde/tahsil/odendi/karsiliksiz vb.), yön, vade, tutar ve toplamlar. Vadesi yaklaşan/geçmiş çekler için.', parameters: { type: 'object', properties: { durum: { type: 'string' }, yon: { type: 'string', description: 'alinan veya verilen' }, sadece_vadesi_gecmis: { type: 'boolean' } }, additionalProperties: false } } },
+  { type: 'function', function: { name: 'personel_bordro', description: 'Personel maaş bordrosu: bir dönemin (YYYY-MM) kişi bazında brüt maaş, devir, mesai, avans, banka, elden ödeme ve kalan tutarları + toplamlar. Kişi adı verilirse süzer.', parameters: { type: 'object', properties: { donem: { type: 'string', description: 'YYYY-MM' }, kisi: { type: 'string' } }, required: ['donem'], additionalProperties: false } } },
   { type: 'function', function: { name: 'kasa_banka_bakiye', description: 'Kasa ve banka hesaplarının güncel bakiyeleri (para birimine göre ayrı ayrı toplamlarla).', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
   { type: 'function', function: { name: 'recete_ara', description: 'Ürün reçeteleri: ürün/ebat başına kullanılan hammadde ve miktarı (kg/adet). arama ile ürün adından süzülür. "X ürünü kaç kg hammadde kullanır" soruları için.', parameters: { type: 'object', properties: { arama: { type: 'string' } }, required: ['arama'], additionalProperties: false } } },
   { type: 'function', function: { name: 'acik_siparisler', description: 'Açık satış siparişleri (beklemede/üretimde/kısmen hazır/hazır), termine göre.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
@@ -131,6 +134,36 @@ export async function araciCalistir(sb: SupabaseClient, ad: string, a: Record<st
         const l = ((await sel(sb.from('cari_hesaplar').select('ad,kod,tip,bakiye,bakiye_usd,bakiye_eur,notlar').limit(3000))) as any[]).filter(c => nrm(c.ad + ' ' + c.kod).includes(ar))
         return kisalt({ eslesen: l.length, cariler: l.slice(0, 12).map(c => ({ ad: c.ad, kod: c.kod, tip: c.tip, TL: +c.bakiye || 0, USD: +c.bakiye_usd || 0, EUR: +c.bakiye_eur || 0, not: c.notlar ? String(c.notlar).slice(0, 200) : undefined })), not: 'negatif = şirket borçlu, pozitif = cari şirkete borçlu' })
       }
+      case 'cari_ekstre': {
+        const ar = nrm(a.arama); if (!ar) throw new Error('arama boş')
+        const cl = ((await sel(sb.from('cari_hesaplar').select('id,ad,kod,tip,bakiye,bakiye_usd,bakiye_eur,notlar').limit(3000))) as any[]).filter(c => nrm(c.ad + ' ' + c.kod).includes(ar))
+        if (!cl.length) return kisalt({ bulunamadi: true })
+        if (cl.length > 1 && !cl.some(c => nrm(c.ad) === ar)) return kisalt({ birden_fazla_eslesme: cl.slice(0, 12).map(c => ({ ad: c.ad, kod: c.kod })), not: 'Hangisi? kullanıcıya sor' })
+        const c = cl.find(x => nrm(x.ad) === ar) || cl[0], n = Math.min(Math.max(+a.adet || 15, 1), 40)
+        const [eski, fat, isl] = await Promise.all([
+          sel(sb.from('cari_eski_hareketler').select('grup,tarih,evrak_cinsi,evrak_no,aciklama,tl_borc,tl_alacak,usd_borc,usd_alacak,eur_borc,eur_alacak,nakil').eq('cari_id', c.id).order('tarih', { ascending: false }).order('sira', { ascending: false }).limit(n)),
+          sel(sb.from('v_faturalar_liste').select('no,tip,durum,tarih,vade,toplam,odenen_tutar,para_birimi').eq('cari_id', c.id).order('tarih', { ascending: false }).limit(15)).catch(() => []),
+          sel(sb.from('islemler').select('tip,kategori,tutar,tarih,aciklama').eq('cari_id', c.id).order('tarih', { ascending: false }).limit(15)),
+        ])
+        return kisalt({ cari: { ad: c.ad, kod: c.kod, tip: c.tip, TL: +c.bakiye || 0, USD: +c.bakiye_usd || 0, EUR: +c.bakiye_eur || 0, not: c.notlar }, eski_program_son_hareketler: eski, guncel_faturalar: fat, guncel_islemler: isl, aciklama: 'Eski program hareketleri geçmiş kayıttır; güncel bakiye cari alanındaki TL/USD/EUR değeridir.' }, 9000)
+      }
+      case 'cek_senet_liste': {
+        let q = sb.from('cek_senet').select('tip,yon,no,banka,tutar,vade_tarihi,durum,aciklama,cari_id').order('vade_tarihi').limit(500)
+        if (a.durum) q = q.eq('durum', String(a.durum)); if (a.yon) q = q.eq('yon', String(a.yon))
+        const bg = bugunISO(); let l = (await sel(q)) as any[]
+        if (a.sadece_vadesi_gecmis) l = l.filter(x => x.vade_tarihi < bg && !['odendi', 'tahsil', 'tahsil_edildi', 'iptal'].includes(x.durum))
+        const tp: Record<string, number> = {}; l.forEach(x => { const k = x.durum + '/' + x.yon; tp[k] = Math.round(((tp[k] || 0) + (+x.tutar || 0)) * 100) / 100 })
+        return kisalt({ adet: l.length, toplam_durum_yon: tp, liste: l.slice(0, 40) }, 8000)
+      }
+      case 'personel_bordro': {
+        const d = String(a.donem || ''); if (!/^\d{4}-\d{2}$/.test(d)) throw new Error('donem YYYY-MM olmalı')
+        const dn = (await sel(sb.from('bordro_donemleri').select('id,durum').eq('donem', d + '-01').limit(1))) as any[]
+        if (!dn.length) return kisalt({ bulunamadi: true, donem: d })
+        const ar = nrm(a.kisi)
+        const k = ((await sel(sb.from('bordro_kalemleri').select('brut_maas,devir,mesai_ucreti,yemek,avans_mahsup,banka_odeme,elden_odeme,net_maas,personel(ad_soyad)').eq('donem_id', dn[0].id).limit(200))) as any[]).map(x => ({ kisi: x.personel?.ad_soyad, maas: +x.brut_maas, devir: +x.devir, mesai: +x.mesai_ucreti, avans: +x.avans_mahsup, banka: +x.banka_odeme, elden: +x.elden_odeme, kalan: +x.net_maas })).filter(x => !ar || nrm(x.kisi).includes(ar))
+        const t = (f: 'maas' | 'devir' | 'mesai' | 'avans' | 'banka' | 'elden' | 'kalan') => Math.round(k.reduce((s, x) => s + (x[f] || 0), 0) * 100) / 100
+        return kisalt({ donem: d, durum: dn[0].durum, toplam: { maas: t('maas'), devir: t('devir'), mesai: t('mesai'), avans: t('avans'), banka: t('banka'), elden: t('elden'), kalan: t('kalan') }, kisiler: k, not: 'kalan negatif = personel fazla almış (sonraki aya devir)' }, 9000)
+      }
       case 'kasa_banka_bakiye': {
         const l = ((await sel(sb.from('kasa_banka_hesaplari').select('ad,tip,banka_adi,para_birimi,bakiye,aktif').limit(500))) as any[]).filter(k => k.aktif !== false)
         const tp: Record<string, number> = {}; l.forEach(k => { const pb = k.para_birimi || 'TRY'; tp[pb] = Math.round(((tp[pb] || 0) + (+k.bakiye || 0)) * 100) / 100 })
@@ -176,6 +209,7 @@ export async function asistanYanit(
     { role: 'system', content: `Sen Alya Plastik yönetim panelinin veri asistanısın — muhasebe, satış, stok, üretim ve genel iş verilerini okuyup yorumlayan bir analist gibi davranırsın. Bugün ${bugun}. Türkçe, net cevap ver; kullanıcı sadece bir sayı sorduysa kısa yanıt ver, ama "yorumun ne", "sence nasıl", "ne önerirsin" gibi görüş/analiz istediğinde daha kapsamlı, gerekçeli bir değerlendirme yap (trend, risk, kısa öneri; gerekirse madde listesi) — 1-2 cümleyle geçiştirme.
 Kurallar:
 - ŞİRKETE AİT rakamları (satış, stok, fatura, kasa, cari, sipariş, üretim, ziyaret vb.) YALNIZCA araçlardan gelen veriden al; uydurma, tahmin etme. Uygun araç yoksa bunu söyle ve hangi ekrana bakılabileceğini belirt.
+- ARAÇ SEÇİMİ: carinin hareketleri/ekstresi → cari_ekstre; çek/senet → cek_senet_liste; maaş/avans/elden/bordro → personel_bordro; bakiye → cari_ara; kasa/banka → kasa_banka_bakiye; stok → stok_durumu; reçete/kg → recete_ara.
 - CARİ BAKİYE: Bir kişi/firmanın borcu, alacağı veya dövizli (USD/EUR) bakiyesi sorulursa önce cari_ara kullan; fatura_ara/islem_ara boş dönse bile "yok" deme, cari_ara sonucundaki TL/USD/EUR bakiyesini söyle.
 - KESİNLİK: Bir araç boş/eksik sonuç döndürürse "veri yok" deme; önce başka uygun aracı dene (cari borç/alacak için cari_ozet veya cari_ara — TL, USD ve EUR'yu ayrı ayrı bildir; stok için stok_durumu; kasa/banka için kasa_banka_bakiye; ürün reçetesi/kg için recete_ara). Para birimini her zaman belirt (₺, USD, EUR) ve farklı para birimlerini toplama. Araç sonucu 'kısaltıldı' ise bunu söyle.
 - DÖVİZ KURU: bugünün resmi USD/EUR kuru için "guncel_kur" aracını kullan (yalnızca bugünün kuru, gelecek tahmini değildir).

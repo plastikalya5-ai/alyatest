@@ -16,7 +16,7 @@ const var_ = (m: string[], ...x: string[]) => tamYetki(m) || x.some(k => m.inclu
 const ARAC_MOD: Record<string, string[]> = {
   finans_ozet: ['muhasebe'], fatura_ozet: ['muhasebe'], kdv_ozet: ['muhasebe'], kasa_akis: ['muhasebe'], yaslandirma: ['muhasebe'],
   cari_ozet: ['muhasebe', 'muhasebe_cari', 'satis'], satis_analiz: ['satis', 'muhasebe'], acik_siparisler: ['satis', 'sevkiyat'],
-  kritik_stok: ['stok', 'uretim', 'satinalma', 'kalite'], stok_durumu: ['stok', 'uretim', 'satinalma', 'kalite', 'satis'], cari_ara: ['muhasebe', 'muhasebe_cari', 'satis'], kasa_banka_bakiye: ['muhasebe'], recete_ara: ['uretim', 'stok', 'muhasebe'], uretim_durumu: ['uretim'], ziyaret_ozet: ['dashboard'],
+  kritik_stok: ['stok', 'uretim', 'satinalma', 'kalite'], stok_durumu: ['stok', 'uretim', 'satinalma', 'kalite', 'satis'], cari_ara: ['muhasebe', 'muhasebe_cari', 'satis'], kasa_banka_bakiye: ['muhasebe'], cari_ekstre: ['muhasebe', 'muhasebe_cari'], cek_senet_liste: ['muhasebe'], personel_bordro: ['bordro'], recete_ara: ['uretim', 'stok', 'muhasebe'], uretim_durumu: ['uretim'], ziyaret_ozet: ['dashboard'],
   guncel_kur: ['muhasebe', 'satis', 'satinalma', 'dashboard'],
   hesapla: ['muhasebe'], fatura_ara: ['muhasebe'], islem_ara: ['muhasebe'],
 }
