@@ -10,7 +10,7 @@ type Uyari = { kod: string; seviye: 'hata' | 'uyari' | 'bilgi'; baslik: string; 
 // Uyarıdaki kaydı düzeltebileceğiniz sayfa (?ac=<id> ile kayıt otomatik açılır)
 const SAYFA: Record<string, string> = {
   kasa_fark: 'kasa-banka', kasa_para: 'kasa-banka', kur_eski: 'kasa-banka', cari_fark: 'cari', cari_mukerrer: 'cari', cari_ters: 'cari', cari_vergi: 'cari',
-  fatura_bakiye: 'faturalar', fatura_toplam: 'faturalar', fatura_odeme: 'faturalar', fatura_vade: 'faturalar',
+  fatura_bakiye: 'faturalar', fatura_taslak: 'faturalar', kdv_gecersiz: 'faturalar', ay_bos: 'islemler', fatura_toplam: 'faturalar', fatura_odeme: 'faturalar', fatura_vade: 'faturalar',
   islem_doviz: 'islemler', islem_tutar: 'islemler', islem_baglantisiz: 'islemler', cek_vade: 'cek-senet', cek_no: 'cek-senet',
 }
 const yol = (kod: string, id: string | null) => `/admin/dashboard/${SAYFA[kod] ? 'muhasebe/' + SAYFA[kod] : 'personel'}${id ? `?ac=${id}` : ''}`
