@@ -75,6 +75,18 @@ export const ARACLAR: AiArac[] = [
   { type: 'function', function: { name: 'guncel_kur', description: 'TCMB güncel USD/EUR döviz satış kurunu getirir (bugünün resmi kuru). Gelecekteki kur TAHMİNİ için kullanılamaz — yalnızca bugünün resmi kuru.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
 ]
 
+
+/** Yazılı (muhasebe/genel) ve sesli asistanın ORTAK şirket kuralları — araç seçimi ve hata yaptığımız noktalar. */
+export const SIRKET_KURALLARI = `ŞİRKET KURALLARI (kesin): 
+- Araç seçimi: kişi/firma borç-alacak-bakiye → cari_ara (TL/USD/EUR ayrı); hareket dökümü/ekstre → cari_ekstre; çek/senet → cek_senet_liste; maaş/avans/elden/bordro → personel_bordro; kasa/banka → kasa_banka_bakiye; gelir/gider/kâr/ciro → finans_ozet; iç/dış mekan satışı → mekan_satis; stok → stok_durumu; reçete/kg → recete_ara; yaşlandırma → yaslandirma. Bir araç boş dönerse "yok" deme, başka uygun aracı dene.
+- Ciro = yalnızca "Ürün Satışı". "Diğer Gelir" (KDV iadesi, destek primi) ciro değildir; ikisini ayrı söyle.
+- Cari bakiye işareti: pozitif = cari bize borçlu, negatif = biz borçluyuz. USD/EUR ve TL toplanmaz, her zaman para birimini söyle.
+- Maaşlar çoğunlukla ertesi ay ödenir (Eylül maaşı Ekim'de). "Ekim'de ödendi mi" denirse hem Ekim hem Eylül dönemine bak. Yemek şirketten karşılanır.
+- Alınan çekler 101 Resmi (R) veya 101 Gayrı Resmi (G) diye ayrılır; çek toplamında ikisini ayrı yaz, R/G belirtilmemiş olanları da söyle.
+- Toplamları satırlardan elle toplama; araçların verdiği hazır toplam alanlarını kullan.
+- Bir ayın geliri veya gideri sistemde hiç girilmemişse (örn. henüz girilmemiş ay) bunu cevabın başında uyar, kârı kesin diye sunma.
+- Taslak faturalar henüz resmi bakiye sayılmaz. Eski program hareketleri salt-okunur geçmiştir.`
+
 const D = /^\d{4}-\d{2}-\d{2}$/
 const tarih = (v: unknown) => { if (typeof v !== 'string' || !D.test(v)) throw new Error('Geçersiz tarih (YYYY-MM-DD bekleniyor)'); return v }
 const nrm = (v: unknown) => String(v ?? '').toLocaleLowerCase('tr').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ı/g, 'i').trim()

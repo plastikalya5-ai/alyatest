@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { aiCagir, aiJson, AiHata, S, veriBlok, type AiArac, type AiMesaj } from '@/lib/ai'
-import { ARACLAR, araciCalistir, bugunISO, type Konusma } from '@/lib/ai-admin'
+import { ARACLAR, araciCalistir, bugunISO, SIRKET_KURALLARI, type Konusma } from '@/lib/ai-admin'
 
 /* ───────────────────────── Güncel mevzuat bilgi tabanı ───────────────────────── */
 export type MevzuatKaydi = {
@@ -79,7 +79,7 @@ export function guvenliHesapla(ifade: string): number {
 }
 
 /* ───────────────────────── Muhasebe araçları ───────────────────────── */
-const MUH_ARAC_ADLARI = new Set(['finans_ozet', 'satis_analiz', 'fatura_ozet', 'kdv_ozet', 'kasa_akis', 'yaslandirma', 'cari_ozet', 'cari_ara', 'cari_ekstre', 'mekan_satis', 'cek_senet_liste', 'kasa_banka_bakiye', 'stok_durumu'])
+const MUH_ARAC_ADLARI = new Set(['finans_ozet', 'satis_analiz', 'fatura_ozet', 'kdv_ozet', 'kasa_akis', 'yaslandirma', 'cari_ozet', 'cari_ara', 'personel_bordro', 'cari_ekstre', 'mekan_satis', 'cek_senet_liste', 'kasa_banka_bakiye', 'stok_durumu'])
 const TARIH = { type: 'string', description: 'YYYY-MM-DD' }
 const YENI_ARACLAR: AiArac[] = [
   { type: 'function', function: { name: 'hesapla', description: 'Aritmetik hesaplama yapar (+ - * / parantez, yüzde için /100, round(x;basamak)). TÜM hesaplamalar için bunu kullan; kendi kafandan hesap yapma. Örn: "125000*20/100" veya "round(1234.567;2)".', parameters: { type: 'object', properties: { ifade: { type: 'string' } }, required: ['ifade'], additionalProperties: false } } },
@@ -139,6 +139,7 @@ ALTIN KURALLAR
 3) HESAP: Bütün aritmetiği \`hesapla\` aracıyla yap; kendi kafandan toplama/çarpma/bölme yapma. Ara adımları göster (matrah, oran, tutar).
 4) CARİ BAKİYE: Bir kişi/firmanın borç/alacak/USD-EUR bakiyesi sorulursa önce cari_ara kullan; fatura_ara/islem_ara boş dönse bile "yok" deme, cari_ara'daki TL/USD/EUR bakiyesini söyle.
 4b) ŞİRKET VERİSİ: Şirketin rakamları için araçları (finans_ozet, fatura_ara, islem_ara, kdv_ozet, yaslandirma, cari_ozet vb.) kullan; araç sonucu olmadan şirket rakamı söyleme. Araç "yetkisi yok" derse bunu söyle. Dönem belirtilmemişse makul varsay ve varsayımını yaz ("bu ay", "bu yıl" = ${bugun.slice(0, 4)}-01-01 → ${bugun}).
+4c) ${SIRKET_KURALLARI}
 5) ÇOKLU SORU: Kullanıcı birden fazla soru sorarsa her birini numaralandırıp AYRI AYRI yanıtla; birinin verisi eksikse diğerlerini yine yanıtla. Gerçekten gerekliyse en fazla bir kısa netleştirme sorusu sor (örn. KDV dahil mi hariç mi, hangi dönem).
 6) KAYIT ÖNERİSİ: Yevmiye kaydı önerirken Tek Düzen Hesap Planı hesap kodlarını kullan ve bunun bir ÖNERİ olduğunu, işletmenin uygulamasına göre değişebileceğini belirt.
 7) SINIRLAR: Nihai vergi/hukuki karar mali müşavirindir; ceza, uzlaşma, dava, beyan gibi riskli konularda bunu hatırlat. Yazma/silme yapamazsın, yalnızca okursun.
