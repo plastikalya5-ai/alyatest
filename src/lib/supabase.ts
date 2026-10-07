@@ -13,6 +13,7 @@ export type Product = {
   slug: string;
   category: string;
   subcategory: string | null;
+  mekan?: 'ic' | 'dis';
   description: string | null;
   image_url: string;
   images: string[];

@@ -12,7 +12,7 @@ import TopluDuzenle from '@/components/admin/TopluDuzenle'
 import { ListChecks, Plus, Pencil, Trash2, Boxes, AlertTriangle, Coins, Timer, ArrowDownCircle, ArrowUpCircle, ClipboardCheck, ShoppingCart, Power, Package, Layers } from 'lucide-react'
 
 const BIRIMLER = ['kg', 'gr', 'lt', 'adet', 'metre', 'koli', 'palet', 'torba']
-const bos = { kod: '', ad: '', aciklama: '', birim: 'kg', acilis: '', min_stok: '0', max_stok: '', ortalama_maliyet: '', tedarikci_id: '', depo_id: '', barkod: '' }
+const bos = { kod: '', ad: '', aciklama: '', birim: 'kg', acilis: '', min_stok: '0', max_stok: '', ortalama_maliyet: '', tedarikci_id: '', depo_id: '', barkod: '', mekan: 'ortak' }
 const durumu = (h: any) => { const s = +h.mevcut_stok || 0, mn = +h.min_stok || 0; return s <= 0 ? 'tukendi' : s <= mn ? 'kritik' : h.max_stok && s > +h.max_stok ? 'fazla' : 'normal' }
 const DURUM: Record<string, { l: string; tone: any }> = { tukendi: { l: 'Tükendi', tone: 'red' }, kritik: { l: 'Kritik', tone: 'red' }, fazla: { l: 'Fazla', tone: 'amber' }, normal: { l: 'Normal', tone: 'green' } }
 
@@ -20,6 +20,7 @@ export default function HammaddePage() {
   const toast = useToast()
   const { d, loading, reload } = useUretim(['hammaddeler', 'depolar', 'cariTam', 'lotlar', 'tuketimRows', 'receteKalemleri', 'receteler', 'products', 'variants', 'rezerveRows', 'emirler'])
   const [tab, setTab] = useState('hepsi')
+  const [mekan, setMekan] = useState('')
   const [detay, setDetay] = useState<any>(null)
   const [dTab, setDTab] = useState('ozet')
   const [modal, setModal] = useState(false)
@@ -46,7 +47,7 @@ export default function HammaddePage() {
   const kritik = aktifler.filter((h: any) => ['kritik', 'tukendi'].includes(durumu(h)))
   const deger = sum(aktifler, (h: any) => (+h.mevcut_stok || 0) * (+h.ortalama_maliyet || 0))
   const tuketim30 = sum(d.tuketimRows, (t: any) => (+t.toplam_30g || 0) * (+d.hammaddeler.find((h: any) => h.id === t.hammadde_id)?.ortalama_maliyet || 0))
-  const liste = d.hammaddeler.filter((h: any) => tab === 'hepsi' ? h.aktif !== false : tab === 'kritik' ? h.aktif !== false && ['kritik', 'tukendi'].includes(durumu(h)) : tab === 'fazla' ? durumu(h) === 'fazla' : tab === 'pasif' ? h.aktif === false : true)
+  const liste = d.hammaddeler.filter((h: any) => (tab === 'hepsi' ? h.aktif !== false : tab === 'kritik' ? h.aktif !== false && ['kritik', 'tukendi'].includes(durumu(h)) : tab === 'fazla' ? durumu(h) === 'fazla' : tab === 'pasif' ? h.aktif === false : true) && (!mekan || (h.mekan || 'ortak') === mekan || (mekan !== 'ortak' && (h.mekan || 'ortak') === 'ortak')))
 
   // Mamul stok (ürün varyantları)
   const rez = useMemo(() => rezerveMap(d.rezerveRows), [d.rezerveRows])
@@ -54,12 +55,12 @@ export default function HammaddePage() {
     const ad = [urun[v.product_id]?.name, v.name, v.color, v.size].filter(Boolean).filter((a: any, i: number, arr: any[]) => arr.indexOf(a) === i).join(' · ')
     const uretimde = sum(d.emirler.filter((e: any) => ['planlandi', 'uretimde', 'durduruldu'].includes(e.durum) && e.urun_id === v.product_id), (e: any) => Math.max((+e.planlanan_miktar || 0) - (+e.uretilen_miktar || 0), 0))
     const stok = +v.stock || 0, r = rez[v.id] || 0
-    return { ...v, ad, rezerve: r, serbest: stok - r, uretimde }
+    return { ...v, ad, rezerve: r, serbest: stok - r, uretimde, mekan: urun[v.product_id]?.mekan || 'ic' }
   }), [d, rez, urun])
 
   /* ── Form / işlemler ── */
   const openNew = () => { setEditing(null); setForm(bos); setModal(true) }
-  const openEdit = (h: any) => { setEditing(h); setForm({ kod: h.kod, ad: h.ad, aciklama: h.aciklama || '', birim: h.birim || 'kg', acilis: '', min_stok: String(h.min_stok ?? 0), max_stok: h.max_stok ? String(h.max_stok) : '', ortalama_maliyet: String(h.ortalama_maliyet ?? ''), tedarikci_id: h.tedarikci_id || '', depo_id: h.depo_id || '', barkod: h.barkod || '' }); setModal(true) }
+  const openEdit = (h: any) => { setEditing(h); setForm({ kod: h.kod, ad: h.ad, aciklama: h.aciklama || '', birim: h.birim || 'kg', acilis: '', min_stok: String(h.min_stok ?? 0), max_stok: h.max_stok ? String(h.max_stok) : '', ortalama_maliyet: String(h.ortalama_maliyet ?? ''), tedarikci_id: h.tedarikci_id || '', depo_id: h.depo_id || '', barkod: h.barkod || '', mekan: h.mekan || 'ortak' }); setModal(true) }
 
   async function hareket(h: any, yon: 'giris' | 'cikis', miktar: number, tip: string, aciklama: string, opts: { maliyet?: number; depo?: string } = {}) {
     const r: any = await erp.from('stok_hareketleri').insert({ tip, yon, hammadde_id: h.id, miktar, birim_maliyet: opts.maliyet || null, depo_id: opts.depo || h.depo_id || null, kaynak_tablo: 'manuel', aciklama })
@@ -76,7 +77,7 @@ export default function HammaddePage() {
     if (d.hammaddeler.some((h: any) => h.kod.toLowerCase() === form.kod.trim().toLowerCase() && h.id !== editing?.id)) return toast.show('Bu hammadde kodu zaten var', true)
     setBusy(true)
     try {
-      const payload: any = { kod: form.kod.trim(), ad: form.ad.trim(), aciklama: form.aciklama || null, birim: form.birim, min_stok: +form.min_stok || 0, max_stok: form.max_stok ? +form.max_stok : null, ortalama_maliyet: +form.ortalama_maliyet || 0, tedarikci_id: form.tedarikci_id || null, depo_id: form.depo_id || null, barkod: form.barkod || null }
+      const payload: any = { kod: form.kod.trim(), ad: form.ad.trim(), aciklama: form.aciklama || null, birim: form.birim, min_stok: +form.min_stok || 0, max_stok: form.max_stok ? +form.max_stok : null, ortalama_maliyet: +form.ortalama_maliyet || 0, tedarikci_id: form.tedarikci_id || null, depo_id: form.depo_id || null, barkod: form.barkod || null, mekan: form.mekan || 'ortak' }
       if (editing) { const r: any = await erp.from('hammaddeler').update(payload).eq('id', editing.id); if (r?.error) throw new Error(r.error) }
       else {
         const r: any = await erp.from('hammaddeler').insert({ ...payload, mevcut_stok: 0, aktif: true }); if (r?.error) throw new Error(r.error)
@@ -145,6 +146,7 @@ export default function HammaddePage() {
 
   const cols: Col<any>[] = [
     { key: 'ad', label: 'Hammadde', sort: h => h.ad, render: h => <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><div style={{ width: 32, height: 32, borderRadius: 9, background: 'var(--adm-ac2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Boxes size={15} style={{ color: 'var(--adm-ac)' }} /></div><div><div style={{ fontWeight: 600 }}>{h.ad}{h.aktif === false && <Badge tone="muted" style={{ marginLeft: 6 }}>Pasif</Badge>}</div><div style={{ fontSize: 11, color: 'var(--adm-tx3)' }}>{h.kod}{h.barkod ? ` · ${h.barkod}` : ''}</div></div></div> },
+    { key: 'mekan', label: 'Mekan', width: 100, sort: h => h.mekan || 'ortak', render: h => mekanBadge(h.mekan || 'ortak'), hideSm: true },
     { key: 'depo', label: 'Depo', sort: h => depo[h.depo_id]?.ad || '', render: h => depo[h.depo_id]?.ad || <span style={{ color: 'var(--adm-tx3)' }}>—</span>, hideSm: true },
     {
       key: 'stok', label: 'Stok', width: 190, sort: h => +h.mevcut_stok, render: h => {
@@ -165,8 +167,10 @@ export default function HammaddePage() {
         <button className="adm-btn-ghost" style={{ padding: '4px 8px' }} onClick={() => openEdit(h)}><Pencil size={12} /></button>
       </span>) },
   ]
+  const mekanBadge = (m: string) => m === 'dis' ? <Badge tone="green">Dış mekan</Badge> : m === 'ic' ? <Badge tone="blue">İç mekan</Badge> : <Badge tone="muted">Ortak</Badge>
   const mCols: Col<any>[] = [
     { key: 'ad', label: 'Ürün / Varyant', sort: v => v.ad, render: v => <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Package size={15} style={{ color: 'var(--adm-blue)' }} /><b>{v.ad}</b></div> },
+    { key: 'mekan', label: 'Mekan', width: 100, sort: v => v.mekan, render: v => mekanBadge(v.mekan), hideSm: true },
     { key: 'stok', label: 'Fiziksel Stok', align: 'right', sort: v => +v.stock, render: v => <b style={{ fontFamily: 'JetBrains Mono,monospace', color: +v.stock <= 0 ? 'var(--adm-red)' : undefined }}>{fmtN(+v.stock, 0)}</b>, total: rs => fmtN(sum(rs, (v: any) => v.stock), 0) },
     { key: 'rez', label: 'Rezerve (siparişte)', align: 'right', sort: v => v.rezerve, render: v => v.rezerve ? <span style={{ color: 'var(--adm-amber)', fontWeight: 600 }}>{fmtN(v.rezerve, 0)}</span> : '—', total: rs => fmtN(sum(rs, (v: any) => v.rezerve), 0) },
     { key: 'serbest', label: 'Satılabilir', align: 'right', sort: v => v.serbest, render: v => <b style={{ fontFamily: 'JetBrains Mono,monospace', color: v.serbest < 0 ? 'var(--adm-red)' : 'var(--adm-green)' }}>{fmtN(v.serbest, 0)}</b> },
@@ -191,10 +195,11 @@ export default function HammaddePage() {
 
         <div style={{ marginBottom: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <Tabs value={tab} onChange={setTab} tabs={[{ v: 'hepsi', l: 'Aktif', n: aktifler.length }, { v: 'kritik', l: 'Kritik', n: kritik.length }, { v: 'fazla', l: 'Fazla stok', n: aktifler.filter((h: any) => durumu(h) === 'fazla').length }, { v: 'pasif', l: 'Pasif', n: d.hammaddeler.length - aktifler.length }, { v: 'mamul', l: 'Mamul Stok', n: d.variants.length }]} />
+          <select className="adm-sel" value={mekan} onChange={e => setMekan(e.target.value)}><option value="">İç + Dış mekan</option><option value="ic">İç mekan (+ ortak)</option><option value="dis">Dış mekan (+ ortak)</option><option value="ortak">Sadece ortak</option></select>
         </div>
 
         {tab === 'mamul'
-          ? <DataGrid rows={mamul} cols={mCols} rowKey={v => v.id} loading={loading} csvName="mamul-stok" storageKey="mamul" searchText={v => v.ad} searchPlaceholder="Ürün ara..." emptyTitle="Ürün varyantı yok" emptySub="Ürünler → Varyantlar'dan stok varyantı ekle"
+          ? <DataGrid rows={mamul.filter((v: any) => !mekan || v.mekan === mekan)} cols={mCols} rowKey={v => v.id} loading={loading} csvName="mamul-stok" storageKey="mamul" searchText={v => v.ad} searchPlaceholder="Ürün ara..." emptyTitle="Ürün varyantı yok" emptySub="Ürünler → Varyantlar'dan stok varyantı ekle"
             footerNote={<span>· Satılabilir = fiziksel stok − açık siparişlerde sevk edilmemiş miktar</span>} />
           : <DataGrid rows={liste} cols={cols} rowKey={h => h.id} loading={loading} csvName="hammaddeler" storageKey="hammadde" onRowClick={h => { setDetay(h); setDTab('ozet') }} activeKey={detay?.id}
             searchText={h => `${h.ad} ${h.kod} ${h.barkod || ''} ${cari[h.tedarikci_id]?.ad || ''}`} searchPlaceholder="Ad, kod, barkod, tedarikçi..." selectable
@@ -256,6 +261,7 @@ export default function HammaddePage() {
         <FormGrid>
           <Field label="Kod *"><input className="adm-inp" required autoFocus value={form.kod} onChange={e => setForm((f: any) => ({ ...f, kod: e.target.value }))} placeholder="HM-PP-01" /></Field>
           <Field label="Ad *"><input className="adm-inp" required value={form.ad} onChange={e => setForm((f: any) => ({ ...f, ad: e.target.value }))} placeholder="Polipropilen granül" /></Field>
+          <Field label="Kullanım yeri"><select className="adm-inp" value={form.mekan} onChange={e => setForm((f: any) => ({ ...f, mekan: e.target.value }))}><option value="ortak">Ortak (iç + dış mekan)</option><option value="ic">İç mekan ürünleri</option><option value="dis">Dış mekan ürünleri</option></select></Field>
           <Field label="Birim"><select className="adm-inp" value={form.birim} onChange={e => setForm((f: any) => ({ ...f, birim: e.target.value }))}>{BIRIMLER.map(b => <option key={b}>{b}</option>)}</select></Field>
           {!editing && <Field label={`Açılış stoğu (${form.birim})`} hint="Defterde ‘Açılış stoğu’ hareketi olarak yazılır"><input type="number" step="0.001" min="0" className="adm-inp" value={form.acilis} onChange={e => setForm((f: any) => ({ ...f, acilis: e.target.value }))} /></Field>}
           <Field label="Min stok"><input type="number" step="0.01" min="0" className="adm-inp" value={form.min_stok} onChange={e => setForm((f: any) => ({ ...f, min_stok: e.target.value }))} /></Field>
@@ -283,6 +289,7 @@ export default function HammaddePage() {
       <TopluDuzenle rows={toplu} onClose={() => setToplu(null)} onDone={() => { setToplu(null); reload() }} client={erp} table="hammaddeler" fields={[
         { key: 'depo_id', label: 'Depo', type: 'select', bosYapilabilir: true, options: d.depolar.filter((x: any) => x.aktif !== false).map((x: any) => ({ v: x.id, l: x.ad })) },
         { key: 'tedarikci_id', label: 'Tedarikçi', type: 'select', bosYapilabilir: true, options: d.cariTam.filter((c: any) => c.tip !== 'musteri').map((c: any) => ({ v: c.id, l: c.ad })) },
+        { key: 'mekan', label: 'Kullanım yeri', type: 'select', options: [{ v: 'ic', l: 'İç mekan' }, { v: 'dis', l: 'Dış mekan' }, { v: 'ortak', l: 'Ortak' }] },
         { key: 'birim', label: 'Birim', type: 'select', options: BIRIMLER.map(b => ({ v: b, l: b })) },
         { key: 'min_stok', label: 'Min stok', type: 'number' },
         { key: 'max_stok', label: 'Max stok', type: 'number' },

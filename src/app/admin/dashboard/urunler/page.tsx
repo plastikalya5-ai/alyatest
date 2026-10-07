@@ -16,7 +16,7 @@ import Model3D from '@/components/urun/Model3D'
 const GORSEL_STIL = { studyo: 'Stüdyo', yasam: 'Yaşam alanı' } as const
 type GorselStil = keyof typeof GORSEL_STIL
 
-const bos = { code: '', name: '', slug: '', category: '', subcategory: '', description: '', image_url: '', images: [] as string[], model_3d_url: '' as string | null, tags: [] as string[], specs: [] as { k: string; v: string }[], paket_bilgisi: [] as { kod: string; adet: string; kutu_hacmi: string; kutu_agirligi: string; olculer: string; hacim: string }[], barkod: '', is_featured: false, is_new: false, sort_order: 0, description_i18n: {} as Record<string, any> }
+const bos = { code: '', name: '', slug: '', category: '', subcategory: '', mekan: 'ic', description: '', image_url: '', images: [] as string[], model_3d_url: '' as string | null, tags: [] as string[], specs: [] as { k: string; v: string }[], paket_bilgisi: [] as { kod: string; adet: string; kutu_hacmi: string; kutu_agirligi: string; olculer: string; hacim: string }[], barkod: '', is_featured: false, is_new: false, sort_order: 0, description_i18n: {} as Record<string, any> }
 const BOS_PAKET_SATIRI = { kod: '', adet: '', kutu_hacmi: '', kutu_agirligi: '', olculer: '', hacim: '' }
 const MODEL_3D_UZANTILAR = ['glb', 'gltf', 'obj', 'stl', 'fbx']
 const slugla = (s: string) => s.toLocaleLowerCase('tr').replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ş/g, 's').replace(/ü/g, 'u').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
@@ -29,6 +29,7 @@ export default function AdminUrunlerPage() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('hepsi')
   const [kat, setKat] = useState('')
+  const [mekan, setMekan] = useState('')
   const [detay, setDetay] = useState<any>(null)
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState<any>(null)
@@ -209,13 +210,13 @@ export default function AdminUrunlerPage() {
     return o
   }, [products, d])
 
-  const liste = products.filter(p => (tab === 'hepsi' || (tab === 'one' ? p.is_featured : tab === 'yeni' ? p.is_new : tab === 'varyantsiz' ? !P[p.id]?.vs.length : tab === 'recetesiz' ? !P[p.id]?.rec : tab === 'gorselsiz' ? !p.image_url : true)) && (!kat || p.category === kat))
+  const liste = products.filter(p => (tab === 'hepsi' || (tab === 'one' ? p.is_featured : tab === 'yeni' ? p.is_new : tab === 'varyantsiz' ? !P[p.id]?.vs.length : tab === 'recetesiz' ? !P[p.id]?.rec : tab === 'gorselsiz' ? !p.image_url : true)) && (!kat || p.category === kat) && (!mekan || (p.mekan || 'ic') === mekan))
 
   /* form */
   const openNew = () => { setEditing(null); setSlugElle(false); setForm({ ...bos, sort_order: products.length + 1, category: cats[0]?.slug || '' }); setModal(true) }
   const openEdit = (p: any) => {
     setEditing(p); setSlugElle(true)
-    setForm({ code: p.code || '', name: p.name || '', slug: p.slug || '', category: p.category || '', subcategory: p.subcategory || '', description: p.description || '', image_url: p.image_url || '', images: p.images || [], model_3d_url: p.model_3d_url || null, tags: p.tags || [], specs: Object.entries(p.specs || {}).map(([k, v]) => ({ k, v: String(v) })), paket_bilgisi: (p.paket_bilgisi || []).map((x: any) => ({ kod: x.kod || '', adet: x.adet || '', kutu_hacmi: x.kutu_hacmi || '', kutu_agirligi: x.kutu_agirligi || '', olculer: x.olculer || '', hacim: x.hacim || '' })), barkod: p.barkod || '', is_featured: !!p.is_featured, is_new: !!p.is_new, sort_order: p.sort_order || 0, description_i18n: p.description_i18n || {} })
+    setForm({ code: p.code || '', name: p.name || '', slug: p.slug || '', category: p.category || '', subcategory: p.subcategory || '', mekan: p.mekan || 'ic', description: p.description || '', image_url: p.image_url || '', images: p.images || [], model_3d_url: p.model_3d_url || null, tags: p.tags || [], specs: Object.entries(p.specs || {}).map(([k, v]) => ({ k, v: String(v) })), paket_bilgisi: (p.paket_bilgisi || []).map((x: any) => ({ kod: x.kod || '', adet: x.adet || '', kutu_hacmi: x.kutu_hacmi || '', kutu_agirligi: x.kutu_agirligi || '', olculer: x.olculer || '', hacim: x.hacim || '' })), barkod: p.barkod || '', is_featured: !!p.is_featured, is_new: !!p.is_new, sort_order: p.sort_order || 0, description_i18n: p.description_i18n || {} })
     setModal(true)
   }
   async function save(e: React.FormEvent) {
@@ -225,7 +226,7 @@ export default function AdminUrunlerPage() {
     if (form.barkod && products.some(p => p.barkod === form.barkod && p.id !== editing?.id)) return toast.show('Bu barkod başka üründe kayıtlı', true)
     setBusy(true)
     const paketTemiz = form.paket_bilgisi.filter((s: any) => Object.values(s).some((v: any) => String(v).trim()))
-    const payload: any = { code: form.code.trim(), name: form.name.trim(), slug: form.slug.trim(), category: form.category, subcategory: form.subcategory || null, description: form.description || null, image_url: form.image_url || '', images: form.images, tags: form.tags, specs: Object.fromEntries(form.specs.filter((s: any) => s.k.trim()).map((s: any) => [s.k.trim(), s.v])), paket_bilgisi: paketTemiz.length ? paketTemiz : null, barkod: form.barkod || null, description_i18n: form.description_i18n || {}, is_featured: form.is_featured, is_new: form.is_new, sort_order: +form.sort_order || 0, updated_at: new Date().toISOString() }
+    const payload: any = { code: form.code.trim(), name: form.name.trim(), slug: form.slug.trim(), category: form.category, subcategory: form.subcategory || null, mekan: form.mekan || 'ic', description: form.description || null, image_url: form.image_url || '', images: form.images, tags: form.tags, specs: Object.fromEntries(form.specs.filter((s: any) => s.k.trim()).map((s: any) => [s.k.trim(), s.v])), paket_bilgisi: paketTemiz.length ? paketTemiz : null, barkod: form.barkod || null, description_i18n: form.description_i18n || {}, is_featured: form.is_featured, is_new: form.is_new, sort_order: +form.sort_order || 0, updated_at: new Date().toISOString() }
     const { error } = editing ? await web.from('products').update(payload).eq('id', editing.id) : await web.from('products').insert(payload)
     setBusy(false)
     if (error) return toast.show(error.message, true)
@@ -279,6 +280,7 @@ export default function AdminUrunlerPage() {
       {p.image_url ? <img src={p.image_url} alt="" style={{ width: 40, height: 40, objectFit: 'contain', borderRadius: 8, background: 'var(--adm-s2)', padding: 3, flexShrink: 0 }} onError={e => ((e.target as HTMLImageElement).style.visibility = 'hidden')} /> : <div style={{ width: 40, height: 40, borderRadius: 8, background: 'var(--adm-s2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ImageOff size={15} style={{ color: 'var(--adm-tx3)' }} /></div>}
       <div><div style={{ fontWeight: 600 }}>{p.name}</div><div style={{ fontSize: 11, color: 'var(--adm-tx3)' }}>{p.code}{p.barkod ? ` · ${p.barkod}` : ''}</div></div></div> },
     { key: 'kat', label: 'Kategori', sort: p => catAd[p.category] || p.category, render: p => <div>{catAd[p.category] || p.category}{p.subcategory && <div style={{ fontSize: 11, color: 'var(--adm-tx3)' }}>{p.subcategory}</div>}</div>, hideSm: true },
+    { key: 'mekan', label: 'Mekan', width: 100, sort: p => p.mekan || 'ic', render: p => p.mekan === 'dis' ? <Badge tone="green">Dış mekan</Badge> : <Badge tone="blue">İç mekan</Badge>, hideSm: true },
     { key: 'var', label: 'Varyant', align: 'right', width: 80, sort: p => P[p.id]?.vs.length, render: p => P[p.id]?.vs.length ? P[p.id].vs.length : <Badge tone="amber">yok</Badge> },
     { key: 'stok', label: 'Stok', align: 'right', sort: p => P[p.id]?.stok, render: p => P[p.id]?.vs.length ? <b style={{ fontFamily: 'JetBrains Mono,monospace', color: P[p.id].stok <= 0 ? 'var(--adm-red)' : undefined }}>{fmtInt(P[p.id].stok)}</b> : <span style={{ color: 'var(--adm-tx3)' }}>—</span>, total: rs => fmtInt(sum(rs, (p: any) => P[p.id]?.stok)), hideSm: true },
     { key: 'mal', label: 'Birim Maliyet', align: 'right', sort: p => P[p.id]?.mal?.firedahil || 0, render: p => P[p.id]?.mal ? <Money v={P[p.id].mal.firedahil} bold={false} /> : <Badge tone="muted">reçete yok</Badge>, hideSm: true },
@@ -310,6 +312,7 @@ export default function AdminUrunlerPage() {
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' }}>
           <Tabs value={tab} onChange={setTab} tabs={[{ v: 'hepsi', l: 'Tümü', n: products.length }, { v: 'one', l: 'Öne çıkan', n: cnt(p => p.is_featured) }, { v: 'yeni', l: 'Yeni', n: cnt(p => p.is_new) }, { v: 'varyantsiz', l: 'Varyantsız', n: cnt(p => !P[p.id]?.vs.length) }, { v: 'recetesiz', l: 'Reçetesiz', n: cnt(p => !P[p.id]?.rec) }, { v: 'gorselsiz', l: 'Görselsiz', n: cnt(p => !p.image_url) }]} />
           <select className="adm-sel" value={kat} onChange={e => setKat(e.target.value)}><option value="">Tüm kategoriler</option>{cats.map(c => <option key={c.slug} value={c.slug}>{c.name} ({cnt(p => p.category === c.slug)})</option>)}</select>
+          <select className="adm-sel" value={mekan} onChange={e => setMekan(e.target.value)}><option value="">İç + Dış mekan</option><option value="ic">İç mekan ({cnt(p => (p.mekan || 'ic') === 'ic')})</option><option value="dis">Dış mekan ({cnt(p => p.mekan === 'dis')})</option></select>
         </div>
         <DataGrid rows={liste} cols={cols} rowKey={p => p.id} loading={loading} csvName="urunler" storageKey="urunler" onRowClick={setDetay} activeKey={detay?.id} selectable
           searchText={p => `${p.name} ${p.code} ${p.barkod || ''} ${catAd[p.category] || ''} ${(p.tags || []).join(' ')}`} searchPlaceholder="Ürün adı, kod, barkod, etiket..."
@@ -356,6 +359,7 @@ export default function AdminUrunlerPage() {
           <Field label="Ürün adı *" span={2}><input className="adm-inp" required value={form.name} onChange={e => setForm((f: any) => ({ ...f, name: e.target.value, ...(slugElle ? {} : { slug: slugla(e.target.value) }) }))} /></Field>
           <Field label="Slug *" hint="Sitedeki adres — ad değişince otomatik üretilir"><input className="adm-inp" required value={form.slug} onChange={e => { setSlugElle(true); setForm((f: any) => ({ ...f, slug: e.target.value })) }} /></Field>
           <Field label="Kategori *"><select className="adm-inp" required value={form.category} onChange={e => setForm((f: any) => ({ ...f, category: e.target.value }))}><option value="">Seçin</option>{cats.map(c => <option key={c.slug} value={c.slug}>{c.name}</option>)}</select></Field>
+          <Field label="Kullanım yeri *"><select className="adm-inp" value={form.mekan} onChange={e => setForm((f: any) => ({ ...f, mekan: e.target.value }))}><option value="ic">İç mekan (ofis, mağaza, ev içi)</option><option value="dis">Dış mekan (bahçe, dışarıda)</option></select></Field>
           <Field label="Alt kategori"><input className="adm-inp" value={form.subcategory} onChange={e => setForm((f: any) => ({ ...f, subcategory: e.target.value }))} /></Field>
           <Field label="Barkod"><input className="adm-inp" value={form.barkod} onChange={e => setForm((f: any) => ({ ...f, barkod: e.target.value }))} /></Field>
           <Field label="Sıra"><input type="number" className="adm-inp" value={form.sort_order} onChange={e => setForm((f: any) => ({ ...f, sort_order: e.target.value }))} /></Field>
