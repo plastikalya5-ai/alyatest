@@ -9,8 +9,9 @@ import { fmt, fmtK, fmtDate, todayISO, daysBetween, csvDownload } from '@/lib/fm
 import { sum, kalanTutar, acikFatura } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, InfoRow, Divider, Empty, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
+import TopluDuzenle from '@/components/admin/TopluDuzenle'
 import {
-  Plus, Pencil, Trash2, User, Building2, Phone, Mail, MessageCircle, FileBarChart, HandCoins, Users2, AlertTriangle, Scale, Wallet, Printer, Download, Receipt, FileSignature,
+  ListChecks, Plus, Pencil, Trash2, User, Building2, Phone, Mail, MessageCircle, FileBarChart, HandCoins, Users2, AlertTriangle, Scale, Wallet, Printer, Download, Receipt, FileSignature,
   FileSpreadsheet, Upload, CheckCircle2, XCircle,
 } from 'lucide-react'
 
@@ -45,6 +46,7 @@ export default function CariPage() {
   const [form, setForm] = useState<any>(bosForm)
   const [odeme, setOdeme] = useState<any>(null) // tahsilat / ödeme modalı
   const [busy, setBusy] = useState(false)
+  const [toplu, setToplu] = useState<any[] | null>(null)
   const [iceAktar, setIceAktar] = useState<{ dosyaAdi: string; b64: string; asama: 'onizle' | 'hata' | 'onay' | 'bitti'; hatalar?: { satir: number; mesaj: string }[]; onizle?: { toplam: number; yeni: number; guncelleme: number }; sonuc?: { eklenen: number; guncellenen: number } } | null>(null)
   const [iceAktarBusy, setIceAktarBusy] = useState(false)
 
@@ -271,7 +273,8 @@ export default function CariPage() {
         <DataGrid rows={filtered} cols={cols} rowKey={c => c.id} loading={loading} csvName="cari-hesaplar" storageKey="cari"
           searchText={c => `${c.kod || ''} ${c.muhasebe_kodu || ''} ${c.ad} ${c.email || ''} ${c.telefon || ''} ${c.vergi_no || ''}`} searchPlaceholder="Kod, muhasebe kodu (120.03.139), ad, telefon, vergi no..."
           onRowClick={c => { setDetay(c); setDTab('ozet') }} activeKey={detay?.id}
-          emptyTitle="Cari bulunamadı" emptySub="Yeni Cari butonuyla ilk hesabı ekle" />
+          emptyTitle="Cari bulunamadı" emptySub="Yeni Cari butonuyla ilk hesabı ekle" selectable
+          bulkActions={sel => <button className="adm-btn-ghost" style={{ padding: '3px 12px', fontSize: 12 }} onClick={() => setToplu(sel)}><ListChecks size={12} />Toplu düzenle</button>} />
       </Page>
 
       {/* Detay */}
@@ -434,6 +437,11 @@ export default function CariPage() {
           <p style={{ fontSize: 13, color: 'var(--adm-green)', display: 'flex', gap: 8, alignItems: 'center' }}><CheckCircle2 size={16} />{iceAktar.sonuc.eklenen} yeni cari eklendi, {iceAktar.sonuc.guncellenen} cari güncellendi.</p>
         )}
       </Modal>
+      <TopluDuzenle rows={toplu} onClose={() => setToplu(null)} onDone={() => { setToplu(null); load() }} client={muh as any} table="cari_hesaplar" fields={[
+        { key: 'tip', label: 'Tür', type: 'select', options: Object.entries(TIP).map(([v, t]) => ({ v, l: t.l })) },
+        { key: 'fiyat_listesi_id', label: 'Fiyat listesi', type: 'select', bosYapilabilir: true, hint: 'Boş yap = Varsayılan', options: fiyatListeleri.map((f: any) => ({ v: f.id, l: f.ad })) },
+        { key: 'notlar', label: 'Notlar', type: 'text', bosYapilabilir: true, hint: 'Mevcut notların yerine yazılır' },
+      ]} />
       {toast.node}
     </div>
   )

@@ -9,7 +9,8 @@ import { sum } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, Divider, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
 import { Donut } from '@/components/admin/erp/charts'
-import { Plus, Pencil, Trash2, FlaskConical, Copy, Power, Coins, AlertTriangle, X } from 'lucide-react'
+import TopluDuzenle from '@/components/admin/TopluDuzenle'
+import { ListChecks, Plus, Pencil, Trash2, FlaskConical, Copy, Power, Coins, AlertTriangle, X } from 'lucide-react'
 
 type Kalem = { hammadde_id: string; miktar: string; giris: string }
 const bos = { urun_id: '', versiyon: '1', kalip_id: '', kavite_sayisi: '1', hedef_cevrim_suresi: '', hedef_fire_orani: '0', iscilik_maliyeti: '0', genel_gider_maliyeti: '0', amortisman_maliyeti: '0', notlar: '' }
@@ -24,6 +25,7 @@ export default function RecetePage() {
   const [form, setForm] = useState<any>(bos)
   const [kalemler, setKalemler] = useState<Kalem[]>([{ hammadde_id: '', miktar: '', giris: '' }])
   const [busy, setBusy] = useState(false)
+  const [toplu, setToplu] = useState<any[] | null>(null)
 
   const urun = useMemo(() => byId(d.products), [d.products])
   const kalip = useMemo(() => byId(d.kaliplar), [d.kaliplar])
@@ -122,7 +124,7 @@ export default function RecetePage() {
         </KpiGrid>
         <div style={{ marginBottom: 12 }}><Tabs value={tab} onChange={setTab} tabs={[{ v: 'aktif', l: 'Aktif', n: aktifler.length }, { v: 'pasif', l: 'Pasif / Eski', n: d.receteler.length - aktifler.length }, { v: 'hepsi', l: 'Tümü', n: d.receteler.length }]} /></div>
 
-        <DataGrid rows={liste} cols={cols} rowKey={r => r.id} loading={loading} csvName="receteler" storageKey="receteler" onRowClick={setDetay} activeKey={detay?.id}
+        <DataGrid rows={liste} cols={cols} rowKey={r => r.id} loading={loading} csvName="receteler" storageKey="receteler" onRowClick={setDetay} activeKey={detay?.id} selectable bulkActions={(sel) => <button className="adm-btn-ghost" style={{ padding: '3px 12px', fontSize: 12 }} onClick={() => setToplu(sel)}><ListChecks size={12} />Toplu düzenle</button>}
           searchText={r => `${urun[r.urun_id]?.name || ''} v${r.versiyon}`} searchPlaceholder="Ürün ara..." emptyTitle="Reçete yok" emptySub="Reçete Oluştur ile ürün için hammadde listesi tanımla; üretim emri bu reçeteye göre stoktan düşer." />
       </Page>
 
@@ -192,6 +194,14 @@ export default function RecetePage() {
         <p style={{ fontSize: 11.5, color: 'var(--adm-tx3)', margin: '10px 0 0' }}>Miktarlar hammaddenin stok birimiyle (örn. kg) saklanır — stoktan düşüm ve maliyet buna göre yapılır. Kg’lık hammaddede “gr” seçersen otomatik ÷1000 çevrilir (35 gr = 0,035 kg).</p>
         <div style={{ marginTop: 12 }}><Field label="Notlar"><textarea className="adm-inp" rows={2} value={form.notlar} onChange={e => setForm((f: any) => ({ ...f, notlar: e.target.value }))} /></Field></div>
       </Modal>
+      <TopluDuzenle rows={toplu} onClose={() => setToplu(null)} onDone={() => { setToplu(null); reload() }} client={erp} table="urun_receteleri" fields={[
+        { key: 'kalip_id', label: 'Kalıp', type: 'select', bosYapilabilir: true, options: d.kaliplar.map((k: any) => ({ v: k.id, l: k.ad })) },
+        { key: 'hedef_cevrim_suresi', label: 'Hedef çevrim süresi (sn)', type: 'number' },
+        { key: 'hedef_fire_orani', label: 'Hedef fire oranı', type: 'number' },
+        { key: 'iscilik_maliyeti', label: 'İşçilik maliyeti', type: 'number' },
+        { key: 'genel_gider_maliyeti', label: 'Genel gider maliyeti', type: 'number' },
+        { key: 'amortisman_maliyeti', label: 'Amortisman maliyeti', type: 'number' },
+      ]} />
       {toast.node}
     </div>
   )

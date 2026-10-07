@@ -60,6 +60,10 @@ const BOLUMLER: Bolum[] = [
     'Dövizli faturayı kapatırken fatura kuru ile tahsilat kuru farklıysa panel farkı Kur Farkı Geliri veya Kur Farkı Gideri olarak ayrıca kaydeder. Bu kategoriler kâr-zarar raporlarına dahil edilmez.',
   ] },
   { v: 'kontrol', l: 'Kontrol listesi', icerik: [
+    { b: 'Toplu düzenle', t: [
+      'Cari, Fatura ve Gelir-Gider listelerinde satırları işaretleyin, "Toplu düzenle" ile aynı değeri hepsine atayın (ör. cari tipi, fiyat listesi, fatura vadesi, işlem kategorisi).',
+      'Tutar, cari, kasa/banka ve fatura durumu gibi bakiyeyi etkileyen alanlar bilerek toplu düzenlemede yoktur; bunlar tek tek kayıttan değiştirilmelidir.',
+    ] },
     { b: 'Ay sonunda kontrol edilecekler', t: [
       'Kasa/banka bakiyelerini gerçek banka ekstresiyle karşılaştırın, fark varsa Bakiye Düzeltme ile kaydedin ve not düşün.',
       'Cari bakiyesi ile ekstrenin son yürüyen bakiyesi, eski program geçmişi hariç, yeni dönem hareketleri için tutmalıdır.',

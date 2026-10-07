@@ -10,7 +10,8 @@ import { sum, CHART_COLORS } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Card, Badge, Tabs, Drawer, Modal, Field, FormGrid, InfoRow, Divider, Empty, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
 import { TrendChart, BarList } from '@/components/admin/erp/charts'
-import { Plus, Pencil, Trash2, ShieldCheck, ShieldAlert, PackageX, Percent, ClipboardList, Flame, CheckCircle2 } from 'lucide-react'
+import TopluDuzenle from '@/components/admin/TopluDuzenle'
+import { ListChecks, Plus, Pencil, Trash2, ShieldCheck, ShieldAlert, PackageX, Percent, ClipboardList, Flame, CheckCircle2 } from 'lucide-react'
 
 const SONUC: Record<string, { l: string; tone: any }> = { uygun: { l: 'Uygun', tone: 'green' }, sartli_uygun: { l: 'Şartlı Uygun', tone: 'amber' }, red: { l: 'Red', tone: 'red' } }
 const TIP: Record<string, string> = { giris_kontrol: 'Giriş Kontrol', proses_kontrol: 'Proses Kontrol', son_kontrol: 'Son Kontrol' }
@@ -33,6 +34,7 @@ export default function KaliteKontrolPage() {
   const [sonucElle, setSonucElle] = useState(false)
   const [uid, setUid] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [toplu, setToplu] = useState<any[] | null>(null)
   useEffect(() => { createClient().auth.getUser().then(({ data }) => setUid(data.user?.id || null)).catch(() => {}) }, [])
 
   const urun = useMemo(() => byId(d.products), [d.products])
@@ -161,7 +163,8 @@ export default function KaliteKontrolPage() {
         </div>
 
         <DataGrid rows={liste} cols={cols} rowKey={k => k.id} loading={loading} csvName="kalite-kontrol" storageKey="kalite" onRowClick={setDetay} activeKey={detay?.id}
-          searchText={k => `${emir[k.uretim_emri_id]?.no || ''} ${urun[k.urun_id || emir[k.uretim_emri_id]?.urun_id]?.name || ''} ${k.red_nedeni || ''} ${k.notlar || ''}`} searchPlaceholder="Emir, ürün, red nedeni..." emptyTitle="Kontrol kaydı yok" />
+          searchText={k => `${emir[k.uretim_emri_id]?.no || ''} ${urun[k.urun_id || emir[k.uretim_emri_id]?.urun_id]?.name || ''} ${k.red_nedeni || ''} ${k.notlar || ''}`} searchPlaceholder="Emir, ürün, red nedeni..." emptyTitle="Kontrol kaydı yok" selectable
+          bulkActions={sel => <button className="adm-btn-ghost" style={{ padding: '3px 12px', fontSize: 12 }} onClick={() => setToplu(sel)}><ListChecks size={12} />Toplu düzenle</button>} />
       </Page>
 
       <Drawer open={!!detay} onClose={() => setDetay(null)} width={480}
@@ -202,6 +205,11 @@ export default function KaliteKontrolPage() {
           <Field label="Notlar" span={2}><textarea className="adm-inp" rows={2} value={form.notlar} onChange={e => setForm((f: any) => ({ ...f, notlar: e.target.value }))} /></Field>
         </FormGrid>
       </Modal>
+      <TopluDuzenle rows={toplu} onClose={() => setToplu(null)} onDone={() => { setToplu(null); reload() }} client={erp as any} table="kalite_kontrol_kayitlari" fields={[
+        { key: 'uretim_emri_id', label: 'Üretim emri', type: 'select', bosYapilabilir: true, options: d.emirler.map((e: any) => ({ v: e.id, l: `${e.no} · ${urun[e.urun_id]?.name || ''}` })) },
+        { key: 'kontrol_tipi', label: 'Kontrol tipi', type: 'select', options: Object.entries(TIP).map(([v, l]) => ({ v, l })) },
+        { key: 'red_nedeni', label: 'Red nedeni', type: 'text' },
+      ]} />
       {toast.node}
     </div>
   )

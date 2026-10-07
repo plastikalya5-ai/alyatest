@@ -9,7 +9,8 @@ import { sum, CHART_COLORS, sonAylar, ayAnahtar } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Card, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, InfoRow, Empty, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
 import { TrendChart, BarList } from '@/components/admin/erp/charts'
-import { Plus, Trash2, Flame, Coins, Percent, Target, Boxes, Package } from 'lucide-react'
+import TopluDuzenle from '@/components/admin/TopluDuzenle'
+import { ListChecks, Plus, Trash2, Flame, Coins, Percent, Target, Boxes, Package } from 'lucide-react'
 
 const NEDENLER = ['Kısa atım', 'Çapak', 'Yanık / siyah nokta', 'Renk hatası', 'Çarpılma', 'Boyut hatası', 'Ayar / başlangıç firesi', 'Renk geçişi', 'Hammadde döküntüsü', 'Kalite red']
 const bos = { uretim_emri_id: '', makine_id: '', tur: 'hammadde', hammadde_id: '', variant_id: '', miktar: '', fire_nedeni: '', maliyet: '', stok: true }
@@ -24,6 +25,7 @@ export default function FirePage() {
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState<any>(bos)
   const [busy, setBusy] = useState(false)
+  const [toplu, setToplu] = useState<any[] | null>(null)
 
   const urun = useMemo(() => byId(d.products), [d.products])
   const emir = useMemo(() => byId(d.emirler), [d.emirler])
@@ -170,7 +172,8 @@ export default function FirePage() {
         </div>
 
         <DataGrid rows={liste} cols={cols} rowKey={r => r.id} loading={loading} csvName="fire" storageKey="fire" onRowClick={setDetay} activeKey={detay?.id}
-          searchText={r => `${r.ad} ${r.neden} ${emir[r.emir_id]?.no || ''} ${makine[r.makine_id]?.ad || ''}`} searchPlaceholder="Kalem, neden, emir, makine..." emptyTitle="Fire kaydı yok" footerNote={<span>· Üretim hattı firesi Canlı Üretim / Emir ekranından girilen fire adetlerinden gelir</span>} />
+          searchText={r => `${r.ad} ${r.neden} ${emir[r.emir_id]?.no || ''} ${makine[r.makine_id]?.ad || ''}`} searchPlaceholder="Kalem, neden, emir, makine..." emptyTitle="Fire kaydı yok" selectable
+          bulkActions={sel => { const fr = sel.filter(r => r.src !== 'hat'); return <><button className="adm-btn-ghost" style={{ padding: '3px 12px', fontSize: 12 }} disabled={!fr.length} title={fr.length < sel.length ? 'Üretim hattı satırları hariç tutulur' : undefined} onClick={() => setToplu(fr.map(r => ({ id: r.ham.id })))}><ListChecks size={12} />Toplu düzenle ({fr.length})</button></> }} footerNote={<span>· Üretim hattı firesi Canlı Üretim / Emir ekranından girilen fire adetlerinden gelir</span>} />
       </Page>
 
       <Drawer open={!!detay} onClose={() => setDetay(null)} width={440} title={detay && <span style={{ display: 'flex', gap: 10, alignItems: 'center' }}>{detay.ad}<Badge tone={SRC[detay.src].tone}>{SRC[detay.src].l}</Badge></span>} sub={detay && fmtDateTime(detay.tarih)}
@@ -198,6 +201,12 @@ export default function FirePage() {
         </FormGrid>
         <p style={{ fontSize: 11.5, color: 'var(--adm-tx3)', margin: '12px 0 0' }}>Üretim ekranında girilen fire zaten otomatik stoğa/reçeteye işlenir; buraya sadece üretim dışı firelerini (döküntü, depoda bozulma, kalite red vb.) gir.</p>
       </Modal>
+      <TopluDuzenle rows={toplu} onClose={() => setToplu(null)} onDone={() => { setToplu(null); reload() }} client={erp as any} table="fire_kayitlari" fields={[
+        { key: 'fire_nedeni', label: 'Fire nedeni', type: 'select', options: NEDENLER.map(n => ({ v: n, l: n })) },
+        { key: 'uretim_emri_id', label: 'Üretim emri', type: 'select', bosYapilabilir: true, options: d.emirler.slice(0, 60).map((e: any) => ({ v: e.id, l: `${e.no} · ${urun[e.urun_id]?.name || ''}` })) },
+        { key: 'makine_id', label: 'Makine', type: 'select', bosYapilabilir: true, options: d.makineler.map((m: any) => ({ v: m.id, l: m.ad })) },
+        { key: 'maliyet_etkisi', label: 'Maliyet etkisi (₺)', type: 'number' },
+      ]} />
       {toast.node}
     </div>
   )

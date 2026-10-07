@@ -8,7 +8,8 @@ import { fmt, fmtDate, fmtK, fmtInt, todayISO } from '@/lib/fmt'
 import { DONEMLER, donemAralik, NON_PNL, type Donem } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, InfoRow, Divider, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col, type ServerMode } from '@/components/admin/erp/DataGrid'
-import { Plus, ArrowUpRight, ArrowDownRight, Scale, Hash, Pencil, Trash2, Copy } from 'lucide-react'
+import TopluDuzenle from '@/components/admin/TopluDuzenle'
+import { ListChecks, Plus, ArrowUpRight, ArrowDownRight, Scale, Hash, Pencil, Trash2, Copy } from 'lucide-react'
 
 const ODEME: Record<string, string> = { nakit: 'Nakit', havale: 'Havale/EFT', kredi_karti: 'Kredi Kartı', cek: 'Çek', diger: 'Diğer' }
 const bosForm = () => ({ tip: 'gelir' as 'gelir' | 'gider', kategori: '', tutar: '', aciklama: '', tarih: todayISO(), odeme_yontemi: 'nakit', cari_id: '', kasa_hesap_id: '', kur: '' })
@@ -35,6 +36,7 @@ export default function IslemlerPage() {
   const [editing, setEditing] = useState<any>(null)
   const [form, setForm] = useState(bosForm())
   const [busy, setBusy] = useState(false)
+  const [toplu, setToplu] = useState<any[] | null>(null)
   const [kurlar, setKurlar] = useState<Record<string, number>>({ TRY: 1 })
 
   useEffect(() => {
@@ -172,7 +174,7 @@ export default function IslemlerPage() {
 
         <DataGrid rows={[]} server={server} cols={cols} rowKey={r => r.id} csvName="gelir-gider" storageKey="islemler-srv" pageSizes={[25, 50, 100, 250]}
           searchPlaceholder="Açıklama, kategori, cari, hesap..." selectable
-          bulkActions={(sel, clear) => <button className="adm-btn-danger" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => bulkDel(sel, clear)}><Trash2 size={12} />Seçilenleri sil</button>}
+          bulkActions={(sel, clear) => <><button className="adm-btn-ghost" style={{ padding: '3px 12px', fontSize: 12 }} onClick={() => setToplu(sel)}><ListChecks size={12} />Toplu düzenle</button><button className="adm-btn-danger" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => bulkDel(sel, clear)}><Trash2 size={12} />Seçilenleri sil</button></>}
           onRowClick={setDetay} activeKey={detay?.id}
           filters={<>
             <select className="adm-sel" value={kat} onChange={e => setKat(e.target.value)}><option value="">Tüm kategoriler</option>{Array.from(new Set(kats.map(k => k.ad))).sort((a: any, b: any) => a.localeCompare(b, 'tr')).concat(NON_PNL.filter(n => !kats.some(k => k.ad === n))).map((k: any) => <option key={k}>{k}</option>)}</select>
@@ -237,6 +239,10 @@ export default function IslemlerPage() {
         </FormGrid>
         {editing && <p style={{ fontSize: 11.5, color: 'var(--adm-amber)', margin: '12px 0 0' }}>Tutar, tür, cari veya hesap değişirse eski kayıt geri alınıp yenisi eklenir; bakiyeler otomatik düzelir.</p>}
       </Modal>
+      <TopluDuzenle rows={toplu} onClose={() => setToplu(null)} onDone={() => { setToplu(null); setSurum(v => v + 1) }} client={muh as any} table="islemler" fields={[
+        { key: 'kategori', label: 'Kategori', type: 'select', hint: 'Gelir ve gider kategorileri karışık seçili olabilir; uygun olanı seç', options: Array.from(new Set(kats.map((k: any) => k.ad as string))).sort((a, b) => a.localeCompare(b, 'tr')).map(v => ({ v, l: v })) },
+        { key: 'aciklama', label: 'Açıklama', type: 'text', bosYapilabilir: true },
+      ]} />
       {toast.node}
     </div>
   )

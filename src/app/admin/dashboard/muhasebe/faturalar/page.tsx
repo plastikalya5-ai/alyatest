@@ -10,7 +10,8 @@ import { kalanTutar, DONEMLER, donemAralik, type Donem } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, InfoRow, Divider, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col, type ServerMode } from '@/components/admin/erp/DataGrid'
 import BelgeOku, { type BelgeSonuc } from '@/components/admin/BelgeOku'
-import { Plus, Receipt, HandCoins, AlertTriangle, FileText, Printer, CheckCircle2, Ban, Copy, Trash2, X, Coins, Wallet } from 'lucide-react'
+import TopluDuzenle from '@/components/admin/TopluDuzenle'
+import { ListChecks, Plus, Receipt, HandCoins, AlertTriangle, FileText, Printer, CheckCircle2, Ban, Copy, Trash2, X, Coins, Wallet } from 'lucide-react'
 
 const DURUM: Record<string, { l: string; tone: any }> = { taslak: { l: 'Taslak', tone: 'muted' }, onaylandi: { l: 'Açık', tone: 'blue' }, odendi: { l: 'Ödendi', tone: 'green' }, iptal: { l: 'İptal', tone: 'red' } }
 const TIP: Record<string, { l: string; tone: any }> = { satis: { l: 'Satış', tone: 'green' }, alis: { l: 'Alış', tone: 'amber' }, iade: { l: 'İade', tone: 'muted' } }
@@ -37,6 +38,7 @@ export default function FaturalarPage() {
   const [odeme, setOdeme] = useState<any>(null)
   const [doviz, setDoviz] = useState<any>(null)
   const [busy, setBusy] = useState(false)
+  const [toplu, setToplu] = useState<any[] | null>(null)
 
   const [form, setForm] = useState<any>({})
   const [kalemler, setKalemler] = useState<Kalem[]>([bosKalem()])
@@ -293,7 +295,8 @@ export default function FaturalarPage() {
         </div>
 
         <DataGrid rows={[]} server={server} cols={cols} rowKey={f => f.id} csvName="faturalar" storageKey="faturalar-srv" onRowClick={openDetay} activeKey={detay?.id}
-          searchPlaceholder="Fatura no, cari..." emptyTitle="Fatura bulunamadı" emptySub="Yeni Fatura ile başla" />
+          searchPlaceholder="Fatura no, cari..." emptyTitle="Fatura bulunamadı" emptySub="Yeni Fatura ile başla" selectable
+          bulkActions={sel => <button className="adm-btn-ghost" style={{ padding: '3px 12px', fontSize: 12 }} onClick={() => setToplu(sel)}><ListChecks size={12} />Toplu düzenle</button>} />
       </Page>
 
       {/* Detay */}
@@ -412,6 +415,10 @@ export default function FaturalarPage() {
           {doviz.kur && <p style={{ margin: 0, fontSize: 12.5 }}>Kasaya girecek: <b>{(() => { const ko = kasalar.find(k => k.id === doviz.kasa); return ko && kasaPb(ko) !== 'TRY' ? paraGoster(+doviz.f.doviz_tutari || 0, kasaPb(ko)) : fmt((+doviz.f.doviz_tutari || 0) * +doviz.kur) })()}</b> · Kur farkı: <b style={{ color: +doviz.kur - +doviz.f.kur >= 0 ? 'var(--adm-green)' : 'var(--adm-red)' }}>{fmt(Math.abs((+doviz.f.doviz_tutari || 0) * (+doviz.kur - +doviz.f.kur)))}</b></p>}
         </FormGrid>}
       </Modal>
+      <TopluDuzenle rows={toplu} onClose={() => setToplu(null)} onDone={() => { setToplu(null); load() }} client={muh as any} table="faturalar" fields={[
+        { key: 'vade', label: 'Vade', type: 'date', bosYapilabilir: true },
+        { key: 'notlar', label: 'Notlar', type: 'text', bosYapilabilir: true, hint: 'Mevcut notların yerine yazılır' },
+      ]} />
       {toast.node}
     </div>
   )

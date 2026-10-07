@@ -8,7 +8,8 @@ import { useUretim, byId, KALIP_DURUM, EMIR_DURUM, kalipBaski } from '@/lib/uret
 import { sum } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, InfoRow, Divider, Empty, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
-import { Plus, Pencil, Trash2, Wrench, AlertTriangle, Package, Layers, Coins } from 'lucide-react'
+import TopluDuzenle from '@/components/admin/TopluDuzenle'
+import { ListChecks, Plus, Pencil, Trash2, Wrench, AlertTriangle, Package, Layers, Coins } from 'lucide-react'
 
 const bos = { kod: '', ad: '', urettigi_urun_id: '', kavite_sayisi: '1', lokasyon: '', bakim_periyodu_gun: '90', sonraki_bakim: '', durum: 'depoda', notlar: '', uyumlu: [] as string[] }
 const bakimBos = () => ({ tarih: todayISO(), aciklama: '', maliyet: '' })
@@ -32,6 +33,7 @@ export default function KalipPage() {
   const [form, setForm] = useState<any>(bos)
   const [bakim, setBakim] = useState<any>(null)
   const [busy, setBusy] = useState(false)
+  const [toplu, setToplu] = useState<any[] | null>(null)
 
   const urun = useMemo(() => byId(d.products), [d.products])
   const K = useMemo(() => {
@@ -143,7 +145,7 @@ export default function KalipPage() {
           <Tabs value={tab} onChange={setTab} tabs={[{ v: 'hepsi', l: 'Tümü', n: d.kaliplar.length }, { v: 'bakim', l: 'Bakım gereken', n: gereken }, ...Object.entries(KALIP_DURUM).map(([k, v]) => ({ v: k, l: v.l, n: cnt(x => x.durum === k) }))]} />
         </div>
 
-        <DataGrid rows={liste} cols={cols} rowKey={k => k.id} loading={loading} csvName="kaliplar" storageKey="kaliplar" onRowClick={k => { setDetay(k); setDTab('bilgi') }} activeKey={detay?.id}
+        <DataGrid rows={liste} cols={cols} rowKey={k => k.id} loading={loading} csvName="kaliplar" storageKey="kaliplar" onRowClick={k => { setDetay(k); setDTab('bilgi') }} activeKey={detay?.id} selectable bulkActions={(sel) => <button className="adm-btn-ghost" style={{ padding: '3px 12px', fontSize: 12 }} onClick={() => setToplu(sel)}><ListChecks size={12} />Toplu düzenle</button>}
           searchText={k => `${k.kod} ${k.ad} ${k.lokasyon || ''} ${urun[k.urettigi_urun_id]?.name || ''}`} searchPlaceholder="Kod, ad, ürün, lokasyon..."
           emptyTitle="Kalıp bulunamadı" emptySub="Kalıp Ekle ile envantere ilk kalıbı gir" />
       </Page>
@@ -218,6 +220,12 @@ export default function KalipPage() {
           <p style={{ gridColumn: 'span 2', margin: 0, fontSize: 11.5, color: 'var(--adm-tx3)' }}>Sonraki bakım {bakim.kalip.bakim_periyodu_gun || 90} gün sonrasına planlanır; kalıp bakımdaysa “Hazır” yapılır ve baskı sayacı güncellenir.</p>
         </FormGrid>}
       </Modal>
+      <TopluDuzenle rows={toplu} onClose={() => setToplu(null)} onDone={() => { setToplu(null); reload() }} client={erp} table="kaliplar" fields={[
+        { key: 'durum', label: 'Durum', type: 'select', hint: 'Üretimde durumu buradan atanmaz', options: ['hazir', 'depoda', 'bakimda', 'arizali'].map(k => ({ v: k, l: KALIP_DURUM[k].l })) },
+        { key: 'lokasyon', label: 'Lokasyon', type: 'text' },
+        { key: 'bakim_periyodu_gun', label: 'Bakım periyodu (gün)', type: 'number' },
+        { key: 'sonraki_bakim', label: 'Sonraki bakım', type: 'date', bosYapilabilir: true },
+      ]} />
       {toast.node}
     </div>
   )

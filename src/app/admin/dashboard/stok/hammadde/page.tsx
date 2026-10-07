@@ -8,7 +8,8 @@ import { useUretim, byId, gunlukTuketim, rezerveMap, HAREKET_TIP } from '@/lib/u
 import { sum } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, InfoRow, Divider, Empty, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
-import { Plus, Pencil, Trash2, Boxes, AlertTriangle, Coins, Timer, ArrowDownCircle, ArrowUpCircle, ClipboardCheck, ShoppingCart, Power, Package, Layers } from 'lucide-react'
+import TopluDuzenle from '@/components/admin/TopluDuzenle'
+import { ListChecks, Plus, Pencil, Trash2, Boxes, AlertTriangle, Coins, Timer, ArrowDownCircle, ArrowUpCircle, ClipboardCheck, ShoppingCart, Power, Package, Layers } from 'lucide-react'
 
 const BIRIMLER = ['kg', 'gr', 'lt', 'adet', 'metre', 'koli', 'palet', 'torba']
 const bos = { kod: '', ad: '', aciklama: '', birim: 'kg', acilis: '', min_stok: '0', max_stok: '', ortalama_maliyet: '', tedarikci_id: '', depo_id: '', barkod: '' }
@@ -27,6 +28,7 @@ export default function HammaddePage() {
   const [islem, setIslem] = useState<any>(null)
   const [lot, setLot] = useState({ lot_no: '', miktar: '', giris_tarihi: todayISO(), tedarikci_id: '' })
   const [busy, setBusy] = useState(false)
+  const [toplu, setToplu] = useState<any[] | null>(null)
   const [hmHareket, setHmHareket] = useState<any[]>([])
 
   const cari = useMemo(() => byId(d.cariTam), [d.cariTam])
@@ -196,7 +198,7 @@ export default function HammaddePage() {
             footerNote={<span>· Satılabilir = fiziksel stok − açık siparişlerde sevk edilmemiş miktar</span>} />
           : <DataGrid rows={liste} cols={cols} rowKey={h => h.id} loading={loading} csvName="hammaddeler" storageKey="hammadde" onRowClick={h => { setDetay(h); setDTab('ozet') }} activeKey={detay?.id}
             searchText={h => `${h.ad} ${h.kod} ${h.barkod || ''} ${cari[h.tedarikci_id]?.ad || ''}`} searchPlaceholder="Ad, kod, barkod, tedarikçi..." selectable
-            bulkActions={(sel, clear) => <button className="adm-btn" style={{ padding: '3px 12px', fontSize: 12 }} disabled={busy} onClick={async () => { await satinalmaAc(sel); clear() }}><ShoppingCart size={12} />Seçilenler için satınalma siparişi</button>}
+            bulkActions={(sel, clear) => <><button className="adm-btn" style={{ padding: '3px 12px', fontSize: 12 }} disabled={busy} onClick={async () => { await satinalmaAc(sel); clear() }}><ShoppingCart size={12} />Seçilenler için satınalma siparişi</button><button className="adm-btn-ghost" style={{ padding: '3px 12px', fontSize: 12 }} onClick={() => setToplu(sel)}><ListChecks size={12} />Toplu düzenle</button></>}
             actions={kritik.length > 0 ? <button className="adm-btn-ghost" style={{ fontSize: 12, color: 'var(--adm-red)' }} disabled={busy} onClick={() => satinalmaAc(kritik)}><ShoppingCart size={13} />Kritikler için sipariş aç</button> : undefined}
             emptyTitle="Hammadde bulunamadı" emptySub="Hammadde Ekle ile stok kartı aç; açılış stoğu defterde hareket olarak görünür." />}
       </Page>
@@ -278,6 +280,15 @@ export default function HammaddePage() {
             <Field label="Açıklama"><input className="adm-inp" value={islem.not} onChange={e => setIslem((x: any) => ({ ...x, not: e.target.value }))} /></Field>
           </FormGrid></>}
       </Modal>
+      <TopluDuzenle rows={toplu} onClose={() => setToplu(null)} onDone={() => { setToplu(null); reload() }} client={erp} table="hammaddeler" fields={[
+        { key: 'depo_id', label: 'Depo', type: 'select', bosYapilabilir: true, options: d.depolar.filter((x: any) => x.aktif !== false).map((x: any) => ({ v: x.id, l: x.ad })) },
+        { key: 'tedarikci_id', label: 'Tedarikçi', type: 'select', bosYapilabilir: true, options: d.cariTam.filter((c: any) => c.tip !== 'musteri').map((c: any) => ({ v: c.id, l: c.ad })) },
+        { key: 'birim', label: 'Birim', type: 'select', options: BIRIMLER.map(b => ({ v: b, l: b })) },
+        { key: 'min_stok', label: 'Min stok', type: 'number' },
+        { key: 'max_stok', label: 'Max stok', type: 'number' },
+        { key: 'ortalama_maliyet', label: 'Ort. maliyet', type: 'number' },
+        { key: 'aktif', label: 'Durum (aktif/pasif)', type: 'bool' },
+      ]} />
       {toast.node}
     </div>
   )

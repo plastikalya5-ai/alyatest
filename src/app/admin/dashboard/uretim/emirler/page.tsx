@@ -10,7 +10,8 @@ import { useUretim, byId, EMIR_DURUM, MAKINE_DURUM, yuzde, fireOrani, receteMali
 import { sum } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Drawer, Modal, Field, FormGrid, InfoRow, Divider, Empty, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
-import { Plus, Factory, Play, Pause, CheckCircle2, Ban, Undo2, Activity, AlertTriangle, PackageSearch, Timer, TrendingUp, ShieldCheck, Send, Layers, FlaskConical, ShoppingCart } from 'lucide-react'
+import TopluDuzenle from '@/components/admin/TopluDuzenle'
+import { ListChecks, Plus, Factory, Play, Pause, CheckCircle2, Ban, Undo2, Activity, AlertTriangle, PackageSearch, Timer, TrendingUp, ShieldCheck, Send, Layers, FlaskConical, ShoppingCart } from 'lucide-react'
 
 const VARDIYA = ['Gündüz', 'Akşam', 'Gece']
 const bos = () => ({ no: '', urun_id: '', siparis_id: '', recete_id: '', planlanan_miktar: '', makine_id: '', kalip_id: '', vardiya: 'Gündüz', hedef_cevrim: '', notlar: '' })
@@ -27,6 +28,7 @@ export default function UretimEmirleriPage() {
   const [mrp, setMrp] = useState(false)
   const [giris, setGiris] = useState<any>(girisBos)
   const [busy, setBusy] = useState(false)
+  const [toplu, setToplu] = useState<any[] | null>(null)
 
   const urun = useMemo(() => byId(d.products), [d.products])
   const makine = useMemo(() => byId(d.makineler), [d.makineler])
@@ -251,7 +253,7 @@ export default function UretimEmirleriPage() {
           <Tabs value={tab} onChange={setTab} tabs={[{ v: 'acik', l: 'Açık', n: cnt(acikMi) }, { v: 'planlandi', l: 'Planlı', n: cnt(e => e.durum === 'planlandi') }, { v: 'uretimde', l: 'Üretimde', n: cnt(e => e.durum === 'uretimde') }, { v: 'durduruldu', l: 'Durdurulan', n: cnt(e => e.durum === 'durduruldu') }, { v: 'geciken', l: 'Geciken', n: cnt(gec) }, { v: 'tamamlandi', l: 'Tamamlanan', n: cnt(e => e.durum === 'tamamlandi') }, { v: 'iptal', l: 'İptal', n: cnt(e => e.durum === 'iptal') }, { v: 'hepsi', l: 'Tümü', n: d.emirler.length }]} />
         </div>
 
-        <DataGrid rows={liste} cols={cols} rowKey={e => e.id} loading={loading} csvName="uretim-emirleri" storageKey="emirler" onRowClick={e => { setDetay(e); setDTab('ozet'); setGiris(girisBos) }} activeKey={detay?.id}
+        <DataGrid rows={liste} cols={cols} rowKey={e => e.id} loading={loading} csvName="uretim-emirleri" storageKey="emirler" onRowClick={e => { setDetay(e); setDTab('ozet'); setGiris(girisBos) }} activeKey={detay?.id} selectable bulkActions={(sel) => <button className="adm-btn-ghost" style={{ padding: '3px 12px', fontSize: 12 }} onClick={() => setToplu(sel)}><ListChecks size={12} />Toplu düzenle</button>}
           searchText={e => `${e.no} ${urun[e.urun_id]?.name || ''} ${makine[e.makine_id]?.ad || ''}`} searchPlaceholder="Emir no, ürün, makine..." emptyTitle="Emir bulunamadı" emptySub="Yeni Emir ile üretimi planla" />
       </Page>
 
@@ -368,6 +370,11 @@ export default function UretimEmirleriPage() {
             <tbody>{ihtiyac.map(i => <tr key={i.id}><td><b>{i.ad}</b></td><td style={{ textAlign: 'right' }}>{fmtN(i.gerekli, 1)} {i.birim}</td><td style={{ textAlign: 'right' }}>{fmtN(i.stok, 1)}</td><td style={{ textAlign: 'right' }}>{i.eksik > 0 ? <b style={{ color: 'var(--adm-red)' }}>-{fmtN(i.eksik, 1)} {i.birim}</b> : <Badge tone="green">Yeterli</Badge>}</td><td style={{ fontSize: 11, color: 'var(--adm-tx3)' }}>{i.emirler.join(', ')}</td></tr>)}</tbody></table>)}
         <p style={{ fontSize: 11.5, color: 'var(--adm-tx3)', marginTop: 12 }}>Hedef fire oranı dahildir. Sipariş, hammaddenin tedarikçisine göre gruplanır ve “beklemede” olarak açılır; Satış / Lojistik → Satınalma’dan düzenleyebilirsin.</p>
       </Modal>
+      <TopluDuzenle rows={toplu} onClose={() => setToplu(null)} onDone={() => { setToplu(null); reload() }} client={erp} table="uretim_emirleri" fields={[
+        { key: 'makine_id', label: 'Makine', type: 'select', bosYapilabilir: true, options: d.makineler.map((m: any) => ({ v: m.id, l: `${m.ad} — ${MAKINE_DURUM[m.durum]?.l || m.durum}` })) },
+        { key: 'kalip_id', label: 'Kalıp', type: 'select', bosYapilabilir: true, options: d.kaliplar.map((k: any) => ({ v: k.id, l: k.ad })) },
+        { key: 'vardiya', label: 'Vardiya', type: 'select', options: VARDIYA.map(v => ({ v, l: v })) },
+      ]} />
       {toast.node}
     </div>
   )

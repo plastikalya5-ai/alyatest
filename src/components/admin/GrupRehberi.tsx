@@ -9,6 +9,7 @@ type Bolum = { v: string; l: string; icerik: (string | { b: string; t: string[] 
 const UYARI_BOLUMU: Bolum = { v: 'kontrol', l: 'Uyarılar', icerik: [
   'Üst çubuktaki "N uyarı" düğmesi bu menü grubunun otomatik kontrolleridir. Pencere açıldığında ve her 5 dakikada bir yenilenir; sorun yoksa "Kontroller temiz" yazar.',
   { b: 'Renkler', t: ['Kırmızı HATA: veriler birbiriyle çelişiyor, hemen düzeltilmeli (ör. stok hareketle uyuşmuyor).', 'Sarı UYARI: geciken ya da eksik kalan iş (ör. teslim tarihi geçmiş sipariş).', 'Mavi BİLGİ: tamamlanırsa raporlar daha doğru olur (ör. boş depo/tedarikçi alanı).'] },
+  { b: 'Toplu düzenle', t: ['Listelerde satırların solundaki kutuları işaretleyin, üstte çıkan "Toplu düzenle" düğmesine basın.', 'Değiştirmek istediğiniz alanın kutusunu işaretleyip yeni değeri seçin (ör. tüm seçili hammaddelere aynı depo ya da tedarikçi); işaretlemediğiniz alanlar değişmez.', 'Stok miktarı, tutar, cari/kasa gibi bakiyeyi etkileyen alanlar toplu düzenlemede yoktur; onlar tek tek kayıttan değiştirilir.'] },
   'Bir uyarının kayıtlarını açıp "Aç ve düzelt" dediğinizde ilgili sayfa o kaydı doğrudan açar; düzelttiğinizde uyarı bir sonraki yenilemede kaybolur.',
 ] }
 
