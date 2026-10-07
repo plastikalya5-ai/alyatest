@@ -214,6 +214,8 @@ Kurallar:
 - ŞİRKETE AİT rakamları (satış, stok, fatura, kasa, cari, sipariş, üretim, ziyaret vb.) YALNIZCA araçlardan gelen veriden al; uydurma, tahmin etme. Uygun araç yoksa bunu söyle ve hangi ekrana bakılabileceğini belirt.
 - ARAÇ SEÇİMİ: carinin hareketleri/ekstresi → cari_ekstre; çek/senet → cek_senet_liste; maaş/avans/elden/bordro → personel_bordro; bakiye → cari_ara; kasa/banka → kasa_banka_bakiye; stok → stok_durumu; reçete/kg → recete_ara.
 - MAAŞ DÖNEMİ: Maaşlar genelde ertesi ay ödenir (Eylül maaşı Ekim'de). "Ekim'de elden/avans/banka ödendi mi" sorulursa personel_bordro'yu hem Ekim hem Eylül dönemi için çağır; ödeme tarihi Ekim olan ödemeleri 'odeme_tarihi_bu_ayda_yapilanlar' alanından söyle, "yapılmadı" deme.
+- DÜŞÜNME ALIŞKANLIKLARI: (1) Soruyu önce yorumla: kişi/firma mı, tarih mi, para birimi mi, "ödeme tarihi" mi "ait olduğu dönem" mi? Belirsizse en makul yorumla cevapla ve hangi yorumu kullandığını tek cümleyle yaz. (2) Şüpheli/boş/uç sonuçta (0, "yok", beklenmedik büyük sayı) cevap vermeden önce ikinci bir araçla çapraz kontrol et (ör. cari bakiye ↔ cari_ekstre, kasa ↔ kasa_banka_bakiye, bordro ↔ personel_bordro). (3) Gerekirse birden çok aracı ardışık kullan; bir aracın çıktısı diğerinin girdisi olabilir. (4) Kullanıcı bir kişi/firma/ürün adını yazım hatalı, kısaltma ya da Türkçe karaktersiz yazabilir; benzer adları dene (cari_ara/stok_durumu zaten Türkçe karakterden bağımsızdır), birden çok eşleşme varsa listele ve hangisini kastettiğini sor. (5) Önce doğrudan cevabı ver, sonra gerekiyorsa kısa bir not/uyarı ekle. (6) Rakamları toplarken/karşılaştırırken kendin tekrar hesapla; araç toplamıyla uyuşmuyorsa söyle.
+- ŞİRKET BİLGİSİ: Bakiye işareti: cari pozitif = cari bize borçlu, negatif = biz borçluyuz. Dövizli cari bakiyeleri (USD/EUR) ayrı alanlardadır, TL ile toplanmaz. Eski programdan gelen hareketler salt-okunur geçmiştir, güncel bakiye cari kartındaki değerdir. Maaşlar ödeme günü avans/banka/elden olarak ayrı kayıtlanır ve bir önceki ayın maaşıdır; yemek şirket tarafından karşılanır (bordroya yansımaz). Kasa/banka ödemeleri 'islemler' kayıtlarıyla bakiyeyi değiştirir. Ürün ve hammaddelerde kullanım yeri iç mekan / dış mekan / ortak diye ayrılır. Taslak faturalar henüz resmi kayıt/bakiye sayılmaz. Stok = stok hareketlerinin toplamıdır.
 - CARİ BAKİYE: Bir kişi/firmanın borcu, alacağı veya dövizli (USD/EUR) bakiyesi sorulursa önce cari_ara kullan; fatura_ara/islem_ara boş dönse bile "yok" deme, cari_ara sonucundaki TL/USD/EUR bakiyesini söyle.
 - KESİNLİK: Bir araç boş/eksik sonuç döndürürse "veri yok" deme; önce başka uygun aracı dene (cari borç/alacak için cari_ozet veya cari_ara — TL, USD ve EUR'yu ayrı ayrı bildir; stok için stok_durumu; kasa/banka için kasa_banka_bakiye; ürün reçetesi/kg için recete_ara). Para birimini her zaman belirt (₺, USD, EUR) ve farklı para birimlerini toplama. Araç sonucu 'kısaltıldı' ise bunu söyle.
 - DÖVİZ KURU: bugünün resmi USD/EUR kuru için "guncel_kur" aracını kullan (yalnızca bugünün kuru, gelecek tahmini değildir).
@@ -227,8 +229,8 @@ Kurallar:
     ...gecmis.map(m => ({ role: m.role, content: m.content }) as AiMesaj),
   ]
   const kullanilan: string[] = []
-  for (let tur = 0; tur < 6; tur++) {
-    const m = await aiCagir({ messages: msgs, tools: araclar, maxTokens: 1300 })
+  for (let tur = 0; tur < 8; tur++) {
+    const m = await aiCagir({ messages: msgs, tools: araclar, maxTokens: 1600 })
     if (m.tool_calls?.length) {
       msgs.push({ role: 'assistant', content: m.content, tool_calls: m.tool_calls })
       for (const c of m.tool_calls.slice(0, 6)) {
