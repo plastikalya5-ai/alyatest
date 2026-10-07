@@ -159,6 +159,7 @@ export default function AdminSidebar({ onClose }: { onClose?: () => void } = {})
           <button type="button" className="adm-btn-ghost" style={{ flex:1, justifyContent:'center', fontSize:11.5, padding:'6px 8px' }} onClick={() => setSifreAcik(true)}><KeyRound size={12} strokeWidth={1.8}/>Şifre değiştir</button>
           <button type="button" className="adm-btn-ghost" style={{ flex:1, justifyContent:'center', fontSize:11.5, padding:'6px 8px' }} onClick={async () => { await createClient().auth.signOut(); window.location.href = '/admin/login' }}><LogOut size={12} strokeWidth={1.8}/>Çıkış yap</button>
         </div>
+        <button type="button" className="adm-btn-ghost" style={{ width:'100%', justifyContent:'center', fontSize:11.5, padding:'6px 8px', marginTop:6 }} onClick={async () => { if (!window.confirm('Tüm cihazlardaki oturumlar kapatılacak (bu cihaz dahil). Devam edilsin mi?')) return; await createClient().auth.signOut({ scope: 'global' }).catch(() => {}); window.location.href = '/admin/login' }}><LogOut size={12} strokeWidth={1.8}/>Tüm oturumları kapat</button>
       </div>
       <SifreDegistir open={sifreAcik} onClose={() => setSifreAcik(false)} email={email} />
       <MfaAyar open={mfaAcik} onClose={() => setMfaAcik(false)} />
