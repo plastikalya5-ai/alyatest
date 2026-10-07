@@ -61,7 +61,7 @@ export const ARACLAR: AiArac[] = [
   { type: 'function', function: { name: 'yaslandirma', description: 'Alacak/borç yaşlandırma (vade gecikme aralıkları).', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
   { type: 'function', function: { name: 'ziyaret_ozet', description: 'Web sitesi ziyaret özeti (son N gün).', parameters: { type: 'object', properties: { gun: { type: 'integer', minimum: 1, maximum: 365 } }, required: ['gun'], additionalProperties: false } } },
   { type: 'function', function: { name: 'kritik_stok', description: 'Minimum seviyenin altındaki hammaddeler ve mamuller.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
-  { type: 'function', function: { name: 'cari_ozet', description: 'Cari hesap özeti (bakiyeler). En fazla 25 kayıt.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
+  { type: 'function', function: { name: 'cari_ozet', description: 'Cari hesap bakiyeleri: TL, USD ve EUR için ayrı ayrı toplam alacak/borç, borçlu cari sayısı ve en büyük borç/alacaklar (negatif = şirketin carisine borcu, pozitif = carinin şirkete borcu); ayrıca faturaya göre açık ve vadesi geçmiş toplamlar. "USD borçlarım", "EUR alacaklarım" gibi sorular için bunu kullan.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
   { type: 'function', function: { name: 'acik_siparisler', description: 'Açık satış siparişleri (beklemede/üretimde/kısmen hazır/hazır), termine göre.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
   { type: 'function', function: { name: 'uretim_durumu', description: 'Açık üretim emirleri (planlandı/üretimde/durduruldu) ve ilerleme.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
   { type: 'function', function: { name: 'guncel_kur', description: 'TCMB güncel USD/EUR döviz satış kurunu getirir (bugünün resmi kuru). Gelecekteki kur TAHMİNİ için kullanılamaz — yalnızca bugünün resmi kuru.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
@@ -88,7 +88,21 @@ export async function araciCalistir(sb: SupabaseClient, ad: string, a: Record<st
         const [h, u] = await Promise.all([sel(sb.from('v_kritik_hammaddeler').select('*').limit(25)), sel(sb.from('v_kritik_urunler').select('*').limit(25))])
         return kisalt({ hammaddeler: h, mamuller: u })
       }
-      case 'cari_ozet': return kisalt(await sel(sb.from('v_cari_ozet').select('*').limit(25)))
+      case 'cari_ozet': {
+        const [cl, fo] = await Promise.all([
+          sel(sb.from('cari_hesaplar').select('ad,kod,tip,bakiye,bakiye_usd,bakiye_eur').limit(3000)),
+          sel(sb.from('v_cari_ozet').select('acik,gecikmis').limit(5000)),
+        ])
+        const para = (alan: string) => {
+          const l = (cl as any[]).map(c => ({ ad: c.ad, kod: c.kod, tip: c.tip, tutar: +c[alan] || 0 })).filter(c => Math.abs(c.tutar) > 0.004)
+          const bor = l.filter(c => c.tutar < 0).sort((x, y) => x.tutar - y.tutar), alc = l.filter(c => c.tutar > 0).sort((x, y) => y.tutar - x.tutar)
+          const top = (a: typeof l) => a.slice(0, 10).map(c => ({ cari: c.ad, kod: c.kod, tip: c.tip, tutar: Math.round(c.tutar * 100) / 100 }))
+          const top2 = (x: number[]) => Math.round(x.reduce((t, v) => t + v, 0) * 100) / 100
+          return { sirket_borcu_toplam: -top2(bor.map(c => c.tutar)), borclu_cari_sayisi: bor.length, sirket_alacagi_toplam: top2(alc.map(c => c.tutar)), alacakli_cari_sayisi: alc.length, en_buyuk_borclar_biz_borcluyuz: top(bor), en_buyuk_alacaklar: top(alc) }
+        }
+        return kisalt({ aciklama: 'tutar negatif = şirket carisine borçlu, pozitif = cari şirkete borçlu', TL: para('bakiye'), USD: para('bakiye_usd'), EUR: para('bakiye_eur'),
+          fatura_bazli: { acik_toplam: Math.round((fo as any[]).reduce((t, r) => t + (+r.acik || 0), 0)), vadesi_gecmis_toplam: Math.round((fo as any[]).reduce((t, r) => t + (+r.gecikmis || 0), 0)) } }, 9000)
+      }
       case 'acik_siparisler': return kisalt(await sel(sb.from('satis_siparisleri').select('no,durum,tarih,teslim_tarihi,cari_id').in('durum', ['beklemede', 'uretimde', 'kismen_hazir', 'hazir']).order('teslim_tarihi', { ascending: true }).limit(30)))
       case 'uretim_durumu': return kisalt(await sel(sb.from('uretim_emirleri').select('no,durum,planlanan_miktar,uretilen_miktar,fire_miktar,baslangic,bitis').in('durum', ['planlandi', 'uretimde', 'durduruldu']).order('created_at', { ascending: false }).limit(30)))
       case 'guncel_kur': {
