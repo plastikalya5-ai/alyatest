@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
 import { muh } from '@/lib/muhasebe-client'
+import { useAcParam } from '@/lib/ac-param'
 import { erp } from '@/lib/erp-client'
 import { kasaPb, trKasa, islemAlan, paraGoster } from '@/lib/doviz'
 import { fmt, fmtK, fmtDate, todayISO, daysBetween } from '@/lib/fmt'
@@ -30,6 +31,7 @@ export default function FaturalarPage() {
   const [tipF, setTipF] = useState('')
   const [donem, setDonem] = useState<Donem>('tumu')
   const [detay, setDetay] = useState<any>(null)
+  const [kalemYuk, setKalemYuk] = useState(false)
   const [dKalem, setDKalem] = useState<any[]>([])
   const [modal, setModal] = useState(false)
   const [odeme, setOdeme] = useState<any>(null)
@@ -216,10 +218,12 @@ export default function FaturalarPage() {
     const w = window.open('', '_blank'); if (w) { w.document.write(html); w.document.close(); w.focus(); setTimeout(() => w.print(), 300) }
   }
 
+  useAcParam(true, async id => { const r: any = await muh.from('v_faturalar_liste').select('*').eq('id', id); if (r.data?.[0]) openDetay(r.data[0]) })
+
   async function openDetay(f: any) {
-    setDetay(f); setDKalem([]); setOdemeler([])
+    setDetay(f); setDKalem([]); setOdemeler([]); setKalemYuk(true)
     const [k, o] = await Promise.all([muh.from('fatura_kalemleri').select('*').eq('fatura_id', f.id), muh.from('islemler').select('id,fatura_id,tutar,tip,tarih,kategori,kasa_hesap_id,odeme_yontemi').eq('fatura_id', f.id)])
-    setDKalem(k.data || []); setOdemeler(o.data || [])
+    setDKalem(k.data || []); setOdemeler(o.data || []); setKalemYuk(false)
   }
 
   const cols: Col<any>[] = [
@@ -317,7 +321,7 @@ export default function FaturalarPage() {
             <InfoRow k="Vade" v={detay.vade ? `${fmtDate(detay.vade)}${gecikmis(detay) ? ` (${daysBetween(detay.vade)} gün gecikti)` : ''}` : '—'} />
             {detay.para_birimi !== 'TRY' && <InfoRow k="Döviz" v={`${(+detay.doviz_tutari || 0).toFixed(2)} ${detay.para_birimi} × ${detay.kur}`} />}
             <Divider label="Kalemler" />
-            {dKalem.length === 0 ? <p style={{ fontSize: 12.5, color: 'var(--adm-tx3)' }}>Yükleniyor...</p> : (
+            {dKalem.length === 0 ? <p style={{ fontSize: 12.5, color: 'var(--adm-tx3)' }}>{kalemYuk ? 'Yükleniyor...' : 'Bu faturada kalem satırı kaydedilmemiş (sadece fatura toplamı var).'}</p> : (
               <table className="adm-tbl compact"><thead><tr><th>Ürün</th><th style={{ textAlign: 'right' }}>Miktar</th><th style={{ textAlign: 'right' }}>B.Fiyat</th><th style={{ textAlign: 'right' }}>KDV</th><th style={{ textAlign: 'right' }}>Toplam</th></tr></thead>
                 <tbody>{dKalem.map(k => <tr key={k.id}><td>{k.urun_adi}{k.variant_id && <Badge tone="blue" style={{ marginLeft: 6, fontSize: 9.5 }}>stok</Badge>}</td><td style={{ textAlign: 'right' }}>{k.miktar} {k.birim}</td><td style={{ textAlign: 'right' }}>{fmt(k.birim_fiyat)}</td><td style={{ textAlign: 'right' }}>%{k.kdv_orani}</td><td style={{ textAlign: 'right' }}><b>{fmt(k.toplam)}</b></td></tr>)}</tbody></table>
             )}

@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
 import { muh } from '@/lib/muhasebe-client'
+import { useAcParam } from '@/lib/ac-param'
 import { fmt, fmtK, fmtDate, todayISO } from '@/lib/fmt'
 import { sum, iso as _iso } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Money, Modal, Field, FormGrid, Card, Empty, useToast } from '@/components/admin/erp/ui'
@@ -102,6 +103,7 @@ export default function KasaBankaPage() {
 
   /* CRUD */
   const openNew = () => { setEditing(null); setForm(bosForm); setModal(true) }
+  useAcParam(!loading, id => { const h = hesaplar.find((x: any) => x.id === id); if (h) openEdit(h) })
   const openEdit = (h: any) => { setEditing(h); setForm({ tip: h.tip, ad: h.ad, para_birimi: kasaPb(h), banka_adi: h.banka_adi || '', iban: h.iban || '', acilis: '', notlar: h.notlar || '' }); setModal(true) }
 
   async function save(e: React.FormEvent) {

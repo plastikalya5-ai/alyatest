@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
 import { muh } from '@/lib/muhasebe-client'
+import { useAcParam } from '@/lib/ac-param'
 import { fmt, fmtK, fmtDate, todayISO, daysBetween } from '@/lib/fmt'
 import { sum } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Modal, Field, FormGrid, Card, useToast } from '@/components/admin/erp/ui'
@@ -68,6 +69,7 @@ export default function CekSenetPage() {
   })
 
   /* CRUD */
+  useAcParam(!loading, id => { const c = list.find((x: any) => x.id === id); if (c) openEdit(c) })
   const openNew = () => { setEditing(null); setForm(bos()); setModal(true) }
   const openEdit = (c: any) => { setEditing(c); setForm({ tip: c.tip, yon: c.yon, cari_id: c.cari_id || '', no: c.no || '', banka: c.banka || '', tutar: String(c.tutar), vade_tarihi: c.vade_tarihi, aciklama: c.aciklama || '' }); setModal(true) }
 

@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
 import { muh } from '@/lib/muhasebe-client'
+import { useAcParam } from '@/lib/ac-param'
 import { kasaPb, kurlariYukle, islemAlan, paraGoster, PB_SIM } from '@/lib/doviz'
 import { fmt, fmtDate, fmtK, fmtInt, todayISO } from '@/lib/fmt'
 import { DONEMLER, donemAralik, NON_PNL, type Donem } from '@/lib/muh-utils'
@@ -67,6 +68,8 @@ export default function IslemlerPage() {
     deps: [tip, donem, kat, hesap, yontem, cariF, gizleOzel, surum],
     fetch: ({ page, size, q, sort }) => muh.page('v_islemler_liste', '*', { build: filtre, search: q, searchIn: ['aciklama', 'kategori', 'cari_ad', 'kasa_ad'], sort: sort || { key: 'tarih', dir: 'desc' }, tieBreak: 'created_at', page, size }),
   }
+
+  useAcParam(true, async id => { const r: any = await muh.from('v_islemler_liste').select('*').eq('id', id); if (r.data?.[0]) setDetay(r.data[0]) })
 
   function openNew(t: 'gelir' | 'gider' = 'gelir', prefill?: any) { setEditing(null); setForm({ ...bosForm(), tip: t, ...prefill }); setModal(true) }
   function openEdit(r: any) {

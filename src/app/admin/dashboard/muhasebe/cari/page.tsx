@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
 import { muh } from '@/lib/muhasebe-client'
+import { useAcParam } from '@/lib/ac-param'
 import { erp } from '@/lib/erp-client'
 import { kurlariYukle } from '@/lib/doviz'
 import { fmt, fmtK, fmtDate, todayISO, daysBetween, csvDownload } from '@/lib/fmt'
@@ -58,6 +59,8 @@ export default function CariPage() {
     setDetay((d: any) => (d ? c.find((x: any) => x.id === d.id) || null : null))
   }, [])
   useEffect(() => { load() }, [load])
+
+  useAcParam(!loading, id => { const c = list.find((x: any) => x.id === id); if (c) { setDetay(c); setDTab('ozet') } })
 
   const bugun = todayISO()
   // Cari başına özet metrikler
