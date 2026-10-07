@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
 import { muh } from '@/lib/muhasebe-client'
 import { erp } from '@/lib/erp-client'
+import { kurlariYukle } from '@/lib/doviz'
 import { fmt, fmtK, fmtDate, todayISO, daysBetween, csvDownload } from '@/lib/fmt'
 import { sum, kalanTutar, acikFatura } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, InfoRow, Divider, Empty, useToast } from '@/components/admin/erp/ui'
@@ -24,6 +25,9 @@ const waNumara = (t: string) => { const d = (t || '').replace(/\D/g, ''); return
 export default function CariPage() {
   const toast = useToast()
   const [list, setList] = useState<any[]>([])
+  const [kurlar, setKurlar] = useState<Record<string, number>>({ TRY: 1 })
+  useEffect(() => { kurlariYukle().then(setKurlar).catch(() => {}) }, [])
+  const dvz = (v: any, pb: 'USD' | 'EUR') => { const n = +v || 0; const tl = n * (kurlar[pb] || 0); return { n, txt: Math.abs(n).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + (pb === 'USD' ? ' $' : ' €'), tip: kurlar[pb] ? `≈ ${Math.abs(tl).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺ (güncel kur: ${kurlar[pb].toLocaleString('tr-TR', { maximumFractionDigits: 4 })})` : '' } }
   const [ozetRows, setOzetRows] = useState<any[]>([])
   const [dData, setDData] = useState<{ faturalar: any[]; islemler: any[]; cekler: any[] }>({ faturalar: [], islemler: [], cekler: [] })
   const islemler = dData.islemler, faturalar = dData.faturalar, cekler = dData.cekler
@@ -195,10 +199,10 @@ export default function CariPage() {
     { key: 'tip', label: 'Tür', width: 96, sort: c => c.tip, render: c => <Badge tone={(TIP[c.tip] || TIP.diger).tone}>{(TIP[c.tip] || TIP.diger).l}</Badge> },
     {
       key: 'bakiye', label: 'Bakiye', align: 'right', sort: c => +c.bakiye,
-      render: c => Math.abs(+c.bakiye) < 0.005 && Math.abs(+c.bakiye_usd || 0) < 0.005 ? <span style={{ color: 'var(--adm-tx3)' }}>Kapalı</span> : (
+      render: c => Math.abs(+c.bakiye) < 0.005 && Math.abs(+c.bakiye_usd || 0) < 0.005 && Math.abs(+c.bakiye_eur || 0) < 0.005 ? <span style={{ color: 'var(--adm-tx3)' }}>Kapalı</span> : (
         <div>
           {Math.abs(+c.bakiye) >= 0.005 && <><Money v={Math.abs(+c.bakiye)} tone={+c.bakiye > 0 ? 'green' : 'red'} /><div style={{ fontSize: 10.5, color: 'var(--adm-tx3)' }}>{+c.bakiye > 0 ? 'bize borçlu' : 'biz borçluyuz'}</div></>}
-          {Math.abs(+c.bakiye_usd || 0) >= 0.005 && <div style={{ fontSize: 12, fontWeight: 600, marginTop: Math.abs(+c.bakiye) >= 0.005 ? 3 : 0, color: +c.bakiye_usd > 0 ? 'var(--adm-green)' : 'var(--adm-red)' }}>{Math.abs(+c.bakiye_usd).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $ <span style={{ fontWeight: 400, fontSize: 10.5, color: 'var(--adm-tx3)' }}>{+c.bakiye_usd > 0 ? 'bize borçlu' : 'biz borçluyuz'}</span></div>}
+          {(['USD', 'EUR'] as const).map(pb => { const d = dvz(c[pb === 'USD' ? 'bakiye_usd' : 'bakiye_eur'], pb); return Math.abs(d.n) >= 0.005 && <div key={pb} title={d.tip} style={{ fontSize: 12, fontWeight: 600, marginTop: 3, cursor: 'help', color: d.n > 0 ? 'var(--adm-green)' : 'var(--adm-red)' }}>{d.txt} <span style={{ fontWeight: 400, fontSize: 10.5, color: 'var(--adm-tx3)' }}>{d.n > 0 ? 'bize borçlu' : 'biz borçluyuz'}</span></div> })}
         </div>),
       total: rs => <div><Money v={sum(rs, c => c.bakiye)} tone="auto" /><div style={{ fontSize: 11 }}>{sum(rs, c => c.bakiye_usd || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $</div></div>, csv: c => +c.bakiye,
     },
@@ -273,11 +277,11 @@ export default function CariPage() {
                   <Money v={Math.abs(+detay.bakiye)} tone={Math.abs(+detay.bakiye) < 0.005 ? undefined : +detay.bakiye > 0 ? 'green' : 'red'} size={17} />
                   <div style={{ fontSize: 10.5, color: 'var(--adm-tx3)' }}>{Math.abs(+detay.bakiye) < 0.005 ? 'hesap kapalı' : +detay.bakiye > 0 ? 'bize borçlu' : 'biz borçluyuz'}</div>
                 </div>
-                {Math.abs(+detay.bakiye_usd || 0) >= 0.005 && <div style={{ padding: 12, borderRadius: 10, background: 'var(--adm-s2)' }}>
-                  <div className="adm-kpi-label" style={{ marginBottom: 4 }}>Bakiye (USD)</div>
-                  <div style={{ fontSize: 17, fontWeight: 700, color: +detay.bakiye_usd > 0 ? 'var(--adm-green)' : 'var(--adm-red)' }}>{Math.abs(+detay.bakiye_usd).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $</div>
-                  <div style={{ fontSize: 10.5, color: 'var(--adm-tx3)' }}>{+detay.bakiye_usd > 0 ? 'bize borçlu' : 'biz borçluyuz'}</div>
-                </div>}
+                {(['USD', 'EUR'] as const).map(pb => { const d = dvz(detay[pb === 'USD' ? 'bakiye_usd' : 'bakiye_eur'], pb); return Math.abs(d.n) >= 0.005 && <div key={pb} title={d.tip} style={{ padding: 12, borderRadius: 10, background: 'var(--adm-s2)', cursor: 'help' }}>
+                  <div className="adm-kpi-label" style={{ marginBottom: 4 }}>Bakiye ({pb})</div>
+                  <div style={{ fontSize: 17, fontWeight: 700, color: d.n > 0 ? 'var(--adm-green)' : 'var(--adm-red)' }}>{d.txt}</div>
+                  <div style={{ fontSize: 10.5, color: 'var(--adm-tx3)' }}>{d.tip || (d.n > 0 ? 'bize borçlu' : 'biz borçluyuz')}</div>
+                </div> })}
                 <div style={{ padding: 12, borderRadius: 10, background: 'var(--adm-s2)' }}><div className="adm-kpi-label" style={{ marginBottom: 4 }}>Açık Fatura</div><Money v={dm?.acik || 0} size={17} /></div>
                 <div style={{ padding: 12, borderRadius: 10, background: dm?.gecikmis ? 'var(--adm-red2)' : 'var(--adm-s2)' }}><div className="adm-kpi-label" style={{ marginBottom: 4 }}>Vadesi Geçen</div><Money v={dm?.gecikmis || 0} tone={dm?.gecikmis ? 'red' : undefined} size={17} /></div>
                 <div style={{ padding: 12, borderRadius: 10, background: 'var(--adm-s2)' }}><div className="adm-kpi-label" style={{ marginBottom: 4 }}>Toplam Ciro</div><Money v={dm?.ciro || 0} size={17} /></div>
