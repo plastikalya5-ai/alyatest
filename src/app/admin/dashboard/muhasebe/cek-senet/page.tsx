@@ -46,6 +46,7 @@ export default function CekSenetPage() {
 
   const portfoy = list.filter(c => c.durum === 'portfoyde')
   const alinan = portfoy.filter(c => c.yon === 'alinan'), verilen = portfoy.filter(c => c.yon === 'verilen')
+  const resmiA = alinan.filter(c => c.resmiyet === 'resmi'), gayriA = alinan.filter(c => c.resmiyet === 'gayri_resmi'), belirsizA = alinan.filter(c => !c.resmiyet)
   const yaklasan = portfoy.filter(c => gun(c) >= 0 && gun(c) <= 7)
   const gecmis = portfoy.filter(c => gun(c) < 0)
   const karsiliksiz = list.filter(c => c.durum === 'karsiliksiz')
@@ -160,6 +161,8 @@ export default function CekSenetPage() {
 
         <KpiGrid min={190}>
           <Kpi label="Tahsil Edilecek" value={fmtK(sum(alinan, c => c.tutar))} Icon={Wallet} color="var(--adm-green)" sub={`${alinan.length} alınan çek/senet`} />
+          <Kpi label="101 Resmi (portföy)" value={fmtK(sum(resmiA, c => c.tutar))} Icon={Wallet} color="var(--adm-green)" sub={`${resmiA.length} alınan çek/senet`} />
+          <Kpi label="101 Gayrı Resmi (portföy)" value={fmtK(sum(gayriA, c => c.tutar))} Icon={Wallet} color="var(--adm-amber)" sub={`${gayriA.length} alınan${belirsizA.length ? ` · ${belirsizA.length} adet R/G seçilmemiş (${fmtK(sum(belirsizA, c => c.tutar))})` : ''}`} />
           <Kpi label="Ödenecek" value={fmtK(sum(verilen, c => c.tutar))} Icon={Wallet} color="var(--adm-red)" sub={`${verilen.length} verilen çek/senet`} />
           <Kpi label="7 Gün İçinde" value={yaklasan.length} Icon={CalendarClock} color="var(--adm-amber)" sub={fmtK(sum(yaklasan, c => (c.yon === 'alinan' ? 1 : -1) * c.tutar)) + ' net'} onClick={() => setTab('yaklasan')} />
           <Kpi label="Vadesi Geçmiş" value={gecmis.length} Icon={AlertTriangle} color={gecmis.length ? 'var(--adm-red)' : 'var(--adm-green)'} sub={gecmis.length ? fmtK(sum(gecmis, c => c.tutar)) : 'Gecikme yok'} onClick={() => setTab('gecmis')} />

@@ -162,7 +162,8 @@ export async function araciCalistir(sb: SupabaseClient, ad: string, a: Record<st
         if (a.sadece_vadesi_gecmis) l = l.filter(x => x.vade_tarihi < bg && !['odendi', 'tahsil', 'tahsil_edildi', 'iptal'].includes(x.durum))
         const tp: Record<string, number> = {}; l.forEach(x => { const k = x.durum + '/' + x.yon; tp[k] = Math.round(((tp[k] || 0) + (+x.tutar || 0)) * 100) / 100 })
         const genel = Math.round(l.reduce((t, x) => t + (+x.tutar || 0), 0) * 100) / 100
-        return kisalt({ adet: l.length, GENEL_TOPLAM_TL: genel, toplam_durum_yon: tp, not: 'Toplamı satırlardan kendin toplama; GENEL_TOPLAM_TL ve toplam_durum_yon kullan. Liste en fazla 40 satır gösterir.', liste: l.slice(0, 40) }, 8000)
+        const rs: Record<string, { adet: number; toplam: number }> = {}; l.filter(x => x.yon === 'alinan' && x.durum === 'portfoyde').forEach(x => { const k = x.resmiyet === 'resmi' ? '101_resmi' : x.resmiyet === 'gayri_resmi' ? '101_gayri_resmi' : 'belirtilmemis'; rs[k] = rs[k] || { adet: 0, toplam: 0 }; rs[k].adet++; rs[k].toplam = Math.round((rs[k].toplam + (+x.tutar || 0)) * 100) / 100 })
+        return kisalt({ adet: l.length, GENEL_TOPLAM_TL: genel, alinan_portfoy_resmi_gayri_resmi: rs, toplam_durum_yon: tp, not: 'Toplamı satırlardan kendin toplama; GENEL_TOPLAM_TL ve toplam_durum_yon kullan. Liste en fazla 40 satır gösterir.', liste: l.slice(0, 40) }, 8000)
       }
       case 'personel_bordro': {
         const d = String(a.donem || ''); if (!/^\d{4}-\d{2}$/.test(d)) throw new Error('donem YYYY-MM olmalı')
