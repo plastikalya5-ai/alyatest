@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Modal, Field } from '@/components/admin/erp/ui'
 
-export const MIN_SIFRE = 8
+import { MIN_SIFRE, sifreKontrol } from '@/lib/sifre-kurali'
 
 // Oturumdaki kullanıcının kendi şifresini değiştirmesi. Güvenlik için mevcut şifre yeniden doğrulanır;
 // değişiklikten sonra diğer cihazlardaki oturumlar kapatılır.
@@ -20,7 +20,7 @@ export default function SifreDegistir({ open, onClose, email }: { open: boolean;
   async function kaydet(e: React.FormEvent) {
     e.preventDefault(); if (busy) return
     setHata('')
-    if (yeni.length < MIN_SIFRE) return setHata(`Yeni şifre en az ${MIN_SIFRE} karakter olmalı.`)
+    const kural = sifreKontrol(yeni); if (kural) return setHata(kural)
     if (yeni !== yeni2) return setHata('Yeni şifreler eşleşmiyor.')
     if (yeni === mevcut) return setHata('Yeni şifre mevcut şifreyle aynı olamaz.')
     setBusy(true)
@@ -44,7 +44,7 @@ export default function SifreDegistir({ open, onClose, email }: { open: boolean;
       ) : (
         <div style={{ display: 'grid', gap: 12 }}>
           <Field label="Mevcut şifre"><input type="password" className="adm-inp" autoFocus required autoComplete="current-password" value={mevcut} onChange={e => setMevcut(e.target.value)} /></Field>
-          <Field label="Yeni şifre" hint={`En az ${MIN_SIFRE} karakter`}><input type="password" className="adm-inp" required autoComplete="new-password" value={yeni} onChange={e => setYeni(e.target.value)} /></Field>
+          <Field label="Yeni şifre" hint={`En az ${MIN_SIFRE} karakter, harf ve rakam; 123456 gibi kolay şifreler kabul edilmez`}><input type="password" className="adm-inp" required autoComplete="new-password" value={yeni} onChange={e => setYeni(e.target.value)} /></Field>
           <Field label="Yeni şifre (tekrar)"><input type="password" className="adm-inp" required autoComplete="new-password" value={yeni2} onChange={e => setYeni2(e.target.value)} /></Field>
           {hata && <p style={{ color: 'var(--adm-red)', fontSize: 12.5, margin: 0 }}>⚠ {hata}</p>}
         </div>

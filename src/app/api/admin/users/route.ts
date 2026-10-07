@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { sifreKontrol } from '@/lib/sifre-kurali'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { istemciIp } from '@/lib/rate-limit'
@@ -78,7 +79,7 @@ export async function POST(req: NextRequest) {
       // admin şifreyi kendisi belirler (veya rastgele üretilenini kopyalayıp personele iletir).
       const { email, full_name, role_id, password } = body
       if (!email) return NextResponse.json({ error: 'E-posta gerekli' }, { status: 400 })
-      if (!password || password.length < 8) return NextResponse.json({ error: 'Şifre en az 8 karakter olmalı' }, { status: 400 })
+      { const k = sifreKontrol(password || ''); if (k) return NextResponse.json({ error: k }, { status: 400 }) }
       if (!tam && await rolTamMi(admin, role_id)) return TAM_YETKI_HATA()
       const { data, error } = await admin.auth.admin.createUser({
         email, password, email_confirm: true,
@@ -93,7 +94,7 @@ export async function POST(req: NextRequest) {
       // Personelin şifresini unutması/kaybetmesi durumunda admin buradan anında yeni bir şifre belirleyip iletebilir.
       const { id, password } = body
       if (!tam && await hedefTamMi(admin, id)) return TAM_YETKI_HATA()
-      if (!password || password.length < 8) return NextResponse.json({ error: 'Şifre en az 8 karakter olmalı' }, { status: 400 })
+      { const k = sifreKontrol(password || ''); if (k) return NextResponse.json({ error: k }, { status: 400 }) }
       const { error } = await admin.auth.admin.updateUserById(id, { password, email_confirm: true })
       if (error) throw new Error(error.message)
       await yoneticiOlayi(kim, 'sifre_sifirlandi', await hedef(id), ip)

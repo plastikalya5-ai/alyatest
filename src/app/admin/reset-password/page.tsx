@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { sifreKontrol } from '@/lib/sifre-kurali'
 
 export default function ResetPasswordPage() {
   const [pass, setPass] = useState('')
@@ -21,7 +22,7 @@ export default function ResetPasswordPage() {
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setErr('')
-    if (pass.length < 8) { setErr('Şifre en az 8 karakter olmalı.'); return }
+    const kural = sifreKontrol(pass); if (kural) { setErr(kural); return }
     if (pass !== pass2) { setErr('Şifreler eşleşmiyor.'); return }
     setLoading(true)
     const { error } = await createClient().auth.updateUser({ password: pass })
@@ -53,7 +54,7 @@ export default function ResetPasswordPage() {
           <form onSubmit={submit} className="adm-card" style={{ padding:28 }}>
             <div style={{ marginBottom:16 }}>
               <label className="adm-label">Yeni Şifre</label>
-              <input type="password" className="adm-inp" value={pass} onChange={e=>setPass(e.target.value)} placeholder="En az 8 karakter" required />
+              <input type="password" className="adm-inp" value={pass} onChange={e=>setPass(e.target.value)} placeholder="En az 12 karakter, harf ve rakam" required />
             </div>
             <div style={{ marginBottom:20 }}>
               <label className="adm-label">Yeni Şifre (Tekrar)</label>

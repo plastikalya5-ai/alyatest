@@ -5,14 +5,21 @@ import { erp } from '@/lib/erp-client'
 import { fmtDate, fmtDateTime } from '@/lib/fmt'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Drawer, Modal, Field, FormGrid, InfoRow, Divider, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
+import { sifreKontrol } from '@/lib/sifre-kurali'
 import { ShieldCheck, UserPlus, Pencil, Trash2, Power, Mail, Users2, Check, ShieldAlert, Copy, ShieldOff, KeyRound, RefreshCw } from 'lucide-react'
 
 // Kolay okunur, tahmin edilmesi zor rastgele şifre — admin isterse kendi şifresini de yazabilir.
 function rastgeleSifre() {
-  const harfler = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
-  let s = ''
-  for (let i = 0; i < 10; i++) s += harfler[Math.floor(Math.random() * harfler.length)]
-  return s
+  const harfler = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz'
+  const rakamlar = '23456789'
+  const al = (k: string) => k[Math.floor(Math.random() * k.length)]
+  for (;;) {
+    let s = ''
+    for (let i = 0; i < 12; i++) s += al(harfler)
+    s += al(rakamlar) + al(rakamlar)
+    s = s.split('').sort(() => Math.random() - 0.5).join('')
+    if (!sifreKontrol(s)) return s // şifre kuralına uymayan (ör. kolay kelime içeren) üretimler atılır
+  }
 }
 
 const MODULLER: { k: string; l: string; grup: string }[] = [
@@ -212,7 +219,7 @@ export default function KullanicilarPage() {
           <Field label="Rol" hint="Boş bırakırsan sonra atarsın; rolsüz kullanıcı hiçbir modülü göremez"><select className="adm-inp" value={yeni.role_id} onChange={e => setYeni(d => ({ ...d, role_id: e.target.value }))}><option value="">Sonra ata</option>{roller.map(r => <option key={r.id} value={r.id}>{r.ad}</option>)}</select></Field>
           <Field label="Şifre *" hint="İstersen değiştir, ya da hazır üretilen şifreyi kullan">
             <div style={{ display: 'flex', gap: 6 }}>
-              <input className="adm-inp" required minLength={8} style={{ fontFamily: 'JetBrains Mono,monospace' }} value={yeni.password} onChange={e => setYeni(d => ({ ...d, password: e.target.value }))} />
+              <input className="adm-inp" required minLength={12} style={{ fontFamily: 'JetBrains Mono,monospace' }} value={yeni.password} onChange={e => setYeni(d => ({ ...d, password: e.target.value }))} />
               <button type="button" className="adm-btn-ghost" style={{ padding: '0 10px' }} title="Rastgele üret" onClick={() => setYeni(d => ({ ...d, password: rastgeleSifre() }))}><RefreshCw size={13} /></button>
             </div>
           </Field>
