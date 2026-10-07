@@ -86,7 +86,11 @@ export async function araciCalistir(sb: SupabaseClient, ad: string, a: Record<st
     const rpc = async (fn: string, args: Record<string, unknown> = {}) => { const r = await sb.rpc(fn, args); if (r.error) throw new Error(r.error.message); return r.data }
     const sel = async (q: PromiseLike<{ data: any; error: any }>) => { const r = await q; if (r.error) throw new Error(r.error.message); return r.data }
     switch (ad) {
-      case 'finans_ozet': return kisalt(await rpc('rpc_finans_ozet', { p_from: tarih(a.bas), p_to: tarih(a.bit), p_pfrom: tarih(a.onceki_bas), p_pto: tarih(a.onceki_bit) }))
+      case 'finans_ozet': {
+        const r: any = await rpc('rpc_finans_ozet', { p_from: tarih(a.bas), p_to: tarih(a.bit), p_pfrom: tarih(a.onceki_bas), p_pto: tarih(a.onceki_bit) })
+        const kg = (r?.kat_gelir || []) as { k: string; c: number; p: number }[], urun = kg.find(x => x.k === 'Ürün Satışı'), diger = kg.filter(x => x.k !== 'Ürün Satışı').reduce((t, x) => t + (+x.c || 0), 0)
+        return kisalt({ CIRO_urun_satisi: +(urun?.c || 0), CIRO_onceki_donem: +(urun?.p || 0), ciro_disi_diger_gelirler: Math.round(diger * 100) / 100, TOPLAM_GELIR_ciro_dahil: +(r?.donem?.gelir || 0), CIRO_NOTU: 'Ciro = yalnızca Ürün Satışı. Diğer gelirler (KDV iadesi, destek primi vb.) ciro değildir; toplam geliri ciro diye sunma.', ...r }, 9000)
+      }
       case 'satis_analiz': return kisalt(await rpc('rpc_satis_analiz', { p_from: tarih(a.bas), p_to: tarih(a.bit) }))
       case 'fatura_ozet': return kisalt(await rpc('rpc_fatura_ozet', { p_from: tarih(a.bas), p_to: tarih(a.bit) }))
       case 'kdv_ozet': return kisalt(await rpc('rpc_kdv_ozet', { p_from: tarih(a.bas), p_to: tarih(a.bit) }))
