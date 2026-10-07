@@ -257,7 +257,7 @@ export default function CariPage() {
         </div>
 
         <DataGrid rows={filtered} cols={cols} rowKey={c => c.id} loading={loading} csvName="cari-hesaplar" storageKey="cari"
-          searchText={c => `${c.kod || ''} ${c.ad} ${c.email || ''} ${c.telefon || ''} ${c.vergi_no || ''}`} searchPlaceholder="Kod, ad, telefon, e-posta, vergi no..."
+          searchText={c => `${c.kod || ''} ${c.muhasebe_kodu || ''} ${c.ad} ${c.email || ''} ${c.telefon || ''} ${c.vergi_no || ''}`} searchPlaceholder="Kod, muhasebe kodu (120.03.139), ad, telefon, vergi no..."
           onRowClick={c => { setDetay(c); setDTab('ozet') }} activeKey={detay?.id}
           emptyTitle="Cari bulunamadı" emptySub="Yeni Cari butonuyla ilk hesabı ekle" />
       </Page>
@@ -299,7 +299,7 @@ export default function CariPage() {
 
             {dTab === 'ozet' && (
               <div style={{ padding: 20 }}>
-                <InfoRow k="Cari kodu" v={detay.kod || '—'} /><InfoRow k="Vergi No / TC" v={detay.vergi_no || '—'} />
+                <InfoRow k="Cari kodu" v={detay.kod || '—'} /><InfoRow k="Muhasebe kodu" v={detay.muhasebe_kodu || '—'} /><InfoRow k="Vergi No / TC" v={detay.vergi_no || '—'} />
                 <InfoRow k="Telefon" v={detay.telefon || '—'} />
                 <InfoRow k="E-posta" v={detay.email || '—'} />
                 <InfoRow k="Adres" v={detay.adres || '—'} />
