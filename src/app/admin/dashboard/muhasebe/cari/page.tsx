@@ -30,6 +30,7 @@ export default function CariPage() {
   const dvz = (v: any, pb: 'USD' | 'EUR') => { const n = +v || 0; const tl = n * (kurlar[pb] || 0); return { n, txt: Math.abs(n).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + (pb === 'USD' ? ' $' : ' €'), tip: kurlar[pb] ? `≈ ${Math.abs(tl).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺ (güncel kur: ${kurlar[pb].toLocaleString('tr-TR', { maximumFractionDigits: 4 })})` : '' } }
   const [ozetRows, setOzetRows] = useState<any[]>([])
   const [dData, setDData] = useState<{ faturalar: any[]; islemler: any[]; cekler: any[] }>({ faturalar: [], islemler: [], cekler: [] })
+  const [eski, setEski] = useState<any[]>([])
   const islemler = dData.islemler, faturalar = dData.faturalar, cekler = dData.cekler
   const [kasalar, setKasalar] = useState<any[]>([])
   const [fiyatListeleri, setFiyatListeleri] = useState<any[]>([])
@@ -69,7 +70,8 @@ export default function CariPage() {
   // Seçili carinin hareketleri (yalnızca o cari için sorgulanır)
   const detayId = detay?.id
   useEffect(() => {
-    if (!detayId) { setDData({ faturalar: [], islemler: [], cekler: [] }); return }
+    if (!detayId) { setDData({ faturalar: [], islemler: [], cekler: [] }); setEski([]); return }
+    muh.all('cari_eski_hareketler', '*', q => q.eq('cari_id', detayId).order('grup', { ascending: true }).order('sira', { ascending: true })).then(setEski).catch(() => setEski([]))
     Promise.all([muh.all('faturalar', '*', q => q.eq('cari_id', detayId)), muh.all('islemler', '*', q => q.eq('cari_id', detayId)), muh.all('cek_senet', '*', q => q.eq('cari_id', detayId))])
       .then(([faturalar, islemler, cekler]) => setDData({ faturalar, islemler, cekler }))
   }, [detayId, ozetRows])
@@ -328,6 +330,34 @@ export default function CariPage() {
                           <td style={{ textAlign: 'right' }}><Money v={h.bakiye} tone="auto" /></td>
                         </tr>))}</tbody>
                     </table>
+                  </div>
+                )}
+                {eski.length > 0 && (
+                  <div style={{ padding: '14px 0 8px' }}>
+                    <div style={{ padding: '0 20px 8px' }}>
+                      <div style={{ fontSize: 13, fontWeight: 700 }}>Eski program geçmişi</div>
+                      <div style={{ fontSize: 11.5, color: 'var(--adm-tx3)' }}>Sadece bilgi amaçlıdır; yukarıdaki bakiyeye ve ekstreye dahil değildir. Tutarlar eski programdaki gibi grup (TL/USD/EUR) bazındadır; USD sütunları eski programın dolar karşılığıdır.</div>
+                    </div>
+                    {(['TL', 'USD', 'EUR'] as const).map(g => { const rows = eski.filter(r => r.grup === g); if (!rows.length) return null; return (
+                      <div key={g} style={{ marginBottom: 12 }}>
+                        <div style={{ padding: '4px 20px', fontSize: 12, fontWeight: 600, color: 'var(--adm-tx2)' }}>{g} grubu · {rows.length} satır</div>
+                        <div style={{ overflow: 'auto' }}>
+                          <table className="adm-tbl">
+                            <thead><tr><th>Tarih</th><th>Evrak</th><th style={{ textAlign: 'right' }}>Borç ₺</th><th style={{ textAlign: 'right' }}>Alacak ₺</th><th style={{ textAlign: 'right' }}>Borç $</th><th style={{ textAlign: 'right' }}>Alacak $</th><th style={{ textAlign: 'right' }}>Kur</th></tr></thead>
+                            <tbody>{rows.map(r => (
+                              <tr key={r.id}>
+                                <td style={{ whiteSpace: 'nowrap' }}>{r.nakil ? 'Devir' : fmtDate(r.tarih)}</td>
+                                <td><div style={{ fontWeight: 500 }}>{r.nakil ? 'Önceki dönemden devir' : [r.evrak_cinsi, r.evrak_no].filter(Boolean).join(' · ')}</div>
+                                  {(r.aciklama || r.gib_fatura_no || r.vade) && <div style={{ fontSize: 11, color: 'var(--adm-tx3)' }}>{[r.aciklama, r.gib_fatura_no, r.vade && `vade ${r.vade}`].filter(Boolean).join(' · ')}</div>}</td>
+                                <td style={{ textAlign: 'right' }}>{+r.tl_borc ? <Money v={+r.tl_borc} bold={false} /> : ''}</td>
+                                <td style={{ textAlign: 'right' }}>{+r.tl_alacak ? <Money v={+r.tl_alacak} bold={false} /> : ''}</td>
+                                <td style={{ textAlign: 'right' }}>{+r.usd_borc ? fmt(+r.usd_borc) : ''}</td>
+                                <td style={{ textAlign: 'right' }}>{+r.usd_alacak ? fmt(+r.usd_alacak) : ''}</td>
+                                <td style={{ textAlign: 'right' }}>{r.kur ? (+r.kur).toLocaleString('tr-TR', { maximumFractionDigits: 4 }) : ''}</td>
+                              </tr>))}</tbody>
+                          </table>
+                        </div>
+                      </div>) })}
                   </div>
                 )}
               </div>
