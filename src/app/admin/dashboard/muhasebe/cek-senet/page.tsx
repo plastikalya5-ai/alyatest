@@ -14,7 +14,8 @@ const DURUM: Record<string, { l: string; tone: any }> = {
   portfoyde: { l: 'Portföyde', tone: 'blue' }, tahsil_edildi: { l: 'Tahsil Edildi', tone: 'green' }, odendi: { l: 'Ödendi', tone: 'green' },
   karsiliksiz: { l: 'Karşılıksız', tone: 'red' }, ciro_edildi: { l: 'Ciro Edildi', tone: 'amber' }, iptal: { l: 'İptal', tone: 'muted' },
 }
-const bos = () => ({ tip: 'cek', yon: 'alinan', cari_id: '', no: '', banka: '', tutar: '', vade_tarihi: todayISO(), aciklama: '' })
+const RES: Record<string, string> = { resmi: '101 Resmi', gayri_resmi: '101 Gayrı Resmi' }
+const bos = () => ({ tip: 'cek', yon: 'alinan', cari_id: '', no: '', banka: '', tutar: '', vade_tarihi: todayISO(), aciklama: '', resmiyet: '' })
 
 export default function CekSenetPage() {
   const toast = useToast()
@@ -71,14 +72,15 @@ export default function CekSenetPage() {
   /* CRUD */
   useAcParam(!loading, id => { const c = list.find((x: any) => x.id === id); if (c) openEdit(c) })
   const openNew = () => { setEditing(null); setForm(bos()); setModal(true) }
-  const openEdit = (c: any) => { setEditing(c); setForm({ tip: c.tip, yon: c.yon, cari_id: c.cari_id || '', no: c.no || '', banka: c.banka || '', tutar: String(c.tutar), vade_tarihi: c.vade_tarihi, aciklama: c.aciklama || '' }); setModal(true) }
+  const openEdit = (c: any) => { setEditing(c); setForm({ tip: c.tip, yon: c.yon, cari_id: c.cari_id || '', no: c.no || '', banka: c.banka || '', tutar: String(c.tutar), vade_tarihi: c.vade_tarihi, aciklama: c.aciklama || '', resmiyet: c.resmiyet || '' }); setModal(true) }
 
   async function save(e: React.FormEvent) {
     e.preventDefault(); if (busy) return
     if (!(+form.tutar > 0)) { toast.show('Tutar gerekli', true); return }
     if (form.no && list.some(c => c.no === form.no && c.banka === form.banka && c.id !== editing?.id) && !confirm('Aynı numara ve bankada başka kayıt var. Yine de kaydedilsin mi?')) return
+    if (form.yon === 'alinan' && !form.resmiyet) { toast.show('Alınan çek için 101 Resmi / 101 Gayrı Resmi seç', true); return }
     setBusy(true)
-    const payload = { ...form, tutar: +form.tutar, cari_id: form.cari_id || null }
+    const payload = { ...form, tutar: +form.tutar, cari_id: form.cari_id || null, resmiyet: form.resmiyet || null }
     const r: any = editing ? await muh.from('cek_senet').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', editing.id) : await muh.from('cek_senet').insert(payload)
     setBusy(false)
     if (r?.error) { toast.show(r.error, true); return }
@@ -102,7 +104,7 @@ export default function CekSenetPage() {
     setBusy(true)
     try {
       for (const r of islem.rows) {
-        const ad = `${r.tip === 'cek' ? 'Çek' : 'Senet'} ${r.no || ''}${r.banka ? ' — ' + r.banka : ''}`
+        const ad = `${r.tip === 'cek' ? 'Çek' : 'Senet'} ${r.no || ''}${r.banka ? ' — ' + r.banka : ''}${r.resmiyet ? ' [' + RES[r.resmiyet] + ']' : ''}`
         if (islem.tur === 'tahsil') {
           const gelir = r.yon === 'alinan'
           const x: any = await muh.from('islemler').insert({ tip: gelir ? 'gelir' : 'gider', tutar: r.tutar, kategori: gelir ? 'Çek/Senet Tahsilatı' : 'Çek/Senet Ödemesi', aciklama: ad, tarih: islem.tarih, cari_id: r.cari_id || null, kasa_hesap_id: islem.kasa || null, odeme_yontemi: 'cek' })
@@ -132,7 +134,7 @@ export default function CekSenetPage() {
     },
     { key: 'tip', label: 'Tür', width: 80, sort: c => c.tip, render: c => <span style={{ display: 'inline-flex', gap: 5, alignItems: 'center' }}><FileSignature size={13} style={{ color: 'var(--adm-tx3)' }} />{c.tip === 'cek' ? 'Çek' : 'Senet'}</span> },
     { key: 'yon', label: 'Yön', width: 90, sort: c => c.yon, render: c => <Badge tone={c.yon === 'alinan' ? 'green' : 'red'}>{c.yon === 'alinan' ? 'Alınan' : 'Verilen'}</Badge> },
-    { key: 'no', label: 'No / Banka', sort: c => c.no || '', render: c => <div><div style={{ fontWeight: 600, fontFamily: 'JetBrains Mono,monospace', fontSize: 12 }}>{c.no || '—'}</div><div style={{ fontSize: 11, color: 'var(--adm-tx3)' }}>{c.banka || ''}</div></div> },
+    { key: 'no', label: 'No / Banka', sort: c => c.no || '', render: c => <div><div style={{ fontWeight: 600, fontFamily: 'JetBrains Mono,monospace', fontSize: 12 }}>{c.no || '—'}</div><div style={{ fontSize: 11, color: 'var(--adm-tx3)' }}>{c.banka || ''}{c.resmiyet && <span style={{ marginLeft: 6, fontWeight: 700, color: c.resmiyet === 'resmi' ? 'var(--adm-green)' : 'var(--adm-amber)' }}>{RES[c.resmiyet]}</span>}</div></div> },
     { key: 'cari', label: 'Cari', sort: c => cariAd[c.cari_id] || '', render: c => cariAd[c.cari_id] || <span style={{ color: 'var(--adm-tx3)' }}>—</span>, hideSm: true },
     { key: 'tutar', label: 'Tutar', align: 'right', sort: c => +c.tutar, render: c => <Money v={+c.tutar} tone={c.yon === 'alinan' ? 'green' : 'red'} />, total: rs => <Money v={sum(rs, c => (c.yon === 'alinan' ? 1 : -1) * c.tutar)} tone="auto" /> },
     { key: 'durum', label: 'Durum', width: 120, sort: c => c.durum, render: c => <Badge tone={DURUM[c.durum]?.tone}>{DURUM[c.durum]?.l}</Badge> },
@@ -196,6 +198,7 @@ export default function CekSenetPage() {
           <Field label="Vade Tarihi *"><input type="date" required className="adm-inp" value={form.vade_tarihi} onChange={e => setForm((f: any) => ({ ...f, vade_tarihi: e.target.value }))} /></Field>
           <Field label="Çek / Senet No"><input className="adm-inp" value={form.no} onChange={e => setForm((f: any) => ({ ...f, no: e.target.value }))} /></Field>
           <Field label="Banka"><input className="adm-inp" value={form.banka} onChange={e => setForm((f: any) => ({ ...f, banka: e.target.value }))} /></Field>
+          {form.yon === 'alinan' && <Field label="Hesap (101) *"><select className="adm-inp" value={form.resmiyet} onChange={e => setForm((f: any) => ({ ...f, resmiyet: e.target.value }))}><option value="">— Seç —</option><option value="resmi">101 Resmi (R)</option><option value="gayri_resmi">101 Gayrı Resmi (G)</option></select></Field>}
           <Field label="Cari" span={2}><select className="adm-inp" value={form.cari_id} onChange={e => setForm((f: any) => ({ ...f, cari_id: e.target.value }))}><option value="">— Seçilmedi —</option>{cariler.map(c => <option key={c.id} value={c.id}>{c.ad}</option>)}</select></Field>
           <Field label="Açıklama" span={2}><input className="adm-inp" value={form.aciklama} onChange={e => setForm((f: any) => ({ ...f, aciklama: e.target.value }))} /></Field>
         </FormGrid>
