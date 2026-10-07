@@ -79,7 +79,7 @@ export function guvenliHesapla(ifade: string): number {
 }
 
 /* ───────────────────────── Muhasebe araçları ───────────────────────── */
-const MUH_ARAC_ADLARI = new Set(['finans_ozet', 'satis_analiz', 'fatura_ozet', 'kdv_ozet', 'kasa_akis', 'yaslandirma', 'cari_ozet'])
+const MUH_ARAC_ADLARI = new Set(['finans_ozet', 'satis_analiz', 'fatura_ozet', 'kdv_ozet', 'kasa_akis', 'yaslandirma', 'cari_ozet', 'cari_ara', 'kasa_banka_bakiye', 'stok_durumu'])
 const TARIH = { type: 'string', description: 'YYYY-MM-DD' }
 const YENI_ARACLAR: AiArac[] = [
   { type: 'function', function: { name: 'hesapla', description: 'Aritmetik hesaplama yapar (+ - * / parantez, yüzde için /100, round(x;basamak)). TÜM hesaplamalar için bunu kullan; kendi kafandan hesap yapma. Örn: "125000*20/100" veya "round(1234.567;2)".', parameters: { type: 'object', properties: { ifade: { type: 'string' } }, required: ['ifade'], additionalProperties: false } } },

@@ -62,6 +62,10 @@ export const ARACLAR: AiArac[] = [
   { type: 'function', function: { name: 'ziyaret_ozet', description: 'Web sitesi ziyaret özeti (son N gün).', parameters: { type: 'object', properties: { gun: { type: 'integer', minimum: 1, maximum: 365 } }, required: ['gun'], additionalProperties: false } } },
   { type: 'function', function: { name: 'kritik_stok', description: 'Minimum seviyenin altındaki hammaddeler ve mamuller.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
   { type: 'function', function: { name: 'cari_ozet', description: 'Cari hesap bakiyeleri: TL, USD ve EUR için ayrı ayrı toplam alacak/borç, borçlu cari sayısı ve en büyük borç/alacaklar (negatif = şirketin carisine borcu, pozitif = carinin şirkete borcu); ayrıca faturaya göre açık ve vadesi geçmiş toplamlar. "USD borçlarım", "EUR alacaklarım" gibi sorular için bunu kullan.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
+  { type: 'function', function: { name: 'stok_durumu', description: 'Güncel STOK miktarları: hammaddeler (kg/adet) ve mamul ürün stokları (adet, ebat/renk dağılımıyla). arama ile ürün/hammadde adına göre süzülür; mekan ile iç/dış mekan ayrılır. "Stokta ne kadar X var", "dış mekan saksı stoğu", "boya stokları" gibi sorular için bunu kullan.', parameters: { type: 'object', properties: { arama: { type: 'string', description: 'Ürün/hammadde adı veya kodundan bir parça (boş bırakılırsa özet)' }, tur: { type: 'string', enum: ['hammadde', 'mamul', 'hepsi'] }, mekan: { type: 'string', enum: ['ic', 'dis'], description: 'ic = iç mekan ürünleri, dis = dış mekan ürünleri' } }, additionalProperties: false } } },
+  { type: 'function', function: { name: 'cari_ara', description: 'Cari hesabı ada/koda göre arar; her biri için TL, USD ve EUR bakiyesini döndürür (negatif = şirket borçlu, pozitif = cari şirkete borçlu). En fazla 12 kayıt.', parameters: { type: 'object', properties: { arama: { type: 'string' } }, required: ['arama'], additionalProperties: false } } },
+  { type: 'function', function: { name: 'kasa_banka_bakiye', description: 'Kasa ve banka hesaplarının güncel bakiyeleri (para birimine göre ayrı ayrı toplamlarla).', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
+  { type: 'function', function: { name: 'recete_ara', description: 'Ürün reçeteleri: ürün/ebat başına kullanılan hammadde ve miktarı (kg/adet). arama ile ürün adından süzülür. "X ürünü kaç kg hammadde kullanır" soruları için.', parameters: { type: 'object', properties: { arama: { type: 'string' } }, required: ['arama'], additionalProperties: false } } },
   { type: 'function', function: { name: 'acik_siparisler', description: 'Açık satış siparişleri (beklemede/üretimde/kısmen hazır/hazır), termine göre.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
   { type: 'function', function: { name: 'uretim_durumu', description: 'Açık üretim emirleri (planlandı/üretimde/durduruldu) ve ilerleme.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
   { type: 'function', function: { name: 'guncel_kur', description: 'TCMB güncel USD/EUR döviz satış kurunu getirir (bugünün resmi kuru). Gelecekteki kur TAHMİNİ için kullanılamaz — yalnızca bugünün resmi kuru.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
@@ -69,6 +73,7 @@ export const ARACLAR: AiArac[] = [
 
 const D = /^\d{4}-\d{2}-\d{2}$/
 const tarih = (v: unknown) => { if (typeof v !== 'string' || !D.test(v)) throw new Error('Geçersiz tarih (YYYY-MM-DD bekleniyor)'); return v }
+const nrm = (v: unknown) => String(v ?? '').toLocaleLowerCase('tr').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ı/g, 'i').trim()
 const kisalt = (x: unknown, n = 7000) => { const s = JSON.stringify(x ?? null); return s.length > n ? s.slice(0, n) + '…(kısaltıldı)' : s }
 
 // Araçlar kullanıcının KENDİ oturumuyla çalışır: RLS ve rpc_* içindeki has_module kontrolü aynen geçerlidir.
@@ -103,6 +108,43 @@ export async function araciCalistir(sb: SupabaseClient, ad: string, a: Record<st
         return kisalt({ aciklama: 'tutar negatif = şirket carisine borçlu, pozitif = cari şirkete borçlu', TL: para('bakiye'), USD: para('bakiye_usd'), EUR: para('bakiye_eur'),
           fatura_bazli: { acik_toplam: Math.round((fo as any[]).reduce((t, r) => t + (+r.acik || 0), 0)), vadesi_gecmis_toplam: Math.round((fo as any[]).reduce((t, r) => t + (+r.gecikmis || 0), 0)) } }, 9000)
       }
+      case 'stok_durumu': {
+        const tur = a.tur === 'hammadde' || a.tur === 'mamul' ? a.tur : 'hepsi', ar = nrm(a.arama), mk = a.mekan === 'ic' || a.mekan === 'dis' ? a.mekan : ''
+        const out: Record<string, unknown> = { not: 'miktarlar güncel sistem stoğudur; mamul stok adet, hammadde stok kalemin kendi biriminde' }
+        if (tur !== 'mamul') {
+          const hm = ((await sel(sb.from('hammaddeler').select('kod,ad,birim,mevcut_stok,min_stok,mekan,aktif').limit(3000))) as any[]).filter(h => h.aktif !== false && (!ar || nrm(h.ad + ' ' + h.kod).includes(ar)) && (!mk || h.mekan === mk || h.mekan === 'ortak'))
+          const lst = (ar ? hm : hm.filter(h => +h.mevcut_stok > 0)).sort((x, y) => +y.mevcut_stok - +x.mevcut_stok)
+          out.hammadde = { kalem_sayisi: hm.length, stoklu_kalem_sayisi: hm.filter(h => +h.mevcut_stok > 0).length, listelenen: lst.slice(0, 40).map(h => ({ kod: h.kod, ad: h.ad, birim: h.birim, stok: +h.mevcut_stok, min: +h.min_stok || 0 })), not: lst.length > 40 ? `${lst.length} kalemden ilk 40 gösterildi (stoğu en yüksek)` : undefined }
+        }
+        if (tur !== 'hammadde') {
+          const [ps, vs] = await Promise.all([sel(sb.from('products').select('id,name,code,mekan').limit(1000)), sel(sb.from('product_variants').select('product_id,name,color,size,stock').limit(6000))])
+          const gr = (ps as any[]).filter(p => (!mk || p.mekan === mk) && (!ar || nrm(p.name + ' ' + p.code).includes(ar))).map(p => {
+            const v = (vs as any[]).filter(x => x.product_id === p.id)
+            return { urun: p.name, kod: p.code, mekan: p.mekan, toplam_adet: v.reduce((t, x) => t + (+x.stock || 0), 0), varyantlar: v.filter(x => +x.stock !== 0).slice(0, 25).map(x => ({ ad: [x.size, x.color].filter(Boolean).join(' / ') || x.name, adet: +x.stock })) }
+          }).sort((x, y) => y.toplam_adet - x.toplam_adet)
+          out.mamul = { urun_sayisi: gr.length, toplam_adet: gr.reduce((t, x) => t + x.toplam_adet, 0), urunler: gr.slice(0, 30) }
+        }
+        return kisalt(out, 12000)
+      }
+      case 'cari_ara': {
+        const ar = nrm(a.arama); if (!ar) throw new Error('arama boş')
+        const l = ((await sel(sb.from('cari_hesaplar').select('ad,kod,tip,bakiye,bakiye_usd,bakiye_eur').limit(3000))) as any[]).filter(c => nrm(c.ad + ' ' + c.kod).includes(ar))
+        return kisalt({ eslesen: l.length, cariler: l.slice(0, 12).map(c => ({ ad: c.ad, kod: c.kod, tip: c.tip, TL: +c.bakiye || 0, USD: +c.bakiye_usd || 0, EUR: +c.bakiye_eur || 0 })), not: 'negatif = şirket borçlu, pozitif = cari şirkete borçlu' })
+      }
+      case 'kasa_banka_bakiye': {
+        const l = ((await sel(sb.from('kasa_banka_hesaplari').select('ad,tip,banka_adi,para_birimi,bakiye,aktif').limit(500))) as any[]).filter(k => k.aktif !== false)
+        const tp: Record<string, number> = {}; l.forEach(k => { const pb = k.para_birimi || 'TRY'; tp[pb] = Math.round(((tp[pb] || 0) + (+k.bakiye || 0)) * 100) / 100 })
+        return kisalt({ toplam_para_birimine_gore: tp, hesaplar: l.map(k => ({ ad: k.ad, tip: k.tip, para_birimi: k.para_birimi || 'TRY', bakiye: +k.bakiye || 0 })) }, 9000)
+      }
+      case 'recete_ara': {
+        const ar = nrm(a.arama); if (!ar) throw new Error('arama boş')
+        const [ps, rs] = await Promise.all([sel(sb.from('products').select('id,name,code').limit(1000)), sel(sb.from('urun_receteleri').select('id,urun_id,versiyon,aktif,notlar').limit(1000))])
+        const pm = Object.fromEntries((ps as any[]).map(p => [p.id, p]))
+        const rr = (rs as any[]).filter(r => pm[r.urun_id] && nrm(pm[r.urun_id].name + ' ' + pm[r.urun_id].code + ' ' + (r.notlar || '')).includes(ar)).slice(0, 25)
+        const [ks, hs] = await Promise.all([sel(sb.from('recete_kalemleri').select('recete_id,hammadde_id,miktar,birim').in('recete_id', rr.map(r => r.id).concat(['00000000-0000-0000-0000-000000000000']))), sel(sb.from('hammaddeler').select('id,ad').limit(3000))])
+        const hm = Object.fromEntries((hs as any[]).map(h => [h.id, h.ad]))
+        return kisalt({ receteler: rr.map(r => ({ urun: pm[r.urun_id].name, kod: pm[r.urun_id].code, versiyon: r.versiyon, aktif: r.aktif, ebat_notu: r.notlar, kalemler: (ks as any[]).filter(k => k.recete_id === r.id).map(k => ({ hammadde: hm[k.hammadde_id], miktar: +k.miktar, birim: k.birim })) })) }, 9000)
+      }
       case 'acik_siparisler': return kisalt(await sel(sb.from('satis_siparisleri').select('no,durum,tarih,teslim_tarihi,cari_id').in('durum', ['beklemede', 'uretimde', 'kismen_hazir', 'hazir']).order('teslim_tarihi', { ascending: true }).limit(30)))
       case 'uretim_durumu': return kisalt(await sel(sb.from('uretim_emirleri').select('no,durum,planlanan_miktar,uretilen_miktar,fire_miktar,baslangic,bitis').in('durum', ['planlandi', 'uretimde', 'durduruldu']).order('created_at', { ascending: false }).limit(30)))
       case 'guncel_kur': {
@@ -134,6 +176,7 @@ export async function asistanYanit(
     { role: 'system', content: `Sen Alya Plastik yönetim panelinin veri asistanısın — muhasebe, satış, stok, üretim ve genel iş verilerini okuyup yorumlayan bir analist gibi davranırsın. Bugün ${bugun}. Türkçe, net cevap ver; kullanıcı sadece bir sayı sorduysa kısa yanıt ver, ama "yorumun ne", "sence nasıl", "ne önerirsin" gibi görüş/analiz istediğinde daha kapsamlı, gerekçeli bir değerlendirme yap (trend, risk, kısa öneri; gerekirse madde listesi) — 1-2 cümleyle geçiştirme.
 Kurallar:
 - ŞİRKETE AİT rakamları (satış, stok, fatura, kasa, cari, sipariş, üretim, ziyaret vb.) YALNIZCA araçlardan gelen veriden al; uydurma, tahmin etme. Uygun araç yoksa bunu söyle ve hangi ekrana bakılabileceğini belirt.
+- KESİNLİK: Bir araç boş/eksik sonuç döndürürse "veri yok" deme; önce başka uygun aracı dene (cari borç/alacak için cari_ozet veya cari_ara — TL, USD ve EUR'yu ayrı ayrı bildir; stok için stok_durumu; kasa/banka için kasa_banka_bakiye; ürün reçetesi/kg için recete_ara). Para birimini her zaman belirt (₺, USD, EUR) ve farklı para birimlerini toplama. Araç sonucu 'kısaltıldı' ise bunu söyle.
 - DÖVİZ KURU: bugünün resmi USD/EUR kuru için "guncel_kur" aracını kullan (yalnızca bugünün kuru, gelecek tahmini değildir).
 - GENEL EKONOMİ (kur beklentisi, enflasyon, faiz gibi ileriye dönük veya makro sorular): bunlar için canlı/kesin veri aracın yok. Böyle bir soru gelirse genel ekonomi bilgin ve akıl yürütmenle bir GÖRÜŞ/DEĞERLENDİRME sun, ama bunun kişisel bir yorum olduğunu, gerçek zamanlı veya kesin veri olmadığını ve güncel resmi rakamlar için TCMB/TÜİK'e bakılması gerektiğini açıkça belirt. Eğitim verinin bir kesim tarihi var, çok yakın tarihli gelişmeleri bilemeyebilirsin — bunu sakla söyleme değil, gerektiğinde belirt.
 - Tarih aralığı gerektiğinde "bu ay" = ${bugun.slice(0, 7)}-01 ile ${bugun} arası; "geçen ay", "bu yıl" vb. için tarihleri kendin hesapla.
