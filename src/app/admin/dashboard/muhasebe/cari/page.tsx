@@ -100,16 +100,25 @@ export default function CariPage() {
     return h.map(x => { b += x.borc - x.alacak; return { ...x, bakiye: b } })
   }, [faturalar, islemler])
 
+  // Eski program hareketleri (salt okunur): ekstrede aynı listede görünür, bakiyeye dahil değildir
+  type EkSatir = { tarih: string; aciklama: string; tur: string; borc: number; alacak: number; bakiye: number | null; eski?: boolean }
+  const eskiSatirlar = useCallback((): EkSatir[] => eski.filter(r => !(r.nakil && !+r.tl_borc && !+r.tl_alacak)).map(r => ({
+    tarih: r.tarih, eski: true, bakiye: null, borc: +r.tl_borc || 0, alacak: +r.tl_alacak || 0,
+    aciklama: r.nakil ? 'Önceki dönemden devir' : [r.evrak_cinsi, r.evrak_no].filter(Boolean).join(' · ') + (r.aciklama ? ` — ${r.aciklama}` : '') + (r.gib_fatura_no ? ` (${r.gib_fatura_no})` : ''),
+    tur: `Eski program · ${r.grup}${r.vade ? ` · vade ${r.vade}` : ''}${+r.usd_borc || +r.usd_alacak ? ` · ${fmt(+r.usd_borc || +r.usd_alacak)} $` : ''}`,
+  })), [eski])
+  const birlesik = (cariId: string): EkSatir[] => [...ekstre(cariId), ...eskiSatirlar()].sort((a, b) => a.tarih.localeCompare(b.tarih))
+
   function ekstreYazdir(c: any) {
-    const ek = ekstre(c.id)
-    const rows = ek.map(h => `<tr><td>${fmtDate(h.tarih)}</td><td>${h.aciklama}</td><td>${h.tur}</td><td style="text-align:right">${h.borc ? fmt(h.borc) : ''}</td><td style="text-align:right">${h.alacak ? fmt(h.alacak) : ''}</td><td style="text-align:right;font-weight:600">${fmt(h.bakiye)}</td></tr>`).join('')
+    const ek = birlesik(c.id)
+    const rows = ek.map(h => `<tr><td>${fmtDate(h.tarih)}</td><td>${h.aciklama}</td><td>${h.tur}</td><td style="text-align:right">${h.borc ? fmt(h.borc) : ''}</td><td style="text-align:right">${h.alacak ? fmt(h.alacak) : ''}</td><td style="text-align:right;font-weight:600">${h.bakiye == null ? '' : fmt(h.bakiye)}</td></tr>`).join('')
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>${c.ad} - Ekstre</title><style>
       body{font-family:Arial,sans-serif;color:#0b0e0b;padding:40px;max-width:860px;margin:0 auto}h1{font-size:20px;margin:0 0 4px}.muted{color:#6b7366;font-size:12px}
       table{width:100%;border-collapse:collapse;margin-top:24px}th,td{padding:8px 6px;font-size:12.5px;border-bottom:1px solid #ddd;text-align:left}th{color:#6b7366;font-size:11px;text-transform:uppercase}
       .header{display:flex;justify-content:space-between;border-bottom:2px solid #e55f28;padding-bottom:16px;margin-bottom:16px}.toplam{margin-top:16px;text-align:right;font-size:15px;font-weight:700}@media print{body{padding:0}}</style></head><body>
       <div class="header"><div><h1>ALYA PLASTİK</h1><p class="muted">Cari Hesap Ekstresi</p></div><div style="text-align:right"><h1>${c.ad}</h1><p class="muted">${new Date().toLocaleDateString('tr-TR')} itibarıyla</p></div></div>
       <table><thead><tr><th>Tarih</th><th>Açıklama</th><th>Tür</th><th style="text-align:right">Borç</th><th style="text-align:right">Alacak</th><th style="text-align:right">Bakiye</th></tr></thead><tbody>${rows}</tbody></table>
-      <p class="toplam">Güncel Bakiye: ${fmt(ek.length ? ek[ek.length - 1].bakiye : 0)}</p></body></html>`
+      <p class="toplam">Güncel Bakiye: ${fmt(+c.bakiye)}</p></body></html>`
     const w = window.open('', '_blank'); if (w) { w.document.write(html); w.document.close(); w.focus(); setTimeout(() => w.print(), 300) }
   }
 
@@ -222,7 +231,7 @@ export default function CariPage() {
   ]
 
   const dm = detay ? M[detay.id] : null
-  const dEk = detay ? ekstre(detay.id) : []
+  const dEk = detay ? birlesik(detay.id) : []
   const dFat = detay ? faturalar.filter(f => f.cari_id === detay.id).sort((a, b) => b.tarih.localeCompare(a.tarih)) : []
   const dCek = detay ? cekler.filter(c => c.cari_id === detay.id) : []
   const hatirlatma = detay ? `Merhaba ${detay.ad}, Alya Plastik hesabınızda ${fmt(Math.abs(detay.bakiye))} tutarında ${+detay.bakiye > 0 ? 'ödenmemiş bakiye' : 'ödeme bakiyesi'} görünmektedir. Bilginize sunarız.` : ''
@@ -315,7 +324,7 @@ export default function CariPage() {
             {dTab === 'ekstre' && (
               <div>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px 20px 0', gap: 8 }}>
-                  <button className="adm-btn-ghost" style={{ fontSize: 12 }} disabled={!dEk.length} onClick={() => csvDownload(`ekstre-${detay.ad}.csv`, dEk.map(h => ({ Tarih: h.tarih, Açıklama: h.aciklama, Tür: h.tur, Borç: h.borc, Alacak: h.alacak, Bakiye: h.bakiye })))}><Download size={12} />CSV</button>
+                  <button className="adm-btn-ghost" style={{ fontSize: 12 }} disabled={!dEk.length} onClick={() => csvDownload(`ekstre-${detay.ad}.csv`, dEk.map(h => ({ Tarih: h.tarih, Açıklama: h.aciklama, Tür: h.tur, Borç: h.borc, Alacak: h.alacak, Bakiye: h.bakiye ?? '' })))}><Download size={12} />CSV</button>
                 </div>
                 {dEk.length === 0 ? <Empty icon={<FileBarChart size={28} />} title="Hareket yok" sub="Bu cariye ait onaylı fatura ya da işlem bulunmuyor" /> : (
                   <div style={{ overflow: 'auto', padding: '8px 0' }}>
@@ -324,40 +333,13 @@ export default function CariPage() {
                       <tbody>{[...dEk].reverse().map((h, i) => (
                         <tr key={i}>
                           <td style={{ whiteSpace: 'nowrap' }}>{fmtDate(h.tarih)}</td>
-                          <td><div style={{ fontWeight: 500 }}>{h.aciklama}</div><div style={{ fontSize: 11, color: 'var(--adm-tx3)' }}>{h.tur}</div></td>
+                          <td><div style={{ fontWeight: 500 }}>{h.aciklama}</div><div style={{ fontSize: 11, color: h.eski ? 'var(--adm-ac)' : 'var(--adm-tx3)' }}>{h.tur}</div></td>
                           <td style={{ textAlign: 'right' }}>{h.borc ? <Money v={h.borc} bold={false} /> : ''}</td>
                           <td style={{ textAlign: 'right' }}>{h.alacak ? <Money v={h.alacak} bold={false} /> : ''}</td>
-                          <td style={{ textAlign: 'right' }}><Money v={h.bakiye} tone="auto" /></td>
+                          <td style={{ textAlign: 'right' }}>{h.bakiye == null ? '' : <Money v={h.bakiye} tone="auto" />}</td>
                         </tr>))}</tbody>
                     </table>
-                  </div>
-                )}
-                {eski.length > 0 && (
-                  <div style={{ padding: '14px 0 8px' }}>
-                    <div style={{ padding: '0 20px 8px' }}>
-                      <div style={{ fontSize: 13, fontWeight: 700 }}>Eski program geçmişi</div>
-                      <div style={{ fontSize: 11.5, color: 'var(--adm-tx3)' }}>Sadece bilgi amaçlıdır; yukarıdaki bakiyeye ve ekstreye dahil değildir. Tutarlar eski programdaki gibi grup (TL/USD/EUR) bazındadır; USD sütunları eski programın dolar karşılığıdır.</div>
-                    </div>
-                    {(['TL', 'USD', 'EUR'] as const).map(g => { const rows = eski.filter(r => r.grup === g); if (!rows.length) return null; return (
-                      <div key={g} style={{ marginBottom: 12 }}>
-                        <div style={{ padding: '4px 20px', fontSize: 12, fontWeight: 600, color: 'var(--adm-tx2)' }}>{g} grubu · {rows.length} satır</div>
-                        <div style={{ overflow: 'auto' }}>
-                          <table className="adm-tbl">
-                            <thead><tr><th>Tarih</th><th>Evrak</th><th style={{ textAlign: 'right' }}>Borç ₺</th><th style={{ textAlign: 'right' }}>Alacak ₺</th><th style={{ textAlign: 'right' }}>Borç $</th><th style={{ textAlign: 'right' }}>Alacak $</th><th style={{ textAlign: 'right' }}>Kur</th></tr></thead>
-                            <tbody>{rows.map(r => (
-                              <tr key={r.id}>
-                                <td style={{ whiteSpace: 'nowrap' }}>{r.nakil ? 'Devir' : fmtDate(r.tarih)}</td>
-                                <td><div style={{ fontWeight: 500 }}>{r.nakil ? 'Önceki dönemden devir' : [r.evrak_cinsi, r.evrak_no].filter(Boolean).join(' · ')}</div>
-                                  {(r.aciklama || r.gib_fatura_no || r.vade) && <div style={{ fontSize: 11, color: 'var(--adm-tx3)' }}>{[r.aciklama, r.gib_fatura_no, r.vade && `vade ${r.vade}`].filter(Boolean).join(' · ')}</div>}</td>
-                                <td style={{ textAlign: 'right' }}>{+r.tl_borc ? <Money v={+r.tl_borc} bold={false} /> : ''}</td>
-                                <td style={{ textAlign: 'right' }}>{+r.tl_alacak ? <Money v={+r.tl_alacak} bold={false} /> : ''}</td>
-                                <td style={{ textAlign: 'right' }}>{+r.usd_borc ? fmt(+r.usd_borc) : ''}</td>
-                                <td style={{ textAlign: 'right' }}>{+r.usd_alacak ? fmt(+r.usd_alacak) : ''}</td>
-                                <td style={{ textAlign: 'right' }}>{r.kur ? (+r.kur).toLocaleString('tr-TR', { maximumFractionDigits: 4 }) : ''}</td>
-                              </tr>))}</tbody>
-                          </table>
-                        </div>
-                      </div>) })}
+                    {dEk.some(h => h.eski) && <div style={{ padding: '8px 20px', fontSize: 11.5, color: 'var(--adm-tx3)' }}>Turuncu &quot;Eski program&quot; satırları eski programdan aktarılmış geçmiştir; yürüyen bakiyeye dahil değildir, güncel bakiye yukarıdaki kutuda gösterilir.</div>}
                   </div>
                 )}
               </div>
