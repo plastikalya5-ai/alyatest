@@ -149,8 +149,11 @@ export async function araciCalistir(sb: SupabaseClient, ad: string, a: Record<st
       }
       case 'cari_ara': {
         const ar = nrm(a.arama); if (!ar) throw new Error('arama boş')
-        const l = ((await sel(sb.from('cari_hesaplar').select('ad,kod,tip,bakiye,bakiye_usd,bakiye_eur,notlar').limit(3000))) as any[]).filter(c => esles(c.ad + ' ' + c.kod, ar))
-        return kisalt({ eslesen: l.length, cariler: l.slice(0, 12).map(c => ({ ad: c.ad, kod: c.kod, tip: c.tip, TL: +c.bakiye || 0, USD: +c.bakiye_usd || 0, EUR: +c.bakiye_eur || 0, not: c.notlar ? String(c.notlar).slice(0, 200) : undefined })), not: 'negatif = şirket borçlu, pozitif = cari şirkete borçlu' })
+        const tum = (await sel(sb.from('cari_hesaplar').select('ad,kod,tip,bakiye,bakiye_usd,bakiye_eur,notlar').limit(3000))) as any[]
+        let l = tum.filter(c => esles(c.ad + ' ' + c.kod, ar)), kullanilan = ar
+        // Eşleşme yoksa sondaki kelimeleri atarak dene ("espa plastik ham madde kdv" → "espa plastik"): fazladan kelimeler cari adı olmayabilir
+        for (let k = ar.split(/\s+/).length - 1; !l.length && k >= 1; k--) { const q = ar.split(/\s+/).slice(0, k).join(' '); l = tum.filter(c => esles(c.ad + ' ' + c.kod, q)); kullanilan = q }
+        return kisalt({ arama_kullanilan: kullanilan, eslesen: l.length, cariler: l.slice(0, 12).map(c => ({ ad: c.ad, kod: c.kod, tip: c.tip, TL: +c.bakiye || 0, USD: +c.bakiye_usd || 0, EUR: +c.bakiye_eur || 0, not: c.notlar ? String(c.notlar).slice(0, 200) : undefined })), not: 'negatif = şirket borçlu, pozitif = cari şirkete borçlu' })
       }
       case 'cari_ekstre': {
         const ar = nrm(a.arama); if (!ar) throw new Error('arama boş')
@@ -163,7 +166,11 @@ export async function araciCalistir(sb: SupabaseClient, ad: string, a: Record<st
           sel(sb.from('v_faturalar_liste').select('no,tip,durum,tarih,vade,toplam,odenen_tutar,para_birimi').eq('cari_id', c.id).order('tarih', { ascending: false }).limit(15)).catch(() => []),
           sel(sb.from('islemler').select('tip,kategori,tutar,tarih,aciklama').eq('cari_id', c.id).order('tarih', { ascending: false }).limit(15)),
         ])
-        return kisalt({ cari: { ad: c.ad, kod: c.kod, tip: c.tip, TL: +c.bakiye || 0, USD: +c.bakiye_usd || 0, EUR: +c.bakiye_eur || 0, not: c.notlar }, eski_program_son_hareketler: eski, guncel_faturalar: fat, guncel_islemler: isl, aciklama: 'Eski program hareketleri geçmiş kayıttır; güncel bakiye cari alanındaki TL/USD/EUR değeridir.' }, 9000)
+        const tumEski = (await sel(sb.from('cari_eski_hareketler').select('grup,evrak_cinsi,tl_borc,tl_alacak,usd_borc,usd_alacak,eur_borc,eur_alacak').eq('cari_id', c.id).limit(3000))) as any[]
+        const oz: Record<string, { adet: number; borc: number; alacak: number }> = {}
+        tumEski.forEach(x => { const g = x.grup === 'USD' ? 'USD' : x.grup === 'EUR' ? 'EUR' : 'TL', k = `${g} · ${x.evrak_cinsi || 'diğer'}`, b = g === 'USD' ? +x.usd_borc : g === 'EUR' ? +x.eur_borc : +x.tl_borc, al = g === 'USD' ? +x.usd_alacak : g === 'EUR' ? +x.eur_alacak : +x.tl_alacak; oz[k] = oz[k] || { adet: 0, borc: 0, alacak: 0 }; oz[k].adet++; oz[k].borc += b || 0; oz[k].alacak += al || 0 })
+        const ozet = Object.entries(oz).map(([k, v]) => ({ tur: k, adet: v.adet, borc: Math.round(v.borc * 100) / 100, alacak: Math.round(v.alacak * 100) / 100 }))
+        return kisalt({ cari: { ad: c.ad, kod: c.kod, tip: c.tip, TL: +c.bakiye || 0, USD: +c.bakiye_usd || 0, EUR: +c.bakiye_eur || 0, not: c.notlar }, eski_program_evrak_turune_gore_ozet: ozet, kayitlarda_olmayan: 'Fatura kalemi bazında hammadde/KDV/resmi-gayri resmi ayrımı bu kayıtlarda tutulmuyor; sadece evrak türü ve tutar var. Kullanıcı bunu isterse açıkça söyle, uydurma.', eski_program_son_hareketler: eski, guncel_faturalar: fat, guncel_islemler: isl, aciklama: 'Eski program hareketleri geçmiş kayıttır; güncel bakiye cari alanındaki TL/USD/EUR değeridir.' }, 9000)
       }
       case 'cek_senet_liste': {
         let q = sb.from('cek_senet').select('tip,yon,no,banka,tutar,vade_tarihi,durum,aciklama,cari_id,resmiyet').order('vade_tarihi').limit(1000)
@@ -249,6 +256,7 @@ Kurallar:
 - VERİ EKSİKLİĞİ: Kâr/zarar, gider veya dönem karşılaştırması verirken finans_ozet 'aylik' ve kat_gelir/kat_gider alanlarına bak; sorulan dönemdeki bir ayın geliri VEYA gideri sistemde hiç yoksa (0 / kayıt yok) bunu cevabın başında açıkça uyar ("Eylül giderleri henüz girilmemiş, kâr bu yüzden gerçekten yüksek görünür") ve eksik veriyle kâr hesabını kesin diye sunma. Personel maaş ödemeleri ödeme tarihindeki aya (ör. Ekim) yazılmış olabilir, maaşın ait olduğu ay (Eylül) ile farkı belirt.
 - ÇEK RESMİYETİ: Alınan çekler 101 Resmi (R) veya 101 Gayrı Resmi (G) diye ayrılır (cek_senet_liste 'resmiyet' alanı: resmi / gayri_resmi / boş=belirtilmemiş). Çek toplamı sorulursa resmi ve gayri resmi ayrımını da yaz.
 - STOK: Ambalaj (koli, etiket, bant), hammadde ve mamul stoğu için stok_durumu kullan (arama: 'koli' gibi tek kelime yeter). Sonuçta kalem_sayisi, eslesen_toplam_stok ve stogu_sifir_olanlar alanları hazırdır; liste kısaltılsa da toplamı ve sıfır stokluları bunlardan söyle.
+- İSİM + KIRILIM: Kullanıcı bir firma adının yanına "ham madde, KDV, resmi hesap" gibi kelimeler yazarsa bunlar cari adı DEĞİL, kırılım/ayrıntı isteğidir. Önce sadece firma adıyla ara (cari_ara/cari_ekstre), sonra isteneni mevcut veriyle (evrak türüne göre özet, TL/USD/EUR) ver; veride olmayan kırılımı (ör. hammadde/KDV ayrımı) açıkça "kayıtlarda tutulmuyor" diye söyle, "cari hesap bulunamadı" deme.
 - TOPLAMLAR: Listeden elle toplama yapma; aracın verdiği hazır toplam alanlarını (GENEL_TOPLAM_TL, toplam, sirket_borcu_toplam vb.) aynen kullan. Liste kısaltıldıysa toplamı hazır alandan al.
 - CARİ BAKİYE: Bir kişi/firmanın borcu, alacağı veya dövizli (USD/EUR) bakiyesi sorulursa önce cari_ara kullan; fatura_ara/islem_ara boş dönse bile "yok" deme, cari_ara sonucundaki TL/USD/EUR bakiyesini söyle.
 - KESİNLİK: Bir araç boş/eksik sonuç döndürürse "veri yok" deme; önce başka uygun aracı dene (cari borç/alacak için cari_ozet veya cari_ara — TL, USD ve EUR'yu ayrı ayrı bildir; stok için stok_durumu; kasa/banka için kasa_banka_bakiye; ürün reçetesi/kg için recete_ara). Para birimini her zaman belirt (₺, USD, EUR) ve farklı para birimlerini toplama. Araç sonucu 'kısaltıldı' ise bunu söyle.
