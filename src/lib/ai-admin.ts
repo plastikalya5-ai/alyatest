@@ -161,7 +161,8 @@ export async function araciCalistir(sb: SupabaseClient, ad: string, a: Record<st
         if (a.kisi) l = l.filter(x => esles(x.cari + ' ' + x.no + ' ' + x.aciklama, String(a.kisi)))
         if (a.sadece_vadesi_gecmis) l = l.filter(x => x.vade_tarihi < bg && !['odendi', 'tahsil', 'tahsil_edildi', 'iptal'].includes(x.durum))
         const tp: Record<string, number> = {}; l.forEach(x => { const k = x.durum + '/' + x.yon; tp[k] = Math.round(((tp[k] || 0) + (+x.tutar || 0)) * 100) / 100 })
-        return kisalt({ adet: l.length, toplam_durum_yon: tp, liste: l.slice(0, 40) }, 8000)
+        const genel = Math.round(l.reduce((t, x) => t + (+x.tutar || 0), 0) * 100) / 100
+        return kisalt({ adet: l.length, GENEL_TOPLAM_TL: genel, toplam_durum_yon: tp, not: 'Toplamı satırlardan kendin toplama; GENEL_TOPLAM_TL ve toplam_durum_yon kullan. Liste en fazla 40 satır gösterir.', liste: l.slice(0, 40) }, 8000)
       }
       case 'personel_bordro': {
         const d = String(a.donem || ''); if (!/^\d{4}-\d{2}$/.test(d)) throw new Error('donem YYYY-MM olmalı')
@@ -233,6 +234,7 @@ Kurallar:
 - ŞİRKET BİLGİSİ: Bakiye işareti: cari pozitif = cari bize borçlu, negatif = biz borçluyuz. Dövizli cari bakiyeleri (USD/EUR) ayrı alanlardadır, TL ile toplanmaz. Eski programdan gelen hareketler salt-okunur geçmiştir, güncel bakiye cari kartındaki değerdir. Maaşlar ödeme günü avans/banka/elden olarak ayrı kayıtlanır ve bir önceki ayın maaşıdır; yemek şirket tarafından karşılanır (bordroya yansımaz). Kasa/banka ödemeleri 'islemler' kayıtlarıyla bakiyeyi değiştirir. Ürün ve hammaddelerde kullanım yeri iç mekan / dış mekan / ortak diye ayrılır. Taslak faturalar henüz resmi kayıt/bakiye sayılmaz. Stok = stok hareketlerinin toplamıdır.
 - CİRO: "ciro / satış geliri" = yalnızca 'Ürün Satışı' kategorisi (finans_ozet kat_gelir içinden). 'Diğer Gelir' (KDV iadesi, destek primi vb.) ciro DEĞİLDİR; toplam gelir ile ciroyu karıştırma, ikisini ayrı yaz. İç/dış mekan satışı sorularında mekan_satis kullan; "kayıt yok" deme. Eksik bir ay (örn. henüz girilmemiş) varsa bunu söyle.
 - VERİ EKSİKLİĞİ: Kâr/zarar, gider veya dönem karşılaştırması verirken finans_ozet 'aylik' ve kat_gelir/kat_gider alanlarına bak; sorulan dönemdeki bir ayın geliri VEYA gideri sistemde hiç yoksa (0 / kayıt yok) bunu cevabın başında açıkça uyar ("Eylül giderleri henüz girilmemiş, kâr bu yüzden gerçekten yüksek görünür") ve eksik veriyle kâr hesabını kesin diye sunma. Personel maaş ödemeleri ödeme tarihindeki aya (ör. Ekim) yazılmış olabilir, maaşın ait olduğu ay (Eylül) ile farkı belirt.
+- TOPLAMLAR: Listeden elle toplama yapma; aracın verdiği hazır toplam alanlarını (GENEL_TOPLAM_TL, toplam, sirket_borcu_toplam vb.) aynen kullan. Liste kısaltıldıysa toplamı hazır alandan al.
 - CARİ BAKİYE: Bir kişi/firmanın borcu, alacağı veya dövizli (USD/EUR) bakiyesi sorulursa önce cari_ara kullan; fatura_ara/islem_ara boş dönse bile "yok" deme, cari_ara sonucundaki TL/USD/EUR bakiyesini söyle.
 - KESİNLİK: Bir araç boş/eksik sonuç döndürürse "veri yok" deme; önce başka uygun aracı dene (cari borç/alacak için cari_ozet veya cari_ara — TL, USD ve EUR'yu ayrı ayrı bildir; stok için stok_durumu; kasa/banka için kasa_banka_bakiye; ürün reçetesi/kg için recete_ara). Para birimini her zaman belirt (₺, USD, EUR) ve farklı para birimlerini toplama. Araç sonucu 'kısaltıldı' ise bunu söyle.
 - DÖVİZ KURU: bugünün resmi USD/EUR kuru için "guncel_kur" aracını kullan (yalnızca bugünün kuru, gelecek tahmini değildir).
