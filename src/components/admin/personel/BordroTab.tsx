@@ -12,6 +12,11 @@ type Toast = { show: (m: string, err?: boolean) => void }
 const ayEkle = (d: string, n: number) => { const [y, m] = d.split('-').map(Number); const t = new Date(Date.UTC(y, m - 1 + n, 1)); return t.toISOString().slice(0, 7) }
 const AYLAR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
 const paraTR = (n: number) => (n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const EK = ['devir', 'mesai_ucreti', 'yemek', 'banka_odeme', 'elden_odeme'] as const
+const ekAlanlar = (k: any) => Object.fromEntries(EK.map(a => [a, +(k?.[a]) || 0]))
+// Net / kalan = (brüt − yasal kesintiler) + devir + mesai ücreti + yemek − avans − banka − elden
+const netToplam = (k: any) => +((+k.brut_maas || 0) - (+k.sgk_isci_kesintisi || 0) - (+k.issizlik_kesintisi || 0) - (+k.gelir_vergisi || 0) - (+k.damga_vergisi || 0)
+  + (+k.devir || 0) + (+k.mesai_ucreti || 0) + (+k.yemek || 0) - (+k.avans_mahsup || 0) - (+k.banka_odeme || 0) - (+k.elden_odeme || 0)).toFixed(2)
 const DURUM_L: Record<string, { l: string; tone: any }> = { taslak: { l: 'Taslak', tone: 'amber' }, onaylandi: { l: 'Onaylandı', tone: 'blue' }, muhasebelesti: { l: 'Muhasebeleşti', tone: 'green' } }
 
 export default function BordroTab({ toast }: { toast: Toast }) {
@@ -24,6 +29,9 @@ export default function BordroTab({ toast }: { toast: Toast }) {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [maasModal, setMaasModal] = useState<{ personel_id: string; ad_soyad: string } | null>(null)
+  const [odemeModal, setOdemeModal] = useState<{ personel_id: string; ad_soyad: string } | null>(null)
+  const [odemeler, setOdemeler] = useState<any[]>([])
+  const [odemeForm, setOdemeForm] = useState<any>({ tur: 'avans', tarih: bugunTR(), tutar: '', aciklama: '' })
   const [maasForm, setMaasForm] = useState<any>({ brut_maas: '', maas_tipi: 'aylik', gecerlilik_baslangic: bugunTR() })
 
   const yil = +donem.slice(0, 4)
@@ -45,6 +53,29 @@ export default function BordroTab({ toast }: { toast: Toast }) {
     setLoading(false)
   }, [donem, yil])
   useEffect(() => { yukle() }, [yukle])
+
+  const odemeYukle = useCallback(async (pid: string) => {
+    const { data } = await web.from('personel_odemeleri').select('*').eq('personel_id', pid).eq('donem', `${donem}-01`).order('tarih')
+    setOdemeler(data || [])
+  }, [donem])
+  useEffect(() => { if (odemeModal) odemeYukle(odemeModal.personel_id); else setOdemeler([]) }, [odemeModal, odemeYukle])
+
+  async function odemeEkle(e: React.FormEvent) {
+    e.preventDefault(); if (busy || !odemeModal) return
+    if (!(+odemeForm.tutar > 0)) return toast.show('Tutar 0\'dan büyük olmalı', true)
+    setBusy(true)
+    const { data: { user } } = await createClient().auth.getUser()
+    const { error } = await web.from('personel_odemeleri').insert({ personel_id: odemeModal.personel_id, donem: `${donem}-01`, tur: odemeForm.tur, tarih: odemeForm.tarih, tutar: +odemeForm.tutar, aciklama: odemeForm.aciklama || null, created_by: user?.id ?? null })
+    setBusy(false)
+    if (error) return toast.show(error.message, true)
+    setOdemeForm((f: any) => ({ ...f, tutar: '', aciklama: '' })); odemeYukle(odemeModal.personel_id); yukle()
+  }
+  async function odemeSil(id: string) {
+    if (!confirm('Bu ödeme kaydı silinsin mi?')) return
+    const { error } = await web.from('personel_odemeleri').delete().eq('id', id)
+    if (error) return toast.show(error.message, true)
+    if (odemeModal) odemeYukle(odemeModal.personel_id); yukle()
+  }
 
   const guncelMaas = useMemo(() => {
     const m = new Map<string, any>()
@@ -96,13 +127,25 @@ export default function BordroTab({ toast }: { toast: Toast }) {
         const p = s.personel
         const maas = guncelMaas.get(p.id)
         if (!maas) continue // maaş bilgisi girilmemiş personel atlanır
+        if (maas.maas_tipi === 'net') {
+          // Net bazlı cetvel: SGK/vergi hesaplanmaz; elle girilmiş/içe aktarılmış satır (avans, banka, mesai…) ezilmez.
+          if (kalemMap.has(p.id)) continue
+          kayitlar.push({
+            donem_id: donemId, personel_id: p.id, calisilan_gun: s.ozet.calisilan_gun, calisilan_dk: s.ozet.calisilan_dk, fazla_mesai_dk: s.ozet.fazla_mesai_dk,
+            devamsiz_gun: s.ozet.devamsiz_gun, izin_gun: Object.values(s.ozet.izin_gun || {}).reduce((a: number, b: any) => a + b, 0),
+            brut_maas: +maas.brut_maas, sgk_isci_kesintisi: 0, issizlik_kesintisi: 0, gelir_vergisi: 0, damga_vergisi: 0, avans_mahsup: 0,
+            net_maas: +maas.brut_maas, net_bazli: true, updated_by: user?.id ?? null,
+          })
+          continue
+        }
         const sonuc = hesaplaBordroSatiri({ brutMaas: +maas.brut_maas, kumulatifMatrahOncesi: kumulatif.get(p.id) || 0, parametre: par })
         kayitlar.push({
           donem_id: donemId, personel_id: p.id,
           calisilan_gun: s.ozet.calisilan_gun, calisilan_dk: s.ozet.calisilan_dk, fazla_mesai_dk: s.ozet.fazla_mesai_dk,
           devamsiz_gun: s.ozet.devamsiz_gun, izin_gun: Object.values(s.ozet.izin_gun || {}).reduce((a: number, b: any) => a + b, 0),
           brut_maas: sonuc.brut_maas, sgk_isci_kesintisi: sonuc.sgk_isci_kesintisi, issizlik_kesintisi: sonuc.issizlik_kesintisi,
-          gelir_vergisi: sonuc.gelir_vergisi, damga_vergisi: sonuc.damga_vergisi, avans_mahsup: 0, net_maas: sonuc.net_maas,
+          gelir_vergisi: sonuc.gelir_vergisi, damga_vergisi: sonuc.damga_vergisi, avans_mahsup: kalemMap.get(p.id)?.avans_mahsup || 0,
+          net_maas: netToplam({ ...sonuc, ...ekAlanlar(kalemMap.get(p.id)), avans_mahsup: kalemMap.get(p.id)?.avans_mahsup || 0 }),
           updated_by: user?.id ?? null,
         })
       }
@@ -116,7 +159,9 @@ export default function BordroTab({ toast }: { toast: Toast }) {
   }
 
   async function alanGuncelle(kalemId: string, alan: string, deger: number) {
-    const { error } = await web.from('bordro_kalemleri').update({ [alan]: deger, updated_at: new Date().toISOString() }).eq('id', kalemId)
+    const mevcut = kalemler.find(k => k.id === kalemId) || {}
+    const net = netToplam({ ...mevcut, [alan]: deger })
+    const { error } = await web.from('bordro_kalemleri').update({ [alan]: deger, net_maas: net, updated_at: new Date().toISOString() }).eq('id', kalemId)
     if (error) return toast.show(error.message, true)
     yukle()
   }
@@ -144,7 +189,7 @@ export default function BordroTab({ toast }: { toast: Toast }) {
     setMaasModal(null); toast.show('Maaş bilgisi kaydedildi'); yukle()
   }
 
-  const toplam = useMemo(() => kalemler.reduce((s, k) => ({ net: s.net + (+k.net_maas || 0), brut: s.brut + (+k.brut_maas || 0) }), { net: 0, brut: 0 }), [kalemler])
+  const toplam = useMemo(() => kalemler.reduce((s, k) => ({ net: s.net + (+k.net_maas || 0), brut: s.brut + (+k.brut_maas || 0), devir: s.devir + (+k.devir || 0), mesai: s.mesai + (+k.mesai_ucreti || 0), yemek: s.yemek + (+k.yemek || 0), avans: s.avans + (+k.avans_mahsup || 0), banka: s.banka + (+k.banka_odeme || 0), elden: s.elden + (+k.elden_odeme || 0) }), { net: 0, brut: 0, devir: 0, mesai: 0, yemek: 0, avans: 0, banka: 0, elden: 0 }), [kalemler])
 
   if (!parametre && !loading) return (
     <Empty title={`${yil} yılı için bordro parametreleri tanımlı değil`} sub="SGK/vergi oranları veritabanında bordro_parametreleri tablosunda tanımlanmalı — bir mali müşavirle teyit ettirip ekleyin." />
@@ -173,7 +218,7 @@ export default function BordroTab({ toast }: { toast: Toast }) {
         <div style={{ overflowX: 'auto', border: '1px solid var(--adm-bd)' }}>
           <table style={{ borderCollapse: 'collapse', fontSize: 12, width: '100%' }}>
             <thead><tr style={{ background: 'var(--adm-bg2)' }}>
-              {['Personel', 'Çalışılan Gün', 'F.Mesai (dk)', 'Devamsız', 'İzin', 'Brüt', 'SGK', 'İşsizlik', 'Gelir V.', 'Damga V.', 'Avans', 'Net'].map(h => <th key={h} style={th}>{h}</th>)}
+              {['Personel', 'Gün', 'Mesai (saat/dk)', 'Devamsız', 'İzin', 'Brüt / Maaş', 'SGK', 'İşsizlik', 'Gelir V.', 'Damga V.', 'Devir', 'Mesai Ücr.', 'Yemek', 'Avans', 'Banka', 'Elden', 'Ödeme Toplamı', 'Net / Kalan'].map(h => <th key={h} style={th}>{h}</th>)}
             </tr></thead>
             <tbody>
               {aktifPersonel.filter(p => kalemMap.has(p.id)).map(p => {
@@ -182,7 +227,7 @@ export default function BordroTab({ toast }: { toast: Toast }) {
                   <tr key={p.id} className="adm-row">
                     <td style={td}><b>{p.ad_soyad}</b> <span style={{ color: 'var(--adm-tx3)' }}>{p.sicil_no}</span></td>
                     <td style={{ ...td, textAlign: 'right' }}>{k.calisilan_gun}</td>
-                    <td style={{ ...td, textAlign: 'right' }}>{k.fazla_mesai_dk}</td>
+                    <td style={{ ...td, textAlign: 'right' }}>{k.net_bazli ? `${k.mesai_saat} sa` : k.fazla_mesai_dk}</td>
                     <td style={{ ...td, textAlign: 'right' }}>{k.devamsiz_gun}</td>
                     <td style={{ ...td, textAlign: 'right' }}>{k.izin_gun}</td>
                     <td style={{ ...td, textAlign: 'right' }}>{paraTR(k.brut_maas)}</td>
@@ -190,9 +235,18 @@ export default function BordroTab({ toast }: { toast: Toast }) {
                     <td style={{ ...td, textAlign: 'right' }}>{paraTR(k.issizlik_kesintisi)}</td>
                     <td style={{ ...td, textAlign: 'right' }}>{paraTR(k.gelir_vergisi)}</td>
                     <td style={{ ...td, textAlign: 'right' }}>{paraTR(k.damga_vergisi)}</td>
-                    <td style={{ ...td, textAlign: 'right', width: 90 }}>{kilitli ? paraTR(k.avans_mahsup) :
-                      <input type="number" className="adm-inp" style={{ width: 80, textAlign: 'right', padding: '2px 6px' }} defaultValue={k.avans_mahsup}
-                        onBlur={e => { const v = +e.target.value || 0; if (v !== k.avans_mahsup) alanGuncelle(k.id, 'avans_mahsup', v) }} />}
+                    {(['devir', 'mesai_ucreti', 'yemek'] as const).map(alan => (
+                      <td key={alan} style={{ ...td, textAlign: 'right', width: 90 }}>{kilitli ? paraTR(k[alan]) :
+                        <input type="number" step="0.01" className="adm-inp" style={{ width: 84, textAlign: 'right', padding: '2px 6px' }} defaultValue={k[alan]}
+                          onBlur={e => { const v = +e.target.value || 0; if (v !== +k[alan]) alanGuncelle(k.id, alan, v) }} />}
+                      </td>
+                    ))}
+                    <td style={{ ...td, textAlign: 'right' }}>{paraTR(k.avans_mahsup)}</td>
+                    <td style={{ ...td, textAlign: 'right' }}>{paraTR(k.banka_odeme)}</td>
+                    <td style={{ ...td, textAlign: 'right' }}>{paraTR(k.elden_odeme)}</td>
+                    <td style={{ ...td, textAlign: 'right' }}>
+                      {paraTR((+k.avans_mahsup || 0) + (+k.banka_odeme || 0) + (+k.elden_odeme || 0))}{' '}
+                      <button className="adm-btn-ghost" style={{ padding: '1px 8px', fontSize: 11 }} onClick={() => setOdemeModal({ personel_id: p.id, ad_soyad: p.ad_soyad })}>Ödemeler</button>
                     </td>
                     <td style={{ ...td, textAlign: 'right' }}><b>{paraTR(k.net_maas)}</b></td>
                   </tr>
@@ -202,7 +256,14 @@ export default function BordroTab({ toast }: { toast: Toast }) {
             <tfoot><tr style={{ background: 'var(--adm-bg2)', fontWeight: 700 }}>
               <td style={td} colSpan={5}>Toplam</td>
               <td style={{ ...td, textAlign: 'right' }}>{paraTR(toplam.brut)}</td>
-              <td style={td} colSpan={5}></td>
+              <td style={td} colSpan={4}></td>
+              <td style={{ ...td, textAlign: 'right' }}>{paraTR(toplam.devir)}</td>
+              <td style={{ ...td, textAlign: 'right' }}>{paraTR(toplam.mesai)}</td>
+              <td style={{ ...td, textAlign: 'right' }}>{paraTR(toplam.yemek)}</td>
+              <td style={{ ...td, textAlign: 'right' }}>{paraTR(toplam.avans)}</td>
+              <td style={{ ...td, textAlign: 'right' }}>{paraTR(toplam.banka)}</td>
+              <td style={{ ...td, textAlign: 'right' }}>{paraTR(toplam.elden)}</td>
+              <td style={{ ...td, textAlign: 'right' }}>{paraTR(toplam.avans + toplam.banka + toplam.elden)}</td>
               <td style={{ ...td, textAlign: 'right' }}>{paraTR(toplam.net)}</td>
             </tr></tfoot>
           </table>
@@ -224,11 +285,34 @@ export default function BordroTab({ toast }: { toast: Toast }) {
         </Card>
       </div>
 
+      <Modal open={!!odemeModal} onClose={() => setOdemeModal(null)} onSubmit={odemeEkle} width={560} title={`Avans / Ödemeler — ${odemeModal?.ad_soyad || ''} · ${AYLAR[+donem.slice(5, 7) - 1]} ${yil}`}
+        footer={<><button type="button" className="adm-btn-ghost" onClick={() => setOdemeModal(null)}>Kapat</button>{!kilitli && <button type="submit" className="adm-btn" disabled={busy}>Ekle</button>}</>}>
+        <div style={{ marginBottom: 12 }}>
+          {odemeler.length === 0 ? <p style={{ fontSize: 12.5, color: 'var(--adm-tx3)' }}>Bu dönem için ödeme kaydı yok.</p> : odemeler.map(o => (
+            <div key={o.id} className="adm-row" style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '6px 0', fontSize: 13 }}>
+              <Badge tone={o.tur === 'avans' ? 'amber' : o.tur === 'banka' ? 'blue' : 'green'}>{o.tur === 'avans' ? 'Avans' : o.tur === 'banka' ? 'Banka' : 'Elden'}</Badge>
+              <span style={{ color: 'var(--adm-tx3)' }}>{tarihTR(o.tarih)}</span>
+              <span style={{ flex: 1, color: 'var(--adm-tx3)', fontSize: 12 }}>{o.aciklama}</span>
+              <b>{paraTR(+o.tutar)}</b>
+              {!kilitli && <button type="button" className="adm-btn-ghost" style={{ padding: '1px 8px', fontSize: 11 }} onClick={() => odemeSil(o.id)}>Sil</button>}
+            </div>
+          ))}
+        </div>
+        {!kilitli && (
+          <FormGrid cols={2}>
+            <Field label="Tür"><select className="adm-inp" value={odemeForm.tur} onChange={e => setOdemeForm((f: any) => ({ ...f, tur: e.target.value }))}><option value="avans">Avans (mahsup edilir)</option><option value="banka">Maaş — Banka</option><option value="elden">Maaş — Elden</option></select></Field>
+            <Field label="Tarih *"><input type="date" className="adm-inp" required value={odemeForm.tarih} onChange={e => setOdemeForm((f: any) => ({ ...f, tarih: e.target.value }))} /></Field>
+            <Field label="Tutar *"><input type="number" step="0.01" className="adm-inp" required value={odemeForm.tutar} onChange={e => setOdemeForm((f: any) => ({ ...f, tutar: e.target.value }))} /></Field>
+            <Field label="Açıklama"><input className="adm-inp" value={odemeForm.aciklama} onChange={e => setOdemeForm((f: any) => ({ ...f, aciklama: e.target.value }))} /></Field>
+          </FormGrid>
+        )}
+      </Modal>
+
       <Modal open={!!maasModal} onClose={() => setMaasModal(null)} onSubmit={kaydetMaas} width={460} title={`Maaş Bilgisi — ${maasModal?.ad_soyad || ''}`}
         footer={<><button type="button" className="adm-btn-ghost" onClick={() => setMaasModal(null)}>İptal</button><button type="submit" className="adm-btn" disabled={busy}>Kaydet</button></>}>
         <FormGrid cols={2}>
-          <Field label="Brüt Maaş *"><input type="number" step="0.01" className="adm-inp" required value={maasForm.brut_maas} onChange={e => setMaasForm((f: any) => ({ ...f, brut_maas: e.target.value }))} /></Field>
-          <Field label="Tip"><select className="adm-inp" value={maasForm.maas_tipi} onChange={e => setMaasForm((f: any) => ({ ...f, maas_tipi: e.target.value }))}><option value="aylik">Aylık</option><option value="saatlik">Saatlik</option></select></Field>
+          <Field label={maasForm.maas_tipi === 'net' ? 'Net Maaş *' : 'Brüt Maaş *'}><input type="number" step="0.01" className="adm-inp" required value={maasForm.brut_maas} onChange={e => setMaasForm((f: any) => ({ ...f, brut_maas: e.target.value }))} /></Field>
+          <Field label="Tip"><select className="adm-inp" value={maasForm.maas_tipi} onChange={e => setMaasForm((f: any) => ({ ...f, maas_tipi: e.target.value }))}><option value="aylik">Aylık</option><option value="saatlik">Saatlik</option><option value="net">Net (kesintisiz cetvel)</option></select></Field>
           <Field label="Geçerlilik Başlangıcı *" span={2} hint="Bu tarihten itibaren geçerli olur, önceki kayıt geçmiş için saklı kalır"><input type="date" className="adm-inp" required value={maasForm.gecerlilik_baslangic} onChange={e => setMaasForm((f: any) => ({ ...f, gecerlilik_baslangic: e.target.value }))} /></Field>
         </FormGrid>
       </Modal>
