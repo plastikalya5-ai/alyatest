@@ -62,7 +62,8 @@ const BOLUMLER: Bolum[] = [
   { v: 'kontrol', l: 'Kontrol listesi', icerik: [
     { b: 'Toplu düzenle', t: [
       'Cari, Fatura ve Gelir-Gider listelerinde satırları işaretleyin, "Toplu düzenle" ile aynı değeri hepsine atayın (ör. cari tipi, fiyat listesi, fatura vadesi, işlem kategorisi).',
-      'Tutar, cari, kasa/banka ve fatura durumu gibi bakiyeyi etkileyen alanlar bilerek toplu düzenlemede yoktur; bunlar tek tek kayıttan değiştirilmelidir.',
+      'Gelir-Gider listesinde "Hesaba / cariye ata" ile seçili işlemlere topluca kasa/banka hesabı veya cari atanır. Sistem eski hesaptan etkiyi geri alıp yenisine işler (gelir hesabı artırır, gider azaltır; cari bakiyesi de aynı kuralla). Yalnızca TL hesaplar seçilebilir.',
+      'Tutar ve fatura durumu gibi alanlar toplu düzenlemede yoktur; bunlar tek tek kayıttan değiştirilir.',
     ] },
     { b: 'Ay sonunda kontrol edilecekler', t: [
       'Kasa/banka bakiyelerini gerçek banka ekstresiyle karşılaştırın, fark varsa Bakiye Düzeltme ile kaydedin ve not düşün.',

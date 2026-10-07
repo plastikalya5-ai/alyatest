@@ -37,6 +37,18 @@ export default function IslemlerPage() {
   const [form, setForm] = useState(bosForm())
   const [busy, setBusy] = useState(false)
   const [toplu, setToplu] = useState<any[] | null>(null)
+  const [ata, setAta] = useState<{ rows: any[]; kasaOn: boolean; kasa: string; cariOn: boolean; cari: string } | null>(null)
+  async function ataUygula(e: React.FormEvent) {
+    e.preventDefault(); if (busy || !ata) return
+    if (!ata.kasaOn && !ata.cariOn) return toast.show('Hesap veya cari alanını işaretle', true)
+    setBusy(true)
+    try {
+      const r: any = await muh.rpc('rpc_islem_toplu_ata', { p_ids: ata.rows.map(x => x.id), p_kasa: ata.kasaOn && ata.kasa ? ata.kasa : null, p_kasa_set: ata.kasaOn, p_cari: ata.cariOn && ata.cari ? ata.cari : null, p_cari_set: ata.cariOn })
+      toast.show(`${r?.guncellenen ?? 0} işlem güncellendi${r?.atlanan ? `, ${r.atlanan} fatura bağlı kayıt cari için atlandı` : ''}`)
+      setAta(null); setSurum(v => v + 1)
+    } catch (er: any) { toast.show(String(er?.message || er), true) }
+    setBusy(false)
+  }
   const [kurlar, setKurlar] = useState<Record<string, number>>({ TRY: 1 })
 
   useEffect(() => {
@@ -174,7 +186,7 @@ export default function IslemlerPage() {
 
         <DataGrid rows={[]} server={server} cols={cols} rowKey={r => r.id} csvName="gelir-gider" storageKey="islemler-srv" pageSizes={[25, 50, 100, 250]}
           searchPlaceholder="Açıklama, kategori, cari, hesap..." selectable
-          bulkActions={(sel, clear) => <><button className="adm-btn-ghost" style={{ padding: '3px 12px', fontSize: 12 }} onClick={() => setToplu(sel)}><ListChecks size={12} />Toplu düzenle</button><button className="adm-btn-danger" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => bulkDel(sel, clear)}><Trash2 size={12} />Seçilenleri sil</button></>}
+          bulkActions={(sel, clear) => <><button className="adm-btn-ghost" style={{ padding: '3px 12px', fontSize: 12 }} onClick={() => setToplu(sel)}><ListChecks size={12} />Toplu düzenle</button><button className="adm-btn-ghost" style={{ padding: '3px 12px', fontSize: 12 }} onClick={() => setAta({ rows: sel, kasaOn: true, kasa: '', cariOn: false, cari: '' })}><Scale size={12} />Hesaba / cariye ata</button><button className="adm-btn-danger" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => bulkDel(sel, clear)}><Trash2 size={12} />Seçilenleri sil</button></>}
           onRowClick={setDetay} activeKey={detay?.id}
           filters={<>
             <select className="adm-sel" value={kat} onChange={e => setKat(e.target.value)}><option value="">Tüm kategoriler</option>{Array.from(new Set(kats.map(k => k.ad))).sort((a: any, b: any) => a.localeCompare(b, 'tr')).concat(NON_PNL.filter(n => !kats.some(k => k.ad === n))).map((k: any) => <option key={k}>{k}</option>)}</select>
@@ -243,6 +255,16 @@ export default function IslemlerPage() {
         { key: 'kategori', label: 'Kategori', type: 'select', hint: 'Gelir ve gider kategorileri karışık seçili olabilir; uygun olanı seç', options: Array.from(new Set(kats.map((k: any) => k.ad as string))).sort((a, b) => a.localeCompare(b, 'tr')).map(v => ({ v, l: v })) },
         { key: 'aciklama', label: 'Açıklama', type: 'text', bosYapilabilir: true },
       ]} />
+      <Modal open={!!ata} onClose={() => setAta(null)} onSubmit={ataUygula} width={520} title={`Hesaba / Cariye Ata — ${ata?.rows.length || 0} kayıt`}
+        footer={<><button type="button" className="adm-btn-ghost" onClick={() => setAta(null)}>İptal</button><button type="submit" className="adm-btn" disabled={busy}>{busy ? 'Uygulanıyor…' : 'Uygula'}</button></>}>
+        {ata && <FormGrid cols={1}>
+          <p style={{ margin: 0, fontSize: 12.5, color: 'var(--adm-tx3)' }}>Bakiyeler otomatik düzeltilir: eski hesaptan/cariden etki geri alınır, yenisine işlenir (gelir hesabı artırır, gider azaltır). Yalnızca TL hesaplar seçilebilir. Faturaya bağlı kayıtların cari bağı değiştirilmez.</p>
+          <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13 }}><input type="checkbox" checked={ata.kasaOn} onChange={e => setAta(a => a && ({ ...a, kasaOn: e.target.checked }))} />Kasa/banka hesabını değiştir</label>
+          {ata.kasaOn && <Field label="Kasa / Banka hesabı"><select className="adm-inp" value={ata.kasa} onChange={e => setAta(a => a && ({ ...a, kasa: e.target.value }))}><option value="">— Hesap bağlama (boş yap) —</option>{kasalar.filter(k => k.aktif !== false && kasaPb(k) === 'TRY').map(k => <option key={k.id} value={k.id}>{k.ad}</option>)}</select></Field>}
+          <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13 }}><input type="checkbox" checked={ata.cariOn} onChange={e => setAta(a => a && ({ ...a, cariOn: e.target.checked }))} />Cariyi değiştir</label>
+          {ata.cariOn && <Field label="Cari"><select className="adm-inp" value={ata.cari} onChange={e => setAta(a => a && ({ ...a, cari: e.target.value }))}><option value="">— Cari bağlama (boş yap) —</option>{cariler.map(c => <option key={c.id} value={c.id}>{c.ad}</option>)}</select></Field>}
+        </FormGrid>}
+      </Modal>
       {toast.node}
     </div>
   )
