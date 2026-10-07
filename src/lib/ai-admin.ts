@@ -106,7 +106,13 @@ export async function araciCalistir(sb: SupabaseClient, ad: string, a: Record<st
       }
       case 'satis_analiz': return kisalt(await rpc('rpc_satis_analiz', { p_from: tarih(a.bas), p_to: tarih(a.bit) }))
       case 'fatura_ozet': return kisalt(await rpc('rpc_fatura_ozet', { p_from: tarih(a.bas), p_to: tarih(a.bit) }))
-      case 'kdv_ozet': return kisalt(await rpc('rpc_kdv_ozet', { p_from: tarih(a.bas), p_to: tarih(a.bit) }))
+      case 'kdv_ozet': {
+        const ozet = await rpc('rpc_kdv_ozet', { p_from: tarih(a.bas), p_to: tarih(a.bit) })
+        // Eski programdan aktarılan GİB faturaları "taslak" durumunda tutulur (cari bakiyeleri zaten devirde olduğu için onaylanmaz); KDV'leri onaylı özete girmez ama listede gösterilmeli
+        const t = (await sel(sb.from('faturalar').select('no,tip,tarih,kdv_tutari,toplam,cari_id').eq('durum', 'taslak').gte('tarih', tarih(a.bas)).lte('tarih', tarih(a.bit)).limit(2000))) as any[]
+        const top = (tip: string) => { const l = t.filter(x => x.tip === tip); return { adet: l.length, kdv_toplam: Math.round(l.reduce((s, x) => s + (+x.kdv_tutari || 0), 0) * 100) / 100, fatura_toplam: Math.round(l.reduce((s, x) => s + (+x.toplam || 0), 0) * 100) / 100 } }
+        return kisalt({ onayli_faturalara_gore: ozet, taslak_aktarilmis_faturalar: { alis_indirilecek_kdv: top('alis'), iade: top('iade'), satis_hesaplanan_kdv: top('satis') }, not: 'onayli_faturalara_gore sıfır/az çıkarsa "KDV yok" DEME: eski programdan aktarılan GİB faturaları taslak durumundadır, indirilecek KDV listesi için taslak_aktarilmis_faturalar bölümünü ve fatura_ara aracını kullan; kullanıcıya ikisini ayrı ayrı söyle.' })
+      }
       case 'kasa_akis': return kisalt(await rpc('rpc_kasa_akis', { p_from: tarih(a.bas), p_to: tarih(a.bit) }))
       case 'yaslandirma': return kisalt(await rpc('rpc_yaslandirma'))
       case 'ziyaret_ozet': return kisalt(await rpc('rpc_ziyaret_ozet', { p_days: Math.min(Math.max(parseInt(a.gun) || 7, 1), 365) }))
