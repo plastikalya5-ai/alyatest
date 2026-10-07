@@ -42,6 +42,10 @@ export default async function Anasayfa({ dil }: { dil: Dil }) {
   } catch (e) {
     console.error("Supabase fetch error:", e);
   }
+  // Ana sayfada yalnızca fotoğrafı olan ürünler gösterilir (fotoğrafsız yeni kayıtlar boş kutu oluşturmasın)
+  const resimli = <T extends { image_url?: string | null }>(l: T[]) => l.filter(p => typeof p.image_url === "string" && p.image_url.startsWith("https://"));
+  featured = resimli(featured);
+  const gorunenler = resimli(all);
   const img = resolveImg(temaOverride);
 
   return (
@@ -56,8 +60,8 @@ export default async function Anasayfa({ dil }: { dil: Dil }) {
         <Hero stats={stats} settings={settings} dil={dil} img={img} />
         <Marquee dil={dil} />
         <FeaturedProducts products={featured} dil={dil} />
-        <HorizontalPin products={all} dil={dil} />
-        <Collection products={all} dil={dil} />
+        <HorizontalPin products={gorunenler} dil={dil} />
+        <Collection products={gorunenler} dil={dil} />
         <FullscreenFeature dil={dil} img={img} />
         <Why stats={stats} dil={dil} img={img} />
         <Export countries={countries} dil={dil} />
