@@ -159,18 +159,34 @@ export async function araciCalistir(sb: SupabaseClient, ad: string, a: Record<st
         const ar = nrm(a.arama); if (!ar) throw new Error('arama boş')
         const cl = ((await sel(sb.from('cari_hesaplar').select('id,ad,kod,tip,bakiye,bakiye_usd,bakiye_eur,notlar').limit(3000))) as any[]).filter(c => esles(c.ad + ' ' + c.kod, ar))
         if (!cl.length) return kisalt({ bulunamadi: true })
-        if (cl.length > 1 && !cl.some(c => nrm(c.ad) === ar)) return kisalt({ birden_fazla_eslesme: cl.slice(0, 12).map(c => ({ ad: c.ad, kod: c.kod })), not: 'Hangisi? kullanıcıya sor' })
-        const c = cl.find(x => nrm(x.ad) === ar) || cl[0], n = Math.min(Math.max(+a.adet || 15, 1), 40)
-        const [eski, fat, isl] = await Promise.all([
-          sel(sb.from('cari_eski_hareketler').select('grup,tarih,evrak_cinsi,evrak_no,aciklama,tl_borc,tl_alacak,usd_borc,usd_alacak,eur_borc,eur_alacak,nakil').eq('cari_id', c.id).order('tarih', { ascending: false }).order('sira', { ascending: false }).limit(n)),
-          sel(sb.from('v_faturalar_liste').select('no,tip,durum,tarih,vade,toplam,odenen_tutar,para_birimi').eq('cari_id', c.id).order('tarih', { ascending: false }).limit(15)).catch(() => []),
-          sel(sb.from('islemler').select('tip,kategori,tutar,tarih,aciklama').eq('cari_id', c.id).order('tarih', { ascending: false }).limit(15)),
-        ])
-        const tumEski = (await sel(sb.from('cari_eski_hareketler').select('grup,evrak_cinsi,tl_borc,tl_alacak,usd_borc,usd_alacak,eur_borc,eur_alacak').eq('cari_id', c.id).limit(3000))) as any[]
-        const oz: Record<string, { adet: number; borc: number; alacak: number }> = {}
-        tumEski.forEach(x => { const g = x.grup === 'USD' ? 'USD' : x.grup === 'EUR' ? 'EUR' : 'TL', k = `${g} · ${x.evrak_cinsi || 'diğer'}`, b = g === 'USD' ? +x.usd_borc : g === 'EUR' ? +x.eur_borc : +x.tl_borc, al = g === 'USD' ? +x.usd_alacak : g === 'EUR' ? +x.eur_alacak : +x.tl_alacak; oz[k] = oz[k] || { adet: 0, borc: 0, alacak: 0 }; oz[k].adet++; oz[k].borc += b || 0; oz[k].alacak += al || 0 })
-        const ozet = Object.entries(oz).map(([k, v]) => ({ tur: k, adet: v.adet, borc: Math.round(v.borc * 100) / 100, alacak: Math.round(v.alacak * 100) / 100 }))
-        return kisalt({ cari: { ad: c.ad, kod: c.kod, tip: c.tip, TL: +c.bakiye || 0, USD: +c.bakiye_usd || 0, EUR: +c.bakiye_eur || 0, not: c.notlar }, eski_program_evrak_turune_gore_ozet: ozet, kayitlarda_olmayan: 'Fatura kalemi bazında hammadde/KDV/resmi-gayri resmi ayrımı bu kayıtlarda tutulmuyor; sadece evrak türü ve tutar var. Kullanıcı bunu isterse açıkça söyle, uydurma.', eski_program_son_hareketler: eski, guncel_faturalar: fat, guncel_islemler: isl, aciklama: 'Eski program hareketleri geçmiş kayıttır; güncel bakiye cari alanındaki TL/USD/EUR değeridir.' }, 9000)
+        const kisa = [...cl].sort((x, y) => x.ad.length - y.ad.length)[0], onek = nrm(kisa.ad).slice(0, 12)
+        const kardes = cl.length > 1 && cl.every(x => nrm(x.ad).startsWith(onek))
+        if (cl.length > 1 && !kardes && !cl.some(c => nrm(c.ad) === ar)) return kisalt({ birden_fazla_eslesme: cl.slice(0, 12).map(c => ({ ad: c.ad, kod: c.kod })), not: 'Hangisi? kullanıcıya sor' })
+        const n = Math.min(Math.max(+a.adet || 15, 1), 40)
+        const bir = async (c: any) => {
+          const [eski, fat, isl] = await Promise.all([
+            sel(sb.from('cari_eski_hareketler').select('grup,hesap_kodu,tarih,evrak_cinsi,evrak_no,aciklama,tl_borc,tl_alacak,usd_borc,usd_alacak,eur_borc,eur_alacak,nakil').eq('cari_id', c.id).order('tarih', { ascending: false }).order('sira', { ascending: false }).limit(n)),
+            sel(sb.from('v_faturalar_liste').select('no,tip,durum,tarih,vade,toplam,odenen_tutar,para_birimi').eq('cari_id', c.id).order('tarih', { ascending: false }).limit(15)).catch(() => []),
+            sel(sb.from('islemler').select('tip,kategori,tutar,tarih,aciklama').eq('cari_id', c.id).order('tarih', { ascending: false }).limit(15)),
+          ])
+          const tumEski = (await sel(sb.from('cari_eski_hareketler').select('grup,hesap_kodu,hesap_adi,evrak_cinsi,tl_borc,tl_alacak,usd_borc,usd_alacak,eur_borc,eur_alacak').eq('cari_id', c.id).limit(3000))) as any[]
+          const oz: Record<string, { adet: number; borc: number; alacak: number }> = {}, hs: Record<string, { ad: string; tl_borc: number; tl_alacak: number; usd_borc: number; usd_alacak: number }> = {}
+          tumEski.forEach(x => {
+            const g = x.grup === 'USD' ? 'USD' : x.grup === 'EUR' ? 'EUR' : 'TL', k = `${g} · ${x.evrak_cinsi || 'diğer'}`, b = g === 'USD' ? +x.usd_borc : g === 'EUR' ? +x.eur_borc : +x.tl_borc, al = g === 'USD' ? +x.usd_alacak : g === 'EUR' ? +x.eur_alacak : +x.tl_alacak
+            oz[k] = oz[k] || { adet: 0, borc: 0, alacak: 0 }; oz[k].adet++; oz[k].borc += b || 0; oz[k].alacak += al || 0
+            const hk = x.hesap_kodu || '-'; hs[hk] = hs[hk] || { ad: x.hesap_adi || '', tl_borc: 0, tl_alacak: 0, usd_borc: 0, usd_alacak: 0 }; hs[hk].tl_borc += +x.tl_borc || 0; hs[hk].tl_alacak += +x.tl_alacak || 0; hs[hk].usd_borc += +x.usd_borc || 0; hs[hk].usd_alacak += +x.usd_alacak || 0
+          })
+          const r2 = (v: number) => Math.round(v * 100) / 100
+          const ozet = Object.entries(oz).map(([k, v]) => ({ tur: k, adet: v.adet, borc: r2(v.borc), alacak: r2(v.alacak) }))
+          const hesaplar = Object.entries(hs).filter(([k]) => k !== '-').map(([k, v]) => ({ hesap_kodu: k, hesap_adi: v.ad, TL_bakiye_net: r2(v.tl_borc - v.tl_alacak), not: 'negatif = şirket borçlu. TL_bakiye_net eski program TL karşılığıdır (dövizli hesapta orijinal döviz bakiyesi ayrıdır)' }))
+          return { cari: { ad: c.ad, kod: c.kod, tip: c.tip, TL: +c.bakiye || 0, USD: +c.bakiye_usd || 0, EUR: +c.bakiye_eur || 0, not: c.notlar }, eski_program_hesaplar_ayri_ayri: hesaplar.length ? hesaplar : undefined, eski_program_evrak_turune_gore_ozet: ozet, eski_program_son_hareketler: eski, guncel_faturalar: fat, guncel_islemler: isl }
+        }
+        if (kardes) {
+          const l = await Promise.all(cl.slice(0, 5).map(bir))
+          return kisalt({ ayni_firmanin_hesaplari: l, TOPLAM_TL: Math.round(cl.reduce((t, c) => t + (+c.bakiye || 0), 0) * 100) / 100, not: 'Aynı firmanın eski programdaki ayrı hesapları (örn. ESPAPLAST: HAMMADDE 320.01.017, KDV 320.01.016, RESMİ 320.10.006). Kullanıcı ayrı ayrı isterse her hesabı ayrı ver, istemezse toplamı da söyle. Negatif = şirket borçlu.' }, 9000)
+        }
+        const c = cl.find(x => nrm(x.ad) === ar) || cl[0]
+        return kisalt({ ...(await bir(c)), aciklama: 'Eski program hareketleri geçmiş kayıttır; güncel bakiye cari alanındaki TL/USD/EUR değeridir. Bir cari birden fazla eski program hesabına bölünmüşse eski_program_hesaplar_ayri_ayri alanından ayrı ayrı ver.' }, 9000)
       }
       case 'cek_senet_liste': {
         let q = sb.from('cek_senet').select('tip,yon,no,banka,tutar,vade_tarihi,durum,aciklama,cari_id,resmiyet').order('vade_tarihi').limit(1000)
