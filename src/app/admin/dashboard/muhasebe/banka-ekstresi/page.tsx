@@ -37,7 +37,10 @@ function bol(line: string, d: string) {
 }
 // Başlık varsa (tarih, açıklama, tutar | borç, alacak) kolonları otomatik bulur
 function csvParse(text: string) {
-  const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim())
+  let lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim())
+  // Banka dosyalarında üstte firma/IBAN bilgileri olur: asıl başlık satırını (Tarih + Tutar/Borç/Alacak) bul, üstünü at
+  const bi = lines.findIndex((l, i) => i < 60 && /tarih|date/i.test(l) && /tutar|amount|borç|borc|alacak|debit|credit/i.test(l))
+  if (bi > 0) lines = lines.slice(bi)
   if (!lines.length) return []
   const d = (lines[0].match(/;/g) || []).length >= (lines[0].match(/,/g) || []).length && lines[0].includes(';') ? ';' : lines[0].includes('\t') ? '\t' : ','
   const head = bol(lines[0], d).map(h => h.toLocaleLowerCase('tr'))
@@ -112,7 +115,11 @@ export default function BankaEkstresiPage() {
 
   async function dosya(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]; if (!f || !kasa) return
-    const satirlar = csvParse(await f.text())
+    // Türkiye bankaları dosyayı çoğu zaman Windows-1254 kodlamasıyla verir; UTF-8 değilse ona çevir
+    const buf = await f.arrayBuffer()
+    let metin: string
+    try { metin = new TextDecoder('utf-8', { fatal: true }).decode(buf) } catch { metin = new TextDecoder('windows-1254').decode(buf) }
+    const satirlar = csvParse(metin)
     if (!satirlar.length) { toast.show('Geçerli satır bulunamadı. Beklenen kolonlar: Tarih, Açıklama, Tutar (veya Borç/Alacak)', true); return }
     const anahtar = (s: any) => `${s.tarih}|${s.yon}|${(+s.tutar).toFixed(2)}|${(s.aciklama || '').trim().toLowerCase()}`
     const mevcut = new Set(benim.map(anahtar))
