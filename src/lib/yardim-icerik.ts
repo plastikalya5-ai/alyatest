@@ -292,8 +292,30 @@ export const YARDIM: Record<string, YardimIcerik> = {
       sor: { t: 'Soru sor', a: 'Yazarak ya da konuşarak soru sor. Önceki sohbetlerine üstten ulaşabilirsin.' },
       belge: { t: 'Belge yükle', a: 'Fatura/dekont fotoğrafını yükle, yapay zeka okusun. Okuduğu bilgiyi sen kontrol et.' },
       rapor: { t: 'Raporlar', a: 'Excel olarak indirilebilen hazır raporlar: KDV, aylık yönetim raporu, indirilecek KDV listesi.' },
-      hafiza: { t: 'Hafıza', a: 'Yapay zekayı Alya\'ya göre eğittiğin yer. Cevabın altındaki "Yanlış" düğmesiyle gönderilen düzeltmeler burada onay bekler. Onayla deyince kullanılır, yanlışsa Kapat de.' },
       mevzuat: { t: 'Güncel mevzuat', a: 'Vergi oranı, limit gibi bilgilerin saklandığı liste. Yapay zeka vergi cevaplarını buradan alır.' },
     },
+  },
+
+  'ai-egit': {
+    baslik: 'Yapay Zekayı Eğit',
+    ozet: 'Yapay zeka bazen yanlış anlayabilir. Burada ona "böyle sorulunca şöyle düşün" diye ders verirsin. Verdiğin ders önce onay bekler, yönetici onaylayınca yapay zeka kullanmaya başlar. Yanlış bir ders olursa tek tıkla kapatırsın.',
+    akis: ['Yanlış cevap', 'Düzeltme yaz', 'Onay bekler', 'Onayla', 'Yapay zeka öğrenir'],
+    adimlar: [
+      { t: 'Ders ekle', a: '"Yeni ders ekle" kutusuna yapay zekaya sorulacak cümleyi ve doğru anlayışı yaz. Örnek: "Takastaki çekler" → "Elde sayılmaz, sadece Garanti Bankası\'na verilenleri listele."' },
+      { t: 'Ya da cevaptan gönder', a: 'Muhasebe AI\'da yanlış bir cevabın altındaki "Yanlış" düğmesine bas, doğrusunu yaz. Burada onay bekleyen olarak görünür.' },
+      { t: 'Onayla', a: 'Dersi oku, doğruysa "Onayla"ya bas. Onaylamadıkça yapay zeka kullanmaz.' },
+      { t: 'Yanlışsa kapat', a: 'Yanlış öğrendiğini fark edersen "Kapat" de. Silinmez, yapay zeka artık kullanmaz. İstersen sonra "Yeniden aç" dersin.' },
+    ],
+    ornekler: ['Takastaki çek = bankaya tahsile verilen, elde sayılmaz', 'Ciro dediğimde sadece ürün satışı', 'Kalkan Ambalaj = koli tedarikçisi'],
+    dikkat: [
+      'Ders yazarken rakam yazma. Rakamlar her zaman güncel kayıttan alınır; eski rakam yanlış sonuç verir.',
+      'Kısa ve net yaz. "Ne zaman, ne yapsın" yeterli.',
+      'Yalnızca yönetici onaylayabilir, kapatabilir ve silebilir.',
+    ],
+    terimler: [
+      { t: 'Onay bekliyor', a: 'Ders yazıldı ama yapay zeka henüz kullanmıyor.' },
+      { t: 'Aktif', a: 'Onaylandı, yapay zeka benzer sorularda bunu kullanıyor.' },
+      { t: 'Kapalı', a: 'Durduruldu. Silinmedi, istenirse yeniden açılır.' },
+    ],
   },
 }

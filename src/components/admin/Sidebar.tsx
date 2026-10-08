@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import SifreDegistir from './SifreDegistir'
 import MfaAyar from './MfaAyar'
 import { useEffect, useState } from 'react'
-import { Target, Scale, Building2, Share2, LayoutDashboard, Package, Tag, MessageSquare, Settings, BarChart2, TrendingUp, Eye, Image, LogOut, ExternalLink, FileText, Bell, Activity, Layers, DollarSign, Receipt, Users2, PieChart, Landmark, FileSignature, Warehouse, Boxes, ArrowLeftRight, Cog, Wrench, FlaskConical, Factory, Zap, ClipboardList, PackageSearch, Truck, ShieldCheck, FlameKindling, UserCog, ScanLine, Sparkles, KeyRound, Palette, BookOpen } from 'lucide-react'
+import { GraduationCap, Target, Scale, Building2, Share2, LayoutDashboard, Package, Tag, MessageSquare, Settings, BarChart2, TrendingUp, Eye, Image, LogOut, ExternalLink, FileText, Bell, Activity, Layers, DollarSign, Receipt, Users2, PieChart, Landmark, FileSignature, Warehouse, Boxes, ArrowLeftRight, Cog, Wrench, FlaskConical, Factory, Zap, ClipboardList, PackageSearch, Truck, ShieldCheck, FlameKindling, UserCog, ScanLine, Sparkles, KeyRound, Palette, BookOpen } from 'lucide-react'
 
 const NAV = [
   { g:'Genel', mod:['dashboard'], items:[
@@ -40,6 +40,7 @@ const NAV = [
     { href:'/admin/dashboard/muhasebe/fiyat-listeleri', label:'Fiyat Listeleri', Icon:Tag, mod:['muhasebe','satis'] },
     { href:'/admin/dashboard/muhasebe/raporlar', label:'Raporlar',     Icon:PieChart,    mod:['muhasebe'] },
     { href:'/admin/dashboard/muhasebe/ai', label:'Muhasebe AI', Icon:Sparkles, mod:['muhasebe'] },
+    { href:'/admin/dashboard/muhasebe/ai-egit', label:'Yapay Zekayı Eğit', Icon:GraduationCap, mod:['muhasebe'] },
   ]},
   { g:'Personel', mod:['personel'], items:[
     { href:'/admin/dashboard/personel', label:'Giriş-Çıkış / Puantaj', Icon:Users2, mod:['personel'] },

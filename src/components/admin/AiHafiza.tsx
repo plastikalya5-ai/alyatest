@@ -28,7 +28,7 @@ export function YanlisButonu({ soru, cevap }: { soru: string; cevap: string }) {
         <label style={{ fontSize: 12.5, fontWeight: 600 }}>Doğrusu nedir? (rakam yazmayın, nasıl düşünmesi gerektiğini yazın)</label>
         <textarea className="adm-inp" rows={4} value={dogru} onChange={e => setDogru(e.target.value)} maxLength={1500} style={{ width: '100%', marginTop: 6 }}
           placeholder="Örnek: Takastaki çekler elde sayılmaz; takas sorulursa yalnızca Garanti Bankası'na verilenleri listele." />
-        <div style={{ fontSize: 11.5, color: 'var(--adm-tx3)', marginTop: 8 }}>Düzeltme hemen uygulanmaz: yönetici <b>Hafıza</b> sekmesinden onaylayınca yapay zeka kullanmaya başlar.</div>
+        <div style={{ fontSize: 11.5, color: 'var(--adm-tx3)', marginTop: 8 }}>Düzeltme hemen uygulanmaz: yönetici <b>Yapay Zekayı Eğit</b> menüsünden onaylayınca yapay zeka kullanmaya başlar.</div>
       </Modal>
     </>
   )
