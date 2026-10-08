@@ -4,6 +4,9 @@ import { ChevronUp, ChevronDown, ChevronsUpDown, Download, Columns3, Rows3, Chev
 import { SearchBox, Skeleton, Empty } from './ui'
 import { csvDownload } from '@/lib/fmt'
 
+// Türkçe harf farkını yok sayan arama: "BERİNVEST" ile "BERINVEST", "şirket" ile "SIRKET" aynı kabul edilir (İ/ı/I karışıklığı yüzünden kayıt bulunamıyordu)
+const aramaKatla = (t: string) => String(t ?? '').replace(/İ/g, 'i').replace(/I/g, 'i').toLocaleLowerCase('tr').replace(/i̇/g, 'i').replace(/ı/g, 'i').replace(/ş/g, 's').replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c')
+
 export type Col<T> = {
   key: string
   label: string
@@ -86,7 +89,7 @@ export function DataGrid<T>({
   const filtered = useMemo(() => {
     if (server) return srvRows
     let r = rows
-    if (dq && searchText) { const t = dq.toLocaleLowerCase('tr'); r = r.filter(x => searchText(x).toLocaleLowerCase('tr').includes(t)) }
+    if (dq && searchText) { const t = aramaKatla(dq); r = r.filter(x => aramaKatla(searchText(x)).includes(t)) }
     if (sort) {
       const c = cols.find(c => c.key === sort.key)
       if (c?.sort) {
