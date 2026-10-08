@@ -1,6 +1,6 @@
 // Yapay zeka "hazır cevap" testi: sorular doğru cevaba yönleniyor mu, rakamlar kayıtlarla tutuyor mu?
 // Çalıştır: node --experimental-strip-types scripts/ai-test.mts
-import { soruNiyeti, cekYaniti, kasaYaniti, type CekSatir } from '../src/lib/ai-hazir.ts'
+import { soruNiyeti, cekYaniti, kasaYaniti, kiraYaniti, type CekSatir } from '../src/lib/ai-hazir.ts'
 
 const T = 'Garanti Bankası takas'
 const rows: CekSatir[] = [
@@ -37,7 +37,12 @@ const sorular: [string, string | null][] = [
   ['kasa bakiyesi ne kadar', 'kasa_banka'],
   ['banka hesaplarında ne kadar var', 'kasa_banka'],
   ['kasa banka durumu', 'kasa_banka'],
-  // Bunlar yapay zekaya gitmeli (kişi/tarih/yorum içeriyor)
+  ['kira ödemelerimi nasıl yapıyorum elden ve bankadan bilgi verirmisin', 'kira_duzeni'],
+  ['kira ödeme düzenimiz nedir', 'kira_duzeni'],
+  ['kiralar elden mi bankadan mı', 'kira_duzeni'],
+  // Bunlar yapay zekaya gitmeli
+  ['Eylül kirası ne kadar', null],
+  ['kira giderimiz bu yıl ne kadar', null],
   ['bu hafta vadesi gelen çekler', null],
   ['Yanko firmasının çeki var mı', null],
   ['ES POLİMER bakiyesi ne kadar', null],
@@ -67,4 +72,11 @@ const kasa = kasaYaniti([
   { ad: 'GARANTİ EUR', para_birimi: 'EUR', bakiye: 21774.85 }, { ad: 'ESKİ', para_birimi: 'TRY', bakiye: 5, aktif: false },
 ])
 kontrol('kasa: TL 1.911.618,96 ve USD ayrı', kasa.includes('1.911.618,96 TL') && kasa.includes('50.540,37 USD') && !kasa.includes('ESKİ'))
+const kira = kiraYaniti([
+  { ev_sahibi: 'Adem Gökçel', odeme_gunu: 15, banka: 100000, elden: 185000, not_: 'Sözleşme 15.07.2026' },
+  { ev_sahibi: 'Ayten Özyılmaz', odeme_gunu: 1, banka: 230000, elden: 180000 },
+  { ev_sahibi: 'Nurettin Aldemir', odeme_gunu: 15, banka: 100000, elden: 120000 },
+])
+kontrol('kira: Ayten ilk (ayın 1\'i), toplam 915.000', kira.indexOf('Ayten') < kira.indexOf('Nurettin') && kira.includes(tl(915000)) && kira.includes(tl(430000)) && kira.includes(tl(485000)))
+kontrol('kira: Ayten 410.000', kira.includes(tl(410000)))
 console.log(hata ? `\n${hata} HATA` : '\nTÜM TESTLER GEÇTİ'); process.exit(hata ? 1 : 0)

@@ -8,7 +8,7 @@ export type Niyet = 'cek_genel' | 'cek_takas' | 'cek_elde' | 'cek_karsiliksiz' |
 const tr = (s: string) => s.toLocaleLowerCase('tr').replace(/[?!.,;:()"']/g, ' ').replace(/\s+/g, ' ').trim()
 
 // Bu sözcüklerden biri varsa soru "kişi/tarih/ayrıntı" içeriyor demektir: serbest yoruma (yapay zeka) bırak
-const AYRINTI = /vadesi|vade tarihi|bu hafta|haftaya|bu ay|gelecek|geçen|gecen|kimden|kime |hangi cari|firma|müşteri|musteri|tedarik|ekstre|neden|niye|karşılaştır|karsilastir|tahmin|öner|yorum/
+const AYRINTI = /vadesi|vade tarihi|bu hafta|haftaya|bu ay|gelecek|geçen|gecen|kimden|kime |hangi cari|firma|müşteri|musteri|tedarik|ekstre|neden|niye|karşılaştır|karsilastir|tahmin|öner|(^| )yorum(la|u)?( |$)/
 
 /** Sorunun hangi hazır cevaba karşılık geldiğini bulur; emin değilse null (yapay zekaya bırakılır). */
 export function soruNiyeti(soru: string): Niyet | null {
