@@ -8,6 +8,7 @@ import { belgeDataUrl } from '@/lib/belge-dosya'
 import { csvDownload, fmtDate, todayISO } from '@/lib/fmt'
 import { Page, PageHead, Badge, Tabs, Card, Modal, Field, FormGrid, useToast } from '@/components/admin/erp/ui'
 import Yardim from '@/components/admin/erp/Yardim'
+import MevzuatHaberleri from '@/components/admin/MevzuatHaberleri'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
 import KayitOner from '@/components/admin/KayitOner'
 import SesliAsistan from '@/components/admin/SesliAsistan'
@@ -377,6 +378,7 @@ export default function MuhasebeAiPage() {
 
         {tab === 'mevzuat' && (
           <>
+            <div style={{ marginBottom: 14 }}><MevzuatHaberleri /></div>
             <div style={{ fontSize: 12.5, color: 'var(--adm-tx3)', marginBottom: 12, lineHeight: 1.6 }}>
               AI'ın oran, limit, had, ceza ve faiz gibi değerleri <b>yalnızca bu kayıtlardan</b> aldığı bilgi tabanıdır (kendi hafızasından değil). Her kaydın kaynağı, geçerlilik aralığı ve doğrulama tarihi vardır. Yeni bir tebliğ/karar çıktığında burayı güncelle; eksik bir konu varsa kayıt ekle. Değerleri resmî kaynaktan (GİB, Resmî Gazete, ÇSGB, SGK) teyit ettikten sonra "Bugün doğruladım" ile işaretle.
             </div>

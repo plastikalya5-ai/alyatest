@@ -25,7 +25,7 @@ export function htmlMetne(html: string) {
   return varlik(html.replace(/<(script|style|noscript|svg)[\s\S]*?<\/\1>/gi, ' ').replace(/<!--[\s\S]*?-->/g, ' ').replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim()
 }
 
-async function kaynakGetir(url: URL) {
+export async function kaynakGetir(url: URL) {
   const res = await fetch(url, { headers: { 'User-Agent': 'AlyaPlastik-MevzuatTakip/1.0 (+kaynak dogrulama)', Accept: 'text/html,application/pdf,*/*' }, redirect: 'follow', signal: AbortSignal.timeout(15000) })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   if (!guvenliUrl(res.url)) throw new Error('Yönlendirme güvenli olmayan bir adrese gitti')

@@ -2,6 +2,7 @@ import crypto from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { topluKontrol } from '@/lib/mevzuat-takip'
 import { notify } from '@/lib/notify'
+import { yeniMevzuatTara } from '@/lib/mevzuat-tarama'
 
 export const maxDuration = 60
 
@@ -26,7 +27,17 @@ export async function GET(req: NextRequest) {
         { adet: yeniUyari.length },
       )
     }
-    return NextResponse.json({ ok: true, kontrol: sonuclar.length, sonuclar: sonuclar.map(s => ({ baslik: s.baslik, sonuc: s.sonuc })), yeniUyari: yeniUyari.length })
+    // Yeni mevzuat taraması (kontrolden bağımsız; hata verirse mevcut kontrolü bozmaz)
+    let tarama: any = null
+    try {
+      tarama = await yeniMevzuatTara()
+      if (tarama.yeniHaberler.length) {
+        await notify('mevzuat_uyari', `Yeni mevzuat haberi: ${tarama.yeniHaberler.length} madde`,
+          ['Resmî kaynaklarda muhasebeyi ilgilendiren yeni düzenleme olabilir. İncelemek için: Muhasebe → Muhasebe AI → Güncel mevzuat.', '', ...tarama.yeniHaberler.map((h: any) => `• [${h.kaynak}] ${h.baslik}: ${h.ozet}`)].join('\n'),
+          { adet: tarama.yeniHaberler.length })
+      }
+    } catch (e) { console.error('[cron/mevzuat tarama]', e) }
+    return NextResponse.json({ ok: true, tarama: tarama?.durum || null, yeniHaber: tarama?.yeniHaberler?.length || 0, kontrol: sonuclar.length, sonuclar: sonuclar.map(s => ({ baslik: s.baslik, sonuc: s.sonuc })), yeniUyari: yeniUyari.length })
   } catch (e: any) {
     console.error('[cron/mevzuat]', e)
     return NextResponse.json({ error: 'Kontrol başarısız' }, { status: 500 })
