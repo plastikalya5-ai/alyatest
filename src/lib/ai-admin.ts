@@ -290,6 +290,12 @@ export async function asistanYanit(
   ekSistem = '',
 ) {
   const izinli = new Set(araclar.map(a => a.function.name))
+  // Sık sorulan çek/senet ve kasa soruları sabit tablo olarak, yapay zeka yorumu olmadan cevaplanır
+  if (izinli.has('cek_senet_liste') || izinli.has('kasa_banka_bakiye')) {
+    const son = [...gecmis].reverse().find(m => m.role === 'user')?.content || ''
+    const hz = await (await import('@/lib/ai-hazir')).hazirCevap(sb, son)
+    if (hz) return hz
+  }
   const bugun = bugunISO()
   const msgs: AiMesaj[] = [
     { role: 'system', content: `Sen Alya Plastik yönetim panelinin veri asistanısın — muhasebe, satış, stok, üretim ve genel iş verilerini okuyup yorumlayan bir analist gibi davranırsın. Bugün ${bugun}. Türkçe, net cevap ver; kullanıcı sadece bir sayı sorduysa kısa yanıt ver, ama "yorumun ne", "sence nasıl", "ne önerirsin" gibi görüş/analiz istediğinde daha kapsamlı, gerekçeli bir değerlendirme yap (trend, risk, kısa öneri; gerekirse madde listesi) — 1-2 cümleyle geçiştirme.

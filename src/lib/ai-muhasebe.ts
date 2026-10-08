@@ -128,6 +128,11 @@ export async function muhAraci(sb: SupabaseClient, ad: string, a: Record<string,
 
 /* ───────────────────────── Muhasebe AI ajanı ───────────────────────── */
 export async function muhasebeAsistan(sb: SupabaseClient, gecmis: Konusma[], belge?: string) {
+  if (!belge) {
+    const son = [...gecmis].reverse().find(m => m.role === 'user')?.content || ''
+    const hz = await (await import('@/lib/ai-hazir')).hazirCevap(sb, son)
+    if (hz) return { ...hz, bilgiTabani: { adet: 0, enEskiDogrulama: null as string | null, uyarilar: [] as string[] } }
+  }
   const bugun = bugunISO()
   const kb = await mevzuatBaglami(sb)
   const msgs: AiMesaj[] = [
