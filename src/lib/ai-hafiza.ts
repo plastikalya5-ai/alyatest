@@ -7,6 +7,6 @@ export async function hafizaBlogu(sb: SupabaseClient): Promise<string> {
     const l: { soru: string; dogru_cevap: string }[] = r?.data || []
     if (!l.length) return ''
     const t = (s: string, n: number) => String(s || '').replace(/\s+/g, ' ').trim().slice(0, n)
-    return `\n\nALYA HAFIZASI (yönetici onaylı düzeltmeler; benzer soruda bu yönlendirmeye uy. Buradaki rakamlar eski olabilir: güncel rakamı HER ZAMAN araçtan al, hafızadan alma):\n${l.map(x => `- Soru: "${t(x.soru, 200)}" → Doğru yaklaşım: ${t(x.dogru_cevap, 400)}`).join('\n')}`
+    return `\n\nALYA HAFIZASI (yönetici onaylı düzeltmeler; benzer soruda bu yönlendirmeye uy. Buradaki rakamlar eski olabilir: güncel rakamı HER ZAMAN araçtan al, hafızadan alma):\n${l.map(x => `- Soru: "${t(x.soru, 200)}" → Doğru yaklaşım: ${t(x.dogru_cevap, 1500)}`).join('\n')}`
   } catch { return '' }
 }

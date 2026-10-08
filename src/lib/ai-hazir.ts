@@ -3,7 +3,7 @@
 // Bu dosyadaki "saf" fonksiyonlar (niyet bulma, biçimlendirme) scripts/ai-test.mts ile test edilir.
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-export type Niyet = 'cek_genel' | 'cek_takas' | 'cek_elde' | 'cek_karsiliksiz' | 'kasa_banka'
+export type Niyet = 'cek_genel' | 'cek_takas' | 'cek_elde' | 'cek_karsiliksiz' | 'kasa_banka' | 'kira_duzeni'
 
 const tr = (s: string) => s.toLocaleLowerCase('tr').replace(/[?!.,;:()"']/g, ' ').replace(/\s+/g, ' ').trim()
 
@@ -15,6 +15,8 @@ export function soruNiyeti(soru: string): Niyet | null {
   const t = tr(soru)
   if (!t || t.split(' ').length > 18) return null
   if (AYRINTI.test(t)) return null
+  // Kira ödeme DÜZENİ (kime, hangi gün, ne kadar banka/elden); belirli bir ay/tutar sorusu değildir
+  if (/kira/.test(t) && /nasıl|nasil|düzen|duzen|plan|elden|bankadan|banka/.test(t)) return 'kira_duzeni'
   const cek = /(^|\s)(çek|cek|senet|evrak)/.test(t)
   if (cek) {
     if (/karşılıksız|karsiliksiz/.test(t)) return 'cek_karsiliksiz'
@@ -54,7 +56,7 @@ function listeSatirlari(l: CekSatir[]) {
   return vadeSirala(l).map(x => `• ${tarihTr(x.vade_tarihi)} · ${tipAd(x)} · ${x.cari || '—'}${x.banka && x.banka !== 'SENET' ? ' · ' + x.banka : ''}${x.resmiyet === 'resmi' ? ' · resmi' : x.resmiyet === 'gayri_resmi' ? ' · gayrı resmi' : ''} · ${para(+(x.tutar as any) || 0)}`)
 }
 
-export function cekYaniti(niyet: Exclude<Niyet, 'kasa_banka'>, rows: CekSatir[]): string {
+export function cekYaniti(niyet: Exclude<Niyet, 'kasa_banka' | 'kira_duzeni'>, rows: CekSatir[]): string {
   const alinan = rows.filter(x => x.yon === 'alinan')
   const elde = rows.filter(eldeMi), banka = rows.filter(bankadaMi)
   const kars = rows.filter(x => x.durum === 'karsiliksiz')
@@ -105,11 +107,34 @@ export function kasaYaniti(rows: HesapSatir[]): string {
   ].join('\n')
 }
 
+export type KiraSatir = { ev_sahibi: string; odeme_gunu: number | string; banka: number | string; elden: number | string; not_?: string | null; aktif?: boolean | null }
+export function kiraYaniti(rows: KiraSatir[]): string {
+  const l = rows.filter(x => x.aktif !== false).sort((a, b) => (+a.odeme_gunu) - (+b.odeme_gunu) || a.ev_sahibi.localeCompare(b.ev_sahibi, 'tr'))
+  if (!l.length) return 'Kira ödeme düzeni kaydı bulunamadı.'
+  const n = (v: any) => +v || 0
+  const tB = yuvarla(l.reduce((t, x) => t + n(x.banka), 0)), tE = yuvarla(l.reduce((t, x) => t + n(x.elden), 0))
+  return [
+    'KİRA ÖDEME DÜZENİ (aylık)',
+    'Her ev sahibine kira kısmen bankadan (Garanti TL hesabı, havale), kısmen elden nakit ödenir.',
+    '',
+    ...l.map(x => `• ${x.ev_sahibi} — ayın ${x.odeme_gunu}'inde: banka ${para(n(x.banka))} + elden ${para(n(x.elden))} = ${para(n(x.banka) + n(x.elden))}${x.not_ ? `\n   (${x.not_})` : ''}`),
+    '',
+    `TOPLAM: banka ${para(tB)} + elden ${para(tE)} = ${para(tB + tE)} / ay`,
+    '',
+    '(Kiralar her yıl Ocak ayında değişir; bu düzen kayıtlı kira planından alınmıştır.)',
+  ].join('\n')
+}
+
 /** Soru hazır cevaba uyuyorsa cevabı üretir; uymuyorsa null (yapay zekaya devredilir). Hata olursa da null. */
 export async function hazirCevap(sb: SupabaseClient, soru: string): Promise<{ yanit: string; araclar: string[] } | null> {
   const n = soruNiyeti(soru)
   if (!n) return null
   try {
+    if (n === 'kira_duzeni') {
+      const r: any = await sb.from('kira_plani').select('ev_sahibi,odeme_gunu,banka,elden,not_,aktif').limit(50)
+      if (r.error || !r.data?.length) return null
+      return { yanit: kiraYaniti(r.data), araclar: ['hazir_kira_plani'] }
+    }
     if (n === 'kasa_banka') {
       const r: any = await sb.from('kasa_banka_hesaplari').select('ad,tip,para_birimi,bakiye,aktif').limit(500)
       if (r.error || !r.data?.length) return null
