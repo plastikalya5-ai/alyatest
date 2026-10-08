@@ -6,7 +6,7 @@ import { basvuruAnalizKaydet } from '@/lib/ai-basvuru'
 import { sosyalIcerikUret, AMACLAR } from '@/lib/ai-sosyal'
 import { teklifKalemOner } from '@/lib/ai-teklif'
 import { genelAsistanYanit } from '@/lib/ai-birim'
-import { belgeOku, ekstreOner, gorselAnalizEt, haftalikOzet, urunMetniUret, type Konusma } from '@/lib/ai-admin'
+import { belgeOku, kartvizitOku, ekstreOner, gorselAnalizEt, haftalikOzet, urunMetniUret, type Konusma } from '@/lib/ai-admin'
 import { gorselTasarla, type GorselStil } from '@/lib/ai-gorsel'
 import { gorunum360Uret } from '@/lib/ai-360'
 import { TEMA_ALAN_ANAHTARLARI } from '@/data/images'
@@ -34,6 +34,7 @@ const YETKI: Record<string, string[]> = {
   ozet: [],                         // yalnızca yetkili olduğu modüllerin verisi kullanılır
   ekstre_oner: ['muhasebe'],
   belge_oku: ['muhasebe', 'satinalma', 'stok'],
+  kartvizit_oku: ['satis', 'yonetim'],
 }
 
 export async function GET() {
@@ -253,6 +254,10 @@ export async function POST(req: NextRequest) {
       case 'belge_oku': {
         if (typeof body.dosya !== 'string') return NextResponse.json({ error: 'Dosya gerekli' }, { status: 400 })
         return NextResponse.json({ ok: true, sonuc: await belgeOku(body.dosya) })
+      }
+      case 'kartvizit_oku': {
+        if (typeof body.dosya !== 'string') return NextResponse.json({ error: 'Görsel gerekli' }, { status: 400 })
+        return NextResponse.json({ ok: true, sonuc: await kartvizitOku(body.dosya) })
       }
     }
   } catch (e: any) {

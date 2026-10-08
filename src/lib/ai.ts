@@ -30,6 +30,7 @@ type CagriSecenek = {
   maxTokens?: number
   temperature?: number
   timeoutMs?: number
+  model?: string
 }
 
 export async function aiCagir(o: CagriSecenek) {
@@ -38,7 +39,7 @@ export async function aiCagir(o: CagriSecenek) {
   const base = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '')
 
   const body: Record<string, unknown> = {
-    model: AI_MODEL(),
+    model: o.model || AI_MODEL(),
     messages: o.messages,
     max_completion_tokens: o.maxTokens ?? 900,
   }
@@ -71,8 +72,8 @@ export async function aiCagir(o: CagriSecenek) {
 }
 
 // Yapılandırılmış (JSON şemalı) çıktı — şema strict olmalı: tüm alanlar required, additionalProperties:false.
-export async function aiJson<T>(messages: AiMesaj[], name: string, schema: Record<string, unknown>, opt: { maxTokens?: number; timeoutMs?: number } = {}): Promise<T> {
-  const msg = await aiCagir({ messages, json: { name, schema }, maxTokens: opt.maxTokens, timeoutMs: opt.timeoutMs })
+export async function aiJson<T>(messages: AiMesaj[], name: string, schema: Record<string, unknown>, opt: { maxTokens?: number; timeoutMs?: number; model?: string } = {}): Promise<T> {
+  const msg = await aiCagir({ messages, json: { name, schema }, maxTokens: opt.maxTokens, timeoutMs: opt.timeoutMs, model: opt.model })
   if (msg.refusal) throw new AiHata('AI bu isteği reddetti.', 422)
   try { return JSON.parse(msg.content || '') as T } catch { throw new AiHata('AI yanıtı çözümlenemedi.') }
 }

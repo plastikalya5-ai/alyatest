@@ -5,6 +5,7 @@ import { web, webAll } from '@/lib/web-data'
 import { muh } from '@/lib/muhasebe-client'
 import { fmtDateTime, fmtInt } from '@/lib/fmt'
 import { guvenliHttp } from '@/lib/potansiyel'
+import KartvizitTara from '@/components/admin/KartvizitTara'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Drawer, InfoRow, Divider, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
 import { Mail, Phone, MessageCircle, Globe, MapPin, Trash2, UserPlus, Target, Sparkles, PhoneCall, Handshake } from 'lucide-react'
@@ -82,7 +83,7 @@ export default function PotansiyelMusterilerPage() {
     <div style={{ flex: 1, overflow: 'auto' }}>
       <AdminTopBar title="Potansiyel Müşteriler" />
       <Page>
-        <PageHead title="Potansiyel Müşteriler" sub="n8n ile toplanan işletme kayıtları (gelenveriler tablosu) — arayın, durumunu izleyin, müşteri olunca cariye dönüştürün" />
+        <PageHead title="Potansiyel Müşteriler" sub="n8n ile toplanan işletme kayıtları ve fuarda okutulan kartvizitler — arayın, durumunu izleyin, müşteri olunca cariye dönüştürün" actions={<KartvizitTara onKaydedildi={load} onMesaj={(m, h) => toast.show(m, !!h)} />} />
         <KpiGrid min={180}>
           <Kpi label="Toplam Kayıt" value={fmtInt(items.length)} Icon={Target} color="var(--adm-blue)" sub={`${fmtInt(items.filter(b => b.telefon).length)} telefonlu · ${fmtInt(items.filter(b => b.eposta).length)} e-postalı`} onClick={() => setTab('hepsi')} />
           <Kpi label="Yeni (işlem bekleyen)" value={fmtInt(cnt('yeni'))} Icon={Sparkles} color={cnt('yeni') ? 'var(--adm-ac)' : 'var(--adm-green)'} sub="henüz aranmadı" onClick={() => setTab('yeni')} />
