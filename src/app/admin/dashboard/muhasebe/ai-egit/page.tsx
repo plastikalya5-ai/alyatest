@@ -17,16 +17,16 @@ export default function AiEgitPage() {
     e.preventDefault()
     if (soru.trim().length < 3 || dogru.trim().length < 5) { toast.show('Soru ve doğru anlayışı yazın', true); return }
     setBusy(true)
-    const { error } = await web.from('ai_hafiza').insert({ soru: soru.trim().slice(0, 1000), dogru_cevap: dogru.trim().slice(0, 1500) })
+    const { error } = await web.from('ai_hafiza').insert({ soru: soru.trim().slice(0, 1000), dogru_cevap: dogru.trim().slice(0, 1500), durum: 'aktif' })
     setBusy(false)
     if (error) { toast.show(error.message, true); return }
-    setSoru(''); setDogru(''); setYenile(n => n + 1); toast.show('Ders eklendi. Aşağıdan onaylayınca yapay zeka kullanır.')
+    setSoru(''); setDogru(''); setYenile(n => n + 1); toast.show('Ders eklendi, yapay zeka artık kullanıyor.')
   }
   return (
     <div style={{ flex: 1, overflow: 'auto' }}>
       <AdminTopBar title="Yapay Zekayı Eğit" />
       <Page>
-        <PageHead title="Yapay Zekayı Eğit" sub="Yapay zekaya Alya'nın işleyişini öğret: yanlış anladığı soruları düzelt. Dersler onaylanınca kullanılır, yanlışsa tek tıkla kapatılır." />
+        <PageHead title="Yapay Zekayı Eğit" sub="Yapay zekaya Alya'nın işleyişini öğret: yanlış anladığı soruları düzelt. Eklenen ders hemen kullanılır, yanlışsa tek tıkla kapatılır." />
         <Yardim sayfa="ai-egit" />
         <Card>
           <form onSubmit={ekle} style={{ padding: 16, display: 'grid', gap: 10 }}>

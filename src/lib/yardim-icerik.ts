@@ -298,23 +298,21 @@ export const YARDIM: Record<string, YardimIcerik> = {
 
   'ai-egit': {
     baslik: 'Yapay Zekayı Eğit',
-    ozet: 'Yapay zeka bazen yanlış anlayabilir. Burada ona "böyle sorulunca şöyle düşün" diye ders verirsin. Verdiğin ders önce onay bekler, yönetici onaylayınca yapay zeka kullanmaya başlar. Yanlış bir ders olursa tek tıkla kapatırsın.',
-    akis: ['Yanlış cevap', 'Düzeltme yaz', 'Onay bekler', 'Onayla', 'Yapay zeka öğrenir'],
+    ozet: 'Yapay zeka bazen yanlış anlayabilir. Burada ona "böyle sorulunca şöyle düşün" diye ders verirsin. Eklediğin ders hemen kullanılır. Yanlış bir ders olursa tek tıkla kapatırsın.',
+    akis: ['Yanlış cevap görürsün', 'Dersi yazarsın', 'Ekle', 'Yapay zeka öğrenir'],
     adimlar: [
       { t: 'Ders ekle', a: '"Yeni ders ekle" kutusuna yapay zekaya sorulacak cümleyi ve doğru anlayışı yaz. Örnek: "Takastaki çekler" → "Elde sayılmaz, sadece Garanti Bankası\'na verilenleri listele."' },
-      { t: 'Ya da cevaptan gönder', a: 'Muhasebe AI\'da yanlış bir cevabın altındaki "Yanlış" düğmesine bas, doğrusunu yaz. Burada onay bekleyen olarak görünür.' },
-      { t: 'Onayla', a: 'Dersi oku, doğruysa "Onayla"ya bas. Onaylamadıkça yapay zeka kullanmaz.' },
-      { t: 'Yanlışsa kapat', a: 'Yanlış öğrendiğini fark edersen "Kapat" de. Silinmez, yapay zeka artık kullanmaz. İstersen sonra "Yeniden aç" dersin.' },
+      { t: 'Hemen çalışır', a: '"Dersi ekle"ye basınca yapay zeka o dersi bir sonraki soruda kullanır. Ayrıca onay gerekmez.' },
+      { t: 'Yanlışsa kapat', a: 'Yanlış öğrettiğini fark edersen "Kapat" de. Silinmez, yapay zeka artık kullanmaz. İstersen sonra "Yeniden aç" dersin.' },
     ],
     ornekler: ['Takastaki çek = bankaya tahsile verilen, elde sayılmaz', 'Ciro dediğimde sadece ürün satışı', 'Kalkan Ambalaj = koli tedarikçisi'],
     dikkat: [
       'Ders yazarken rakam yazma. Rakamlar her zaman güncel kayıttan alınır; eski rakam yanlış sonuç verir.',
       'Kısa ve net yaz. "Ne zaman, ne yapsın" yeterli.',
-      'Yalnızca yönetici onaylayabilir, kapatabilir ve silebilir.',
+      'Ders verme yetkisi bu menüden muhasebe yetkisi olanlarda var.',
     ],
     terimler: [
-      { t: 'Onay bekliyor', a: 'Ders yazıldı ama yapay zeka henüz kullanmıyor.' },
-      { t: 'Aktif', a: 'Onaylandı, yapay zeka benzer sorularda bunu kullanıyor.' },
+      { t: 'Aktif', a: 'Yapay zeka benzer sorularda bu dersi kullanıyor.' },
       { t: 'Kapalı', a: 'Durduruldu. Silinmedi, istenirse yeniden açılır.' },
     ],
   },

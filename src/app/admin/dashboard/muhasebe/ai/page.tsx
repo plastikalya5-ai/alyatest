@@ -8,7 +8,6 @@ import { belgeDataUrl } from '@/lib/belge-dosya'
 import { csvDownload, fmtDate, todayISO } from '@/lib/fmt'
 import { Page, PageHead, Badge, Tabs, Card, Modal, Field, FormGrid, useToast } from '@/components/admin/erp/ui'
 import Yardim from '@/components/admin/erp/Yardim'
-import { YanlisButonu } from '@/components/admin/AiHafiza'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
 import KayitOner from '@/components/admin/KayitOner'
 import SesliAsistan from '@/components/admin/SesliAsistan'
@@ -279,7 +278,6 @@ export default function MuhasebeAiPage() {
                 <div key={i} style={{ alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: 'min(760px, 92%)' }}>
                   <div style={{ padding: '10px 14px', borderRadius: 12, fontSize: 13.5, lineHeight: 1.65, whiteSpace: 'pre-wrap', background: m.role === 'user' ? 'var(--adm-ac)' : 'var(--adm-s2)', color: m.role === 'user' ? '#fff' : 'var(--adm-tx)' }}>{m.content}</div>
                   {m.araclar && m.araclar.length > 0 && <div style={{ fontSize: 10.5, color: 'var(--adm-tx3)', marginTop: 4 }}>Kullanılan araçlar: {Array.from(new Set(m.araclar)).join(', ')}</div>}
-                  {m.role === 'assistant' && i > 0 && msgs[i - 1]?.role === 'user' && <YanlisButonu soru={msgs[i - 1].content} cevap={m.content} />}
                 </div>
               ))}
               {loading && <div style={{ alignSelf: 'flex-start', fontSize: 12.5, color: 'var(--adm-tx3)' }}>Mevzuat ve verilerle çalışıyor…</div>}
