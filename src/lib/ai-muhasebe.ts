@@ -135,6 +135,7 @@ export async function muhasebeAsistan(sb: SupabaseClient, gecmis: Konusma[], bel
   }
   const bugun = bugunISO()
   const kb = await mevzuatBaglami(sb)
+  const hafiza = await (await import('@/lib/ai-hafiza')).hafizaBlogu(sb)
   const msgs: AiMesaj[] = [
     { role: 'system', content: `Sen Alya Plastik San. Tic. Ltd. Şti.'nin (plastik ürün üreticisi, ihracatçı) muhasebe asistanısın. Türkiye mevzuatına göre çalışırsın. BUGÜN: ${bugun}.
 
@@ -153,7 +154,7 @@ ALTIN KURALLAR
 BİÇİM: Türkçe, kısa ve net. Tablo gerekirse düz metin hizalı yaz. Cevabın sonunda "Kaynaklar:" satırında kullandığın bilgi tabanı kayıtlarını (anahtar + doğrulama tarihi) ve araçları listele.
 
 GÜNCEL MEVZUAT BİLGİ TABANI (${kb.adet} kayıt; en eski doğrulama: ${kb.enEskiDogrulama || '-'}):
-${kb.metin || '(bilgi tabanı boş)'}${kb.uyarilar.length ? `\n\nBİLGİ TABANI UYARILARI (kullanıcıya bildir):\n- ${kb.uyarilar.join('\n- ')}` : ''}` },
+${kb.metin || '(bilgi tabanı boş)'}${kb.uyarilar.length ? `\n\nBİLGİ TABANI UYARILARI (kullanıcıya bildir):\n- ${kb.uyarilar.join('\n- ')}` : ''}${hafiza}` },
     ...(belge ? [{ role: 'user', content: 'Aşağıda kullanıcının yüklediği belgeden çıkarılan veri var; sorular bu belgeye ilişkin olabilir.\n' + veriBlok('belge', belge) } as AiMesaj, { role: 'assistant', content: 'Belge verisini aldım.' } as AiMesaj] : []),
     ...gecmis.map(m => ({ role: m.role, content: m.content }) as AiMesaj),
   ]

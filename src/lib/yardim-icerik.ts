@@ -292,6 +292,7 @@ export const YARDIM: Record<string, YardimIcerik> = {
       sor: { t: 'Soru sor', a: 'Yazarak ya da konuşarak soru sor. Önceki sohbetlerine üstten ulaşabilirsin.' },
       belge: { t: 'Belge yükle', a: 'Fatura/dekont fotoğrafını yükle, yapay zeka okusun. Okuduğu bilgiyi sen kontrol et.' },
       rapor: { t: 'Raporlar', a: 'Excel olarak indirilebilen hazır raporlar: KDV, aylık yönetim raporu, indirilecek KDV listesi.' },
+      hafiza: { t: 'Hafıza', a: 'Yapay zekayı Alya\'ya göre eğittiğin yer. Cevabın altındaki "Yanlış" düğmesiyle gönderilen düzeltmeler burada onay bekler. Onayla deyince kullanılır, yanlışsa Kapat de.' },
       mevzuat: { t: 'Güncel mevzuat', a: 'Vergi oranı, limit gibi bilgilerin saklandığı liste. Yapay zeka vergi cevaplarını buradan alır.' },
     },
   },

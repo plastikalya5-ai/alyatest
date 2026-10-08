@@ -8,6 +8,7 @@ import { belgeDataUrl } from '@/lib/belge-dosya'
 import { csvDownload, fmtDate, todayISO } from '@/lib/fmt'
 import { Page, PageHead, Badge, Tabs, Card, Modal, Field, FormGrid, useToast } from '@/components/admin/erp/ui'
 import Yardim from '@/components/admin/erp/Yardim'
+import { YanlisButonu, HafizaSekme } from '@/components/admin/AiHafiza'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
 import KayitOner from '@/components/admin/KayitOner'
 import SesliAsistan from '@/components/admin/SesliAsistan'
@@ -42,6 +43,7 @@ const bosMevzuat = { kategori: '', anahtar: '', baslik: '', deger: '', gecerlili
 export default function MuhasebeAiPage() {
   const toast = useToast()
   const [tab, setTab] = useState('sor')
+  const [hafizaBekleyen, setHafizaBekleyen] = useState(0)
 
   /* ── Mevzuat bilgi tabanı ── */
   const [kb, setKb] = useState<any[]>([])
@@ -250,7 +252,7 @@ export default function MuhasebeAiPage() {
           </div>
         )}
 
-        <div style={{ marginBottom: 14 }}><Tabs value={tab} onChange={setTab} tabs={[{ v: 'sor', l: 'Soru sor' }, { v: 'belge', l: 'Belge yükle', n: belgeler.length || undefined }, { v: 'rapor', l: 'Raporlar' }, { v: 'mevzuat', l: 'Güncel mevzuat', n: kb.length || undefined }]} /></div>
+        <div style={{ marginBottom: 14 }}><Tabs value={tab} onChange={setTab} tabs={[{ v: 'sor', l: 'Soru sor' }, { v: 'belge', l: 'Belge yükle', n: belgeler.length || undefined }, { v: 'rapor', l: 'Raporlar' }, { v: 'mevzuat', l: 'Güncel mevzuat', n: kb.length || undefined }, { v: 'hafiza', l: 'Hafıza', n: hafizaBekleyen || undefined }]} /></div>
 
         {tab === 'sor' && (
           <Card pad={0}>
@@ -278,6 +280,7 @@ export default function MuhasebeAiPage() {
                 <div key={i} style={{ alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: 'min(760px, 92%)' }}>
                   <div style={{ padding: '10px 14px', borderRadius: 12, fontSize: 13.5, lineHeight: 1.65, whiteSpace: 'pre-wrap', background: m.role === 'user' ? 'var(--adm-ac)' : 'var(--adm-s2)', color: m.role === 'user' ? '#fff' : 'var(--adm-tx)' }}>{m.content}</div>
                   {m.araclar && m.araclar.length > 0 && <div style={{ fontSize: 10.5, color: 'var(--adm-tx3)', marginTop: 4 }}>Kullanılan araçlar: {Array.from(new Set(m.araclar)).join(', ')}</div>}
+                  {m.role === 'assistant' && i > 0 && msgs[i - 1]?.role === 'user' && <YanlisButonu soru={msgs[i - 1].content} cevap={m.content} />}
                 </div>
               ))}
               {loading && <div style={{ alignSelf: 'flex-start', fontSize: 12.5, color: 'var(--adm-tx3)' }}>Mevzuat ve verilerle çalışıyor…</div>}
@@ -374,6 +377,8 @@ export default function MuhasebeAiPage() {
             )}
           </>
         )}
+
+        {tab === 'hafiza' && <HafizaSekme onYuk={setHafizaBekleyen} />}
 
         {tab === 'mevzuat' && (
           <>

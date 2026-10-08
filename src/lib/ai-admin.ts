@@ -289,6 +289,7 @@ export async function asistanYanit(
   calistir: (sb: SupabaseClient, ad: string, a: Record<string, any>) => Promise<string> = araciCalistir,
   ekSistem = '',
 ) {
+  ekSistem += await (await import('@/lib/ai-hafiza')).hafizaBlogu(sb)
   const izinli = new Set(araclar.map(a => a.function.name))
   // Sık sorulan çek/senet ve kasa soruları sabit tablo olarak, yapay zeka yorumu olmadan cevaplanır
   if (izinli.has('cek_senet_liste') || izinli.has('kasa_banka_bakiye')) {
