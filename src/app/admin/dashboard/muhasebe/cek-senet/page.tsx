@@ -6,6 +6,7 @@ import { useAcParam } from '@/lib/ac-param'
 import { fmt, fmtK, fmtDate, todayISO, daysBetween } from '@/lib/fmt'
 import { sum } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Modal, Field, FormGrid, Card, useToast } from '@/components/admin/erp/ui'
+import Yardim from '@/components/admin/erp/Yardim'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
 import { TrendChart } from '@/components/admin/erp/charts'
 import { Plus, Pencil, Trash2, FileSignature, AlertTriangle, CalendarClock, ShieldAlert, Wallet, Repeat, Ban, CheckCircle2, Landmark } from 'lucide-react'
@@ -175,6 +176,7 @@ export default function CekSenetPage() {
       <Page>
         <PageHead title="Çek & Senet Portföyü" sub="Vade takibi, tahsilat, ciro ve karşılıksız yönetimi" actions={<button className="adm-btn" onClick={openNew}><Plus size={14} />Çek/Senet Ekle</button>} />
 
+        <Yardim sayfa="cek-senet" sekme={tab} />
         <KpiGrid min={190}>
           <Kpi label="Tahsil Edilecek" value={fmtK(sum(alinan, c => c.tutar))} Icon={Wallet} color="var(--adm-green)" sub={`${alinan.length} alınan çek/senet`} />
           <Kpi label="101 Resmi (portföy)" value={fmtK(sum(resmiA, c => c.tutar))} Icon={Wallet} color="var(--adm-green)" sub={`${resmiA.length} alınan çek/senet`} />

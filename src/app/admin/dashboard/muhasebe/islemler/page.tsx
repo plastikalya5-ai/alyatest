@@ -7,6 +7,7 @@ import { kasaPb, kurlariYukle, islemAlan, paraGoster, PB_SIM } from '@/lib/doviz
 import { fmt, fmtDate, fmtK, fmtInt, todayISO } from '@/lib/fmt'
 import { DONEMLER, donemAralik, NON_PNL, type Donem } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, InfoRow, Divider, useToast } from '@/components/admin/erp/ui'
+import Yardim from '@/components/admin/erp/Yardim'
 import { DataGrid, type Col, type ServerMode } from '@/components/admin/erp/DataGrid'
 import TopluDuzenle from '@/components/admin/TopluDuzenle'
 import { ListChecks, Plus, ArrowUpRight, ArrowDownRight, Scale, Hash, Pencil, Trash2, Copy } from 'lucide-react'
@@ -172,6 +173,7 @@ export default function IslemlerPage() {
             <button className="adm-btn" style={{ background: 'var(--adm-red)' }} onClick={() => openNew('gider')}><Plus size={14} />Gider Ekle</button>
           </>} />
 
+        <Yardim sayfa="islemler" sekme={tip} />
         <KpiGrid min={180}>
           <Kpi label="Gelir" value={ozet ? fmtK(gelir) : '…'} Icon={ArrowUpRight} color="var(--adm-green)" sub={ozet ? `${fmtInt(ozet.gelir_adet)} işlem` : ''} />
           <Kpi label="Gider" value={ozet ? fmtK(gider) : '…'} Icon={ArrowDownRight} color="var(--adm-red)" sub={ozet ? `${fmtInt(+ozet.adet - +ozet.gelir_adet)} işlem` : ''} />

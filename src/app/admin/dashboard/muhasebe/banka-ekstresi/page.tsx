@@ -7,6 +7,7 @@ import { muh } from '@/lib/muhasebe-client'
 import { fmt, fmtK, fmtDate, csvDownload } from '@/lib/fmt'
 import { sum } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Modal, Field, FormGrid, Empty, Card, useToast } from '@/components/admin/erp/ui'
+import Yardim from '@/components/admin/erp/Yardim'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
 import { Upload, Landmark, Wand2, Link2, Plus, X, Download, CheckCircle2, ListChecks, AlertCircle, Sparkles } from 'lucide-react'
 import { aiIstek } from '@/lib/ai-client'
@@ -197,6 +198,7 @@ export default function BankaEkstresiPage() {
             <input ref={fileRef} type="file" accept=".csv,.txt" onChange={dosya} style={{ display: 'none' }} />
           </>} />
 
+        <Yardim sayfa="banka-ekstresi" sekme={tab} />
         {!loading && kasalar.length === 0 ? (
           <Card><Empty icon={<Landmark size={34} />} title="Banka hesabı yok" sub="Önce Kasa/Banka sayfasından bir banka hesabı ekle" /></Card>
         ) : (

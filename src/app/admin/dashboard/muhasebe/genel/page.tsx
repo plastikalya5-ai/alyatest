@@ -6,6 +6,7 @@ import { muh } from '@/lib/muhasebe-client'
 import { fmt, fmtK, fmtDate, daysBetween, fmtPct } from '@/lib/fmt'
 import { DONEMLER, donemAralik, sonAylar, pctDelta, CHART_COLORS, AGING, type Donem } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Card, Tabs, Badge, Money, Empty, Skeleton } from '@/components/admin/erp/ui'
+import Yardim from '@/components/admin/erp/Yardim'
 import { TrendChart, Donut, BarList, StackBar } from '@/components/admin/erp/charts'
 import {
   TrendingUp, TrendingDown, Scale, Wallet, HandCoins, Landmark as Bank, AlertTriangle, CalendarClock, RefreshCw, ArrowUpRight, ArrowDownRight,
@@ -82,6 +83,7 @@ export default function MuhasebeGenelPage() {
           </>} />
 
         {hata && <div className="adm-card" style={{ padding: 14, marginBottom: 14, color: 'var(--adm-red)', fontSize: 13 }}>{hata}</div>}
+        <Yardim sayfa="genel" />
         {loading && !o ? <KpiGrid>{Array.from({ length: 6 }).map((_, i) => <div key={i} className="adm-kpi"><Skeleton h={10} w={80} /><Skeleton h={24} w={120} style={{ marginTop: 14 }} /></div>)}</KpiGrid> : o && (
           <>
             <KpiGrid min={210}>

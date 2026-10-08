@@ -7,6 +7,7 @@ import { aiIstek } from '@/lib/ai-client'
 import { belgeDataUrl } from '@/lib/belge-dosya'
 import { csvDownload, fmtDate, todayISO } from '@/lib/fmt'
 import { Page, PageHead, Badge, Tabs, Card, Modal, Field, FormGrid, useToast } from '@/components/admin/erp/ui'
+import Yardim from '@/components/admin/erp/Yardim'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
 import KayitOner from '@/components/admin/KayitOner'
 import SesliAsistan from '@/components/admin/SesliAsistan'
@@ -236,6 +237,7 @@ export default function MuhasebeAiPage() {
       <AdminTopBar title="Muhasebe AI" />
       <Page>
         <PageHead title="Muhasebe AI" sub="Güncel 2026 mevzuat bilgi tabanına dayalı muhasebe asistanı: soru sor, belge yükleyip istediğin verileri çıkar. Cevaplar yapay zeka ile üretilir; nihai karar mali müşavirindir." />
+        <Yardim sayfa="ai" sekme={tab} />
         <SesliAsistan birim="muhasebe" baslik="Sesli Muhasebe Asistanı" />
 
         {!kbYukleniyor && (sorunlu.bayat > 0 || sorunlu.bitmis > 0 || sorunlu.tek > 0 || sorunlu.degisen > 0) && (

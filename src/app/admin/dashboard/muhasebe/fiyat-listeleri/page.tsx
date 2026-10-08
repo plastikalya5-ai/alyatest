@@ -5,6 +5,7 @@ import { erp } from '@/lib/erp-client'
 import { muh } from '@/lib/muhasebe-client'
 import { fmt, fmtN } from '@/lib/fmt'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Modal, Field, FormGrid, Card, Empty, useToast } from '@/components/admin/erp/ui'
+import Yardim from '@/components/admin/erp/Yardim'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
 import { Plus, Copy, Trash2, Pencil, Star, Tag, Percent, Upload, Package, Users2, BadgePercent } from 'lucide-react'
 
@@ -170,6 +171,7 @@ export default function FiyatListeleriPage() {
         <PageHead title="Fiyatlandırma" sub="Müşteri gruplarına özel fiyat listeleri ve miktar kademeli iskontolar"
           actions={<button className="adm-btn" onClick={() => { setEditing(null); setForm(bosListe); setModal(true) }}><Plus size={14} />Yeni Liste</button>} />
 
+        <Yardim sayfa="fiyat-listeleri" />
         {!loading && listeler.length === 0 ? (
           <Card><Empty icon={<Tag size={34} />} title="Henüz fiyat listesi yok" sub="Örn. “Perakende”, “Bayi”, “İhracat” listeleri oluşturup cariye ata; fatura keserken fiyat otomatik gelir." action={<button className="adm-btn" onClick={() => { setForm(bosListe); setModal(true) }}><Plus size={14} />İlk Listeyi Oluştur</button>} /></Card>
         ) : (

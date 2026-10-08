@@ -6,6 +6,7 @@ import { useAcParam } from '@/lib/ac-param'
 import { fmt, fmtK, fmtDate, todayISO } from '@/lib/fmt'
 import { sum, iso as _iso } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Money, Modal, Field, FormGrid, Card, Empty, useToast } from '@/components/admin/erp/ui'
+import Yardim from '@/components/admin/erp/Yardim'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
 import { Sparkline } from '@/components/admin/erp/charts'
 import { Plus, Pencil, Trash2, Landmark, Wallet, ArrowLeftRight, Copy, Scale, ArrowUpRight, ArrowDownRight, SlidersHorizontal, Power, Coins, Download } from 'lucide-react'
@@ -188,6 +189,9 @@ export default function KasaBankaPage() {
     const pb = kasaPb(duzelt.hesap), yeni = trSayi(duzelt.yeni), fark = +(yeni - +duzelt.hesap.bakiye).toFixed(2)
     if (isNaN(yeni) || Math.abs(fark) < 0.005) { toast.show('Bakiye zaten aynı', true); return }
     if (pb !== 'TRY' && !kurlar[pb]) { toast.show(`Önce ${pb} kurunu girin (Döviz Kurları)`, true); return }
+    // Güvenlik: nokta/virgül hatasıyla bakiyenin yüzlerce kat şişmesini önler
+    const eski = +duzelt.hesap.bakiye || 0, tlKarsilik = Math.abs(yeni) * (pb === 'TRY' ? 1 : (kurlar[pb] || 1))
+    if ((tlKarsilik > 50_000_000 || (eski > 0 && Math.abs(yeni) > eski * 20 && Math.abs(fark) > 1_000_000)) && !confirm(`DİKKAT: Girdiğin bakiye çok büyük (${paraGoster(yeni, pb)}), mevcut bakiye ${paraGoster(eski, pb)}.\n\nNokta ve virgülü doğru yazdığından emin misin? (örn. 3.759.758,49)`)) return
     setBusy(true)
     const r: any = await muh.from('islemler').insert({ tip: fark > 0 ? 'gelir' : 'gider', kategori: 'Bakiye Düzeltme', ...islemAlan(duzelt.hesap, Math.abs(fark), kurlar[pb]), tarih: todayISO(), odeme_yontemi: 'diger', kasa_hesap_id: duzelt.hesap.id, aciklama: `Sayım/mutabakat düzeltmesi${duzelt.not ? ` · ${duzelt.not}` : ''}` })
     setBusy(false)
@@ -235,6 +239,7 @@ export default function KasaBankaPage() {
             <button className="adm-btn" onClick={openNew}><Plus size={14} />Hesap Ekle</button>
           </>} />
 
+        <Yardim sayfa="kasa-banka" />
         <KpiGrid min={190}>
           <Kpi label="Toplam Nakit (TL karşılığı)" value={fmtK(toplam)} Icon={Wallet} color={toplam >= 0 ? 'var(--adm-blue)' : 'var(--adm-red)'} sub={kurEksik ? '⚠ kuru girilmemiş döviz hesabı var' : dovizToplam.length ? dovizToplam.map(x => `${paraGoster(x.t, x.pb)}`).join(' · ') : `${aktif.length} aktif hesap`} />
           <Kpi label="Kasa" value={fmtK(kasaT)} Icon={Wallet} color="var(--adm-amber)" sub={`${aktif.filter(h => h.tip === 'kasa').length} kasa`} />

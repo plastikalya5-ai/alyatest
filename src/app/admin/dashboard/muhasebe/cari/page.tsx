@@ -8,6 +8,7 @@ import { kurlariYukle } from '@/lib/doviz'
 import { fmt, fmtK, fmtDate, todayISO, daysBetween, csvDownload } from '@/lib/fmt'
 import { sum, kalanTutar, acikFatura } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, InfoRow, Divider, Empty, useToast } from '@/components/admin/erp/ui'
+import Yardim from '@/components/admin/erp/Yardim'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
 import TopluDuzenle from '@/components/admin/TopluDuzenle'
 import {
@@ -253,6 +254,7 @@ export default function CariPage() {
             <button className="adm-btn" onClick={openNew}><Plus size={14} />Yeni Cari</button>
           </>} />
 
+        <Yardim sayfa="cari" sekme={tab} />
         <KpiGrid min={190}>
           <Kpi label="Toplam Alacak" value={fmtK(alacak)} Icon={HandCoins} color="var(--adm-green)" sub={`${list.filter(c => +c.bakiye > 0).length} cari bize borçlu`} />
           <Kpi label="Toplam Borç" value={fmtK(borc)} Icon={Wallet} color="var(--adm-red)" sub={`${list.filter(c => +c.bakiye < 0).length} cariye borçluyuz`} />

@@ -8,6 +8,7 @@ import { kasaPb, trKasa, islemAlan, paraGoster } from '@/lib/doviz'
 import { fmt, fmtK, fmtDate, todayISO, daysBetween } from '@/lib/fmt'
 import { kalanTutar, DONEMLER, donemAralik, type Donem } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, InfoRow, Divider, useToast } from '@/components/admin/erp/ui'
+import Yardim from '@/components/admin/erp/Yardim'
 import { DataGrid, type Col, type ServerMode } from '@/components/admin/erp/DataGrid'
 import BelgeOku, { type BelgeSonuc } from '@/components/admin/BelgeOku'
 import TopluDuzenle from '@/components/admin/TopluDuzenle'
@@ -277,6 +278,7 @@ export default function FaturalarPage() {
         <PageHead title="Fatura Yönetimi" sub="Satış, alış ve iade faturaları · kısmi tahsilat/ödeme · vade takibi"
           actions={<button className="adm-btn" onClick={async () => { setForm(await yeniForm()); setKalemler([bosKalem()]); setModal(true) }}><Plus size={14} />Yeni Fatura</button>} />
 
+        <Yardim sayfa="faturalar" sekme={tab} />
         <KpiGrid min={190}>
           <Kpi label="Satış (dönem)" value={fmtK(donemSatis)} Icon={Receipt} color="var(--adm-green)" sub={donem === 'tumu' ? 'Tüm zamanlar' : DONEMLER.find(d => d.v === donem)?.l} />
           <Kpi label="Açık Alacak" value={fmtK(acikAlacak)} Icon={HandCoins} color="var(--adm-blue)" sub={`${oz.acik_alacak_adet || 0} açık satış faturası`} />

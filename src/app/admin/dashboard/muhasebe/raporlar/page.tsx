@@ -5,6 +5,7 @@ import { muh } from '@/lib/muhasebe-client'
 import { fmt, fmtK, fmtDate, fmtPct, csvDownload, todayISO } from '@/lib/fmt'
 import { DONEMLER, donemAralik, pctDelta, sonAylar, AGING, CHART_COLORS, type Donem } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Card, Tabs, Money, Badge, Empty, Skeleton } from '@/components/admin/erp/ui'
+import Yardim from '@/components/admin/erp/Yardim'
 import { TrendChart, Donut, BarList, StackBar } from '@/components/admin/erp/charts'
 import { Download, Printer, Scale, TrendingUp, TrendingDown, Percent, Receipt, Users2, Wallet, BarChart3 } from 'lucide-react'
 
@@ -79,6 +80,7 @@ export default function RaporlarPage() {
             <Tabs tabs={[...DONEMLER.map(d => ({ v: d.v, l: d.l })), { v: 'ozel', l: 'Özel' }]} value={donem} onChange={v => setDonem(v as DonemO)} />
             {donem === 'ozel' && <><input type="date" className="adm-sel" value={ozel.from} onChange={e => setOzel(o => ({ ...o, from: e.target.value }))} /><input type="date" className="adm-sel" value={ozel.to} onChange={e => setOzel(o => ({ ...o, to: e.target.value }))} /></>}
           </>} />
+        <Yardim sayfa="raporlar" sekme={rapor} />
         <div style={{ marginBottom: 16 }}><Tabs tabs={tabs} value={rapor} onChange={setRapor} /></div>
 
         {hata && <div className="adm-card" style={{ padding: 14, color: 'var(--adm-red)', fontSize: 13 }}>{hata}</div>}

@@ -113,3 +113,31 @@ select.adm-inp { cursor: pointer; }
 .adm-sel:focus { border-color: var(--adm-ac); }
 .adm-kbd { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; border: 1px solid var(--adm-bdr2); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; color: var(--adm-tx3); background: var(--adm-s1); }
 @media (max-width: 720px) { .adm-hide-sm { display: none !important; } }
+
+/* ── Yardım kutuları (muhasebe sayfaları) ── */
+@keyframes admYStep { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: none } }
+@keyframes admYBulb { 0%,100% { box-shadow: 0 0 0 0 rgba(245,158,11,.0); transform: scale(1) } 50% { box-shadow: 0 0 0 7px rgba(245,158,11,.18); transform: scale(1.06) } }
+@keyframes admYGlow { 0%,22% { background: var(--adm-ac); color: #fff; transform: translateY(-2px) scale(1.04); box-shadow: 0 4px 14px rgba(0,0,0,.18) } 34%,100% { background: var(--adm-s2); color: var(--adm-tx2); transform: none; box-shadow: none } }
+@keyframes admYArrow { 0%,100% { transform: translateX(0); opacity: .5 } 50% { transform: translateX(4px); opacity: 1 } }
+@keyframes admYTab { from { opacity: 0; transform: translateX(-10px) } to { opacity: 1; transform: none } }
+.adm-y { margin-bottom: 16px; border: 1px solid var(--adm-bdr); border-left: 4px solid var(--adm-amber); border-radius: 14px; background: var(--adm-s1); overflow: hidden; animation: admFadeIn .3s ease; }
+.adm-y-h { display: flex; align-items: center; gap: 10px; padding: 12px 16px; cursor: pointer; width: 100%; background: transparent; border: none; font-family: inherit; color: var(--adm-tx); text-align: left; }
+.adm-y-bulb { width: 30px; height: 30px; border-radius: 50%; background: var(--adm-amber2, rgba(245,158,11,.15)); color: var(--adm-amber); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; animation: admYBulb 2.4s ease-in-out infinite; }
+.adm-y-b { padding: 4px 18px 16px 18px; }
+.adm-y-ozet { font-size: 13.5px; line-height: 1.6; color: var(--adm-tx); margin: 4px 0 14px; }
+.adm-y-sec { font-size: 11px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--adm-tx3); margin: 14px 0 8px; display: flex; align-items: center; gap: 6px; }
+.adm-y-step { display: flex; gap: 11px; align-items: flex-start; padding: 8px 0; animation: admYStep .45s ease both; }
+.adm-y-num { width: 24px; height: 24px; border-radius: 50%; background: var(--adm-ac); color: #fff; font-size: 12px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+.adm-y-step b { font-size: 13px; color: var(--adm-tx); }
+.adm-y-step p { margin: 2px 0 0; font-size: 12.5px; line-height: 1.55; color: var(--adm-tx2); }
+.adm-y-flow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 6px 0 4px; }
+.adm-y-chip { padding: 7px 14px; border-radius: 999px; font-size: 12.5px; font-weight: 700; background: var(--adm-s2); color: var(--adm-tx2); animation: admYGlow var(--adm-y-d, 5s) ease-in-out infinite; }
+.adm-y-arrow { color: var(--adm-tx3); font-weight: 800; animation: admYArrow 1.4s ease-in-out infinite; }
+.adm-y-warn { margin-top: 12px; padding: 10px 14px; border-radius: 10px; background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.4); font-size: 12.5px; line-height: 1.55; color: var(--adm-tx); }
+.adm-y-warn li { margin: 3px 0; }
+.adm-y-terim { display: inline-block; margin: 0 6px 6px 0; padding: 5px 11px; border-radius: 8px; background: var(--adm-s2); border: 1px solid var(--adm-bdr); font-size: 12px; cursor: help; color: var(--adm-tx2); }
+.adm-y-terim b { color: var(--adm-tx); }
+.adm-y-ornek { display: inline-block; margin: 0 6px 6px 0; padding: 5px 12px; border-radius: 999px; background: var(--adm-ac2); color: var(--adm-ac); font-size: 12px; font-weight: 600; }
+.adm-y-sekme { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 14px; padding: 10px 14px; border-radius: 10px; background: var(--adm-ac2); border: 1px solid var(--adm-bdr); animation: admYTab .35s ease; font-size: 12.5px; line-height: 1.5; color: var(--adm-tx); }
+.adm-y-sekme b { color: var(--adm-ac); }
+@media (prefers-reduced-motion: reduce) { .adm-y, .adm-y *, .adm-y-sekme { animation: none !important; } }
