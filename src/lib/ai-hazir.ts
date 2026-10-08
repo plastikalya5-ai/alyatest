@@ -3,7 +3,7 @@
 // Bu dosyadaki "saf" fonksiyonlar (niyet bulma, biçimlendirme) scripts/ai-test.mts ile test edilir.
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-export type Niyet = 'cek_genel' | 'cek_takas' | 'cek_elde' | 'cek_karsiliksiz' | 'kasa_banka' | 'kira_duzeni'
+export type Niyet = 'cek_genel' | 'cek_takas' | 'cek_elde' | 'cek_karsiliksiz' | 'kasa_banka' | 'kira_duzeni' | 'diger_gelir'
 
 const tr = (s: string) => s.toLocaleLowerCase('tr').replace(/[?!.,;:()"']/g, ' ').replace(/\s+/g, ' ').trim()
 
@@ -17,6 +17,8 @@ export function soruNiyeti(soru: string): Niyet | null {
   if (AYRINTI.test(t)) return null
   // Kira ödeme DÜZENİ (kime, hangi gün, ne kadar banka/elden); belirli bir ay/tutar sorusu değildir
   if (/kira/.test(t) && /nasıl|nasil|düzen|duzen|plan|elden|bankadan|banka/.test(t)) return 'kira_duzeni'
+  // Diğer gelir (KDV iadesi, destek primi) ay ay dökümü: finans_ozet aylık kırılım vermediği için kayıtlardan doğrudan
+  if (/diğer gelir|diger gelir/.test(t)) return 'diger_gelir'
   const cek = /(^|\s)(çek|cek|senet|evrak)/.test(t)
   if (cek) {
     if (/karşılıksız|karsiliksiz/.test(t)) return 'cek_karsiliksiz'
@@ -56,7 +58,7 @@ function listeSatirlari(l: CekSatir[]) {
   return vadeSirala(l).map(x => `• ${tarihTr(x.vade_tarihi)} · ${tipAd(x)} · ${x.cari || '—'}${x.banka && x.banka !== 'SENET' ? ' · ' + x.banka : ''}${x.resmiyet === 'resmi' ? ' · resmi' : x.resmiyet === 'gayri_resmi' ? ' · gayrı resmi' : ''} · ${para(+(x.tutar as any) || 0)}`)
 }
 
-export function cekYaniti(niyet: Exclude<Niyet, 'kasa_banka' | 'kira_duzeni'>, rows: CekSatir[]): string {
+export function cekYaniti(niyet: Exclude<Niyet, 'kasa_banka' | 'kira_duzeni' | 'diger_gelir'>, rows: CekSatir[]): string {
   const alinan = rows.filter(x => x.yon === 'alinan')
   const elde = rows.filter(eldeMi), banka = rows.filter(bankadaMi)
   const kars = rows.filter(x => x.durum === 'karsiliksiz')
@@ -108,6 +110,31 @@ export function kasaYaniti(rows: HesapSatir[]): string {
 }
 
 export type KiraSatir = { ev_sahibi: string; odeme_gunu: number | string; banka: number | string; elden: number | string; not_?: string | null; aktif?: boolean | null }
+export type DigerGelirSatir = { tarih: string; tutar: number | string; aciklama?: string | null }
+const AYLAR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
+export function digerGelirYili(soru: string, bugunYil: number): number {
+  const m = soru.match(/\b(20\d\d)\b/)
+  return m ? +m[1] : bugunYil
+}
+export function digerGelirYaniti(yil: number, rows: DigerGelirSatir[]): string {
+  if (!rows.length) return `${yil} yılında "Diğer Gelir" kaydı bulunamadı.`
+  const ay: Map<number, { top: number; kal: Map<string, number> }> = new Map()
+  for (const r of rows) {
+    const m = +String(r.tarih).slice(5, 7) - 1, v = ay.get(m) || { top: 0, kal: new Map() }
+    const t = +r.tutar || 0, et = (String(r.aciklama || '').match(/GELİRLER\(([^)]*)\)/i)?.[1] || 'Diğer').replace(/\s+/g, ' ').trim()
+    v.top += t; v.kal.set(et, (v.kal.get(et) || 0) + t); ay.set(m, v)
+  }
+  const gen = yuvarla([...ay.values()].reduce((t, v) => t + v.top, 0))
+  const sat: string[] = []
+  for (let m = 0; m < 12; m++) {
+    const v = ay.get(m); if (!v) continue
+    sat.push(`• ${AYLAR[m]}: ${para(v.top)}`)
+    if (v.kal.size > 1) for (const [k, t] of v.kal) sat.push(`    - ${k}: ${para(t)}`)
+  }
+  const kayitsiz = AYLAR.filter((_, m) => !ay.has(m)).slice(0, [...ay.keys()].reduce((a, b) => Math.max(a, b), 0))
+  return [`${yil} YILI AY AY DİĞER GELİRLER (KDV iadesi, destek primi vb.; ciro değildir)`, '', ...sat, '', `TOPLAM: ${para(gen)}`, ...(kayitsiz.length ? ['', `Kayıt olmayan aylar: ${kayitsiz.join(', ')}`] : [])].join('\n')
+}
+
 export function kiraYaniti(rows: KiraSatir[]): string {
   const l = rows.filter(x => x.aktif !== false).sort((a, b) => (+a.odeme_gunu) - (+b.odeme_gunu) || a.ev_sahibi.localeCompare(b.ev_sahibi, 'tr'))
   if (!l.length) return 'Kira ödeme düzeni kaydı bulunamadı.'
@@ -134,6 +161,12 @@ export async function hazirCevap(sb: SupabaseClient, soru: string): Promise<{ ya
       const r: any = await sb.from('kira_plani').select('ev_sahibi,odeme_gunu,banka,elden,not_,aktif').limit(50)
       if (r.error || !r.data?.length) return null
       return { yanit: kiraYaniti(r.data), araclar: ['hazir_kira_plani'] }
+    }
+    if (n === 'diger_gelir') {
+      const yil = digerGelirYili(tr(soru), new Date().getFullYear())
+      const r: any = await sb.from('islemler').select('tarih,tutar,aciklama').eq('tip', 'gelir').eq('kategori', 'Diğer Gelir').gte('tarih', `${yil}-01-01`).lte('tarih', `${yil}-12-31`).order('tarih').limit(1000)
+      if (r.error) return null
+      return { yanit: digerGelirYaniti(yil, r.data || []), araclar: ['hazir_diger_gelir'] }
     }
     if (n === 'kasa_banka') {
       const r: any = await sb.from('kasa_banka_hesaplari').select('ad,tip,para_birimi,bakiye,aktif').limit(500)

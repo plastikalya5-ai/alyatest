@@ -1,6 +1,6 @@
 // Yapay zeka "hazır cevap" testi: sorular doğru cevaba yönleniyor mu, rakamlar kayıtlarla tutuyor mu?
 // Çalıştır: node --experimental-strip-types scripts/ai-test.mts
-import { soruNiyeti, cekYaniti, kasaYaniti, kiraYaniti, type CekSatir } from '../src/lib/ai-hazir.ts'
+import { soruNiyeti, cekYaniti, kasaYaniti, kiraYaniti, digerGelirYaniti, digerGelirYili, type CekSatir } from '../src/lib/ai-hazir.ts'
 
 const T = 'Garanti Bankası takas'
 const rows: CekSatir[] = [
@@ -40,6 +40,8 @@ const sorular: [string, string | null][] = [
   ['kira ödemelerimi nasıl yapıyorum elden ve bankadan bilgi verirmisin', 'kira_duzeni'],
   ['kira ödeme düzenimiz nedir', 'kira_duzeni'],
   ['kiralar elden mi bankadan mı', 'kira_duzeni'],
+  ['2026 yılı ay ay diğer gelirler toplamları', 'diger_gelir'],
+  ['diğer gelirler kaç', 'diger_gelir'],
   // Bunlar yapay zekaya gitmeli
   ['Eylül kirası ne kadar', null],
   ['kira giderimiz bu yıl ne kadar', null],
@@ -79,4 +81,12 @@ const kira = kiraYaniti([
 ])
 kontrol('kira: Ayten ilk (ayın 1\'i), toplam 915.000', kira.indexOf('Ayten') < kira.indexOf('Nurettin') && kira.includes(tl(915000)) && kira.includes(tl(430000)) && kira.includes(tl(485000)))
 kontrol('kira: Ayten 410.000', kira.includes(tl(410000)))
+const dg = digerGelirYaniti(2026, [
+  { tarih: '2026-01-31', tutar: 795744.10, aciklama: '[Aylık tablo] Ocak 2026 - DİGER GELİRLER(KDV İADE 338 İHRACAT)' },
+  { tarih: '2026-06-30', tutar: 523300, aciklama: '[Aylık tablo] Haziran 2026 - DİGER GELİRLER(FUAR TEŞVİK DESTEK PRİMİ) 523.300 TL' },
+  { tarih: '2026-06-30', tutar: 243294.75, aciklama: '[Aylık tablo] Haziran 2026 - DİGER GELİRLER(KDV İADE 338 İHRACAT)' },
+  { tarih: '2026-08-31', tutar: 12392.18, aciklama: '[Aylık tablo] Ağustos 2026 - DİGER GELİRLER(KDV İADE 338 İHRACAT)' },
+])
+kontrol('diğer gelir: Haziran 766.594,75 ve iki kalem, Ağustos 12.392,18', dg.includes(tl(766594.75)) && dg.includes('FUAR TEŞVİK DESTEK PRİMİ') && dg.includes(tl(12392.18)) && dg.includes('Şubat'))
+kontrol('diğer gelir: yıl 2026 sorudan', digerGelirYili('2026 yılı diğer gelirler', 2030) === 2026 && digerGelirYili('diğer gelirler', 2030) === 2030)
 console.log(hata ? `\n${hata} HATA` : '\nTÜM TESTLER GEÇTİ'); process.exit(hata ? 1 : 0)
