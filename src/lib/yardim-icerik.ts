@@ -316,4 +316,16 @@ export const YARDIM: Record<string, YardimIcerik> = {
       { t: 'Kapalı', a: 'Durduruldu. Silinmedi, istenirse yeniden açılır.' },
     ],
   },
+
+  'kira-plani': {
+    baslik: 'Kira Planı',
+    ozet: 'Şirketin kirasını kime, hangi gün, ne kadar bankadan ne kadar elden ödediğini yazdığın yer. Yapay zeka "kira ödemelerimi nasıl yapıyorum" sorusunu buradan cevaplar. Yeni kira gelirse buraya eklersin, yapay zeka hemen bilir.',
+    akis: ['Yeni kira ya da zam', 'Buraya yaz', 'Yapay zeka bilir'],
+    adimlar: [
+      { t: 'Yeni kira ekle', a: 'Üstteki kutuya ev sahibini, ayın kaçında ödendiğini, bankadan ve elden tutarları yaz, "Ekle"ye bas.' },
+      { t: 'Zam olunca güncelle', a: 'Kiralar her yıl Ocak\'ta değişiyorsa ilgili ev sahibinin "Düzenle"sine bas, tutarları değiştir.' },
+      { t: 'Kira bitince kapat', a: 'Sözleşme bittiyse "Kapat" de. Silinmez ama toplama ve yapay zeka cevabına girmez.' },
+    ],
+    dikkat: ['Burası sadece kira DÜZENİNİ gösterir. Gerçek ödemeleri Gelir/Gider ve Kasa/Banka sayfalarına ayrıca yazarsın.', 'Elden ödenen tutarlar için makbuz almayı unutma.'],
+  },
 }
