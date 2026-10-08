@@ -18,6 +18,7 @@ const ARAC_MOD: Record<string, string[]> = {
   cari_ozet: ['muhasebe', 'muhasebe_cari', 'satis'], satis_analiz: ['satis', 'muhasebe'], acik_siparisler: ['satis', 'sevkiyat'],
   kritik_stok: ['stok', 'uretim', 'satinalma', 'kalite'], stok_durumu: ['stok', 'uretim', 'satinalma', 'kalite', 'satis'], cari_ara: ['muhasebe', 'muhasebe_cari', 'satis'], kasa_banka_bakiye: ['muhasebe'], cari_ekstre: ['muhasebe', 'muhasebe_cari'], mekan_satis: ['muhasebe'], cek_senet_liste: ['muhasebe'], personel_bordro: ['bordro'], recete_ara: ['uretim', 'stok', 'muhasebe'], uretim_durumu: ['uretim'], ziyaret_ozet: ['dashboard'],
   guncel_kur: ['muhasebe', 'satis', 'satinalma', 'dashboard'],
+  veri_tutarlilik: ['muhasebe'], nakit_tahmini: ['muhasebe'], karlilik_analiz: ['muhasebe', 'satis'], hammadde_etki: ['uretim', 'stok', 'muhasebe'],
   hesapla: ['muhasebe'], fatura_ara: ['muhasebe'], islem_ara: ['muhasebe'],
 }
 // Muhasebe modülünün kendi sohbetinde (MUH_ARACLAR) bulunan, genel ERP araç listesinde (ARACLAR) olmayan

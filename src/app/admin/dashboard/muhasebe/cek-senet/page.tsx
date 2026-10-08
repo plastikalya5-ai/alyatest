@@ -8,13 +8,15 @@ import { sum } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Modal, Field, FormGrid, Card, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
 import { TrendChart } from '@/components/admin/erp/charts'
-import { Plus, Pencil, Trash2, FileSignature, AlertTriangle, CalendarClock, ShieldAlert, Wallet, Repeat, Ban, CheckCircle2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, FileSignature, AlertTriangle, CalendarClock, ShieldAlert, Wallet, Repeat, Ban, CheckCircle2, Landmark } from 'lucide-react'
 
 const DURUM: Record<string, { l: string; tone: any }> = {
   portfoyde: { l: 'Portföyde', tone: 'blue' }, tahsil_edildi: { l: 'Tahsil Edildi', tone: 'green' }, odendi: { l: 'Ödendi', tone: 'green' },
   karsiliksiz: { l: 'Karşılıksız', tone: 'red' }, ciro_edildi: { l: 'Ciro Edildi', tone: 'amber' }, iptal: { l: 'İptal', tone: 'muted' },
 }
 const RES: Record<string, string> = { resmi: '101 Resmi', gayri_resmi: '101 Gayrı Resmi' }
+const bankadaMi = (c: any) => c.durum === 'ciro_edildi' && c.yon === 'alinan' && /takas|tahsile/i.test(c.aciklama || '')
+const trTarih = (t: string) => String(t).slice(0, 10).split('-').reverse().join('.')
 const bos = () => ({ tip: 'cek', yon: 'alinan', cari_id: '', no: '', banka: '', tutar: '', vade_tarihi: todayISO(), aciklama: '', resmiyet: '' })
 
 export default function CekSenetPage() {
@@ -29,6 +31,7 @@ export default function CekSenetPage() {
   const [editing, setEditing] = useState<any>(null)
   const [form, setForm] = useState<any>(bos())
   const [islem, setIslem] = useState<any>(null) // { rows, tur: 'tahsil'|'ciro', kasa, cari, tarih }
+  const [takas, setTakas] = useState<any>(null) // { rows, banka, tarih } — bankaya tahsile/takasa verme (nakit hareketi yok)
   const [busy, setBusy] = useState(false)
 
   const load = useCallback(async () => {
@@ -50,6 +53,7 @@ export default function CekSenetPage() {
   const yaklasan = portfoy.filter(c => gun(c) >= 0 && gun(c) <= 7)
   const gecmis = portfoy.filter(c => gun(c) < 0)
   const karsiliksiz = list.filter(c => c.durum === 'karsiliksiz')
+  const bankada = list.filter(c => bankadaMi(c) && c.vade_tarihi >= bugun)
 
   // Vade dağılımı (portföy)
   const buckets = [
@@ -64,6 +68,7 @@ export default function CekSenetPage() {
       case 'portfoy': return c.durum === 'portfoyde'
       case 'yaklasan': return c.durum === 'portfoyde' && gun(c) >= 0 && gun(c) <= 7
       case 'gecmis': return c.durum === 'portfoyde' && gun(c) < 0
+      case 'bankada': return bankadaMi(c) && c.vade_tarihi >= bugun
       case 'kapali': return ['tahsil_edildi', 'odendi', 'ciro_edildi'].includes(c.durum)
       case 'karsiliksiz': return c.durum === 'karsiliksiz'
       default: return true
@@ -118,12 +123,21 @@ export default function CekSenetPage() {
           if (a?.error) throw new Error(a.error)
           const b: any = await muh.from('islemler').insert({ tip: 'gider', tutar: r.tutar, kategori: 'Çek/Senet Ödemesi', aciklama: `${ad} (ciro)`, tarih: islem.tarih, cari_id: islem.cari, odeme_yontemi: 'cek' })
           if (b?.error) throw new Error(b.error)
-          await muh.from('cek_senet').update({ durum: 'ciro_edildi', updated_at: new Date().toISOString(), aciklama: `${r.aciklama ? r.aciklama + ' · ' : ''}Ciro: ${cariAd[islem.cari]}` }).eq('id', r.id)
+          await muh.from('cek_senet').update({ durum: 'ciro_edildi', updated_at: new Date().toISOString(), aciklama: `${r.aciklama ? r.aciklama + ' · ' : ''}Ciro: ${cariAd[islem.cari]} (${trTarih(islem.tarih)})` }).eq('id', r.id)
         }
       }
       toast.show(islem.tur === 'tahsil' ? 'Tahsilat/ödeme işlendi' : 'Ciro işlendi'); setIslem(null); load()
     } catch (err: any) { toast.show(err.message, true) }
     setBusy(false)
+  }
+
+  /* Bankaya takas / tahsile verme: çek hâlâ bizim alacağımız ama fiziksel olarak bankada; nakit hareketi YOKTUR (tahsil olunca 'Tahsil oldu' ile işlenir) */
+  async function takasOnayla(e: React.FormEvent) {
+    e.preventDefault(); if (busy || !takas) return
+    const banka = String(takas.banka || '').trim(); if (!banka) { toast.show('Banka adı gerekli', true); return }
+    setBusy(true)
+    for (const r of takas.rows) await muh.from('cek_senet').update({ durum: 'ciro_edildi', updated_at: new Date().toISOString(), aciklama: `${r.aciklama ? r.aciklama + ' · ' : ''}Ciro: ${banka} takas (çıkış ${trTarih(takas.tarih)})` }).eq('id', r.id)
+    setBusy(false); toast.show(`${takas.rows.length} kayıt bankaya takasa verildi`); setTakas(null); load()
   }
 
   const cols: Col<any>[] = [
@@ -145,8 +159,10 @@ export default function CekSenetPage() {
           {c.durum === 'portfoyde' && <>
             <button className="adm-btn" style={{ padding: '4px 10px', fontSize: 11.5, background: c.yon === 'alinan' ? 'var(--adm-green)' : 'var(--adm-red)' }} onClick={() => openIslem([c], 'tahsil')}>{c.yon === 'alinan' ? 'Tahsil Et' : 'Öde'}</button>
             {c.yon === 'alinan' && <button className="adm-btn-ghost" style={{ padding: '4px 8px' }} title="Tedarikçiye ciro et" onClick={() => openIslem([c], 'ciro')}><Repeat size={12} /></button>}
+            {c.yon === 'alinan' && <button className="adm-btn-ghost" style={{ padding: '4px 8px' }} title="Bankaya takasa / tahsile ver" onClick={() => setTakas({ rows: [c], banka: 'Garanti Bankası', tarih: todayISO() })}><Landmark size={12} /></button>}
             <button className="adm-btn-ghost" style={{ padding: '4px 8px' }} title="Karşılıksız" onClick={() => confirm('Karşılıksız çıktı olarak işaretlensin mi?') && durum([c], 'karsiliksiz')}><Ban size={12} /></button>
           </>}
+          {bankadaMi(c) && c.durum === 'ciro_edildi' && <button className="adm-btn" style={{ padding: '4px 10px', fontSize: 11.5, background: 'var(--adm-green)' }} title="Banka tahsil etti" onClick={() => openIslem([c], 'tahsil')}>Tahsil oldu</button>}
           <button className="adm-btn-ghost" style={{ padding: '4px 8px' }} onClick={() => openEdit(c)}><Pencil size={12} /></button>
           <button className="adm-btn-danger" style={{ padding: '4px 8px' }} onClick={() => del(c)}><Trash2 size={12} /></button>
         </span>),
@@ -163,6 +179,7 @@ export default function CekSenetPage() {
           <Kpi label="Tahsil Edilecek" value={fmtK(sum(alinan, c => c.tutar))} Icon={Wallet} color="var(--adm-green)" sub={`${alinan.length} alınan çek/senet`} />
           <Kpi label="101 Resmi (portföy)" value={fmtK(sum(resmiA, c => c.tutar))} Icon={Wallet} color="var(--adm-green)" sub={`${resmiA.length} alınan çek/senet`} />
           <Kpi label="101 Gayrı Resmi (portföy)" value={fmtK(sum(gayriA, c => c.tutar))} Icon={Wallet} color="var(--adm-amber)" sub={`${gayriA.length} alınan${belirsizA.length ? ` · ${belirsizA.length} adet R/G seçilmemiş (${fmtK(sum(belirsizA, c => c.tutar))})` : ''}`} />
+          <Kpi label="Bankada Tahsilde" value={fmtK(sum(bankada, c => c.tutar))} Icon={Landmark} color="var(--adm-blue, #3b82f6)" sub={`${bankada.length} evrak (takas)`} onClick={() => setTab('bankada')} />
           <Kpi label="Ödenecek" value={fmtK(sum(verilen, c => c.tutar))} Icon={Wallet} color="var(--adm-red)" sub={`${verilen.length} verilen çek/senet`} />
           <Kpi label="7 Gün İçinde" value={yaklasan.length} Icon={CalendarClock} color="var(--adm-amber)" sub={fmtK(sum(yaklasan, c => (c.yon === 'alinan' ? 1 : -1) * c.tutar)) + ' net'} onClick={() => setTab('yaklasan')} />
           <Kpi label="Vadesi Geçmiş" value={gecmis.length} Icon={AlertTriangle} color={gecmis.length ? 'var(--adm-red)' : 'var(--adm-green)'} sub={gecmis.length ? fmtK(sum(gecmis, c => c.tutar)) : 'Gecikme yok'} onClick={() => setTab('gecmis')} />
@@ -176,7 +193,7 @@ export default function CekSenetPage() {
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' }}>
           <Tabs value={tab} onChange={setTab} tabs={[
             { v: 'portfoy', l: 'Portföyde', n: portfoy.length }, { v: 'yaklasan', l: '7 gün', n: yaklasan.length }, { v: 'gecmis', l: 'Vadesi geçmiş', n: gecmis.length },
-            { v: 'kapali', l: 'Kapananlar' }, { v: 'karsiliksiz', l: 'Karşılıksız', n: karsiliksiz.length }, { v: 'hepsi', l: 'Tümü', n: list.length },
+            { v: 'bankada', l: 'Bankada', n: bankada.length }, { v: 'kapali', l: 'Kapananlar' }, { v: 'karsiliksiz', l: 'Karşılıksız', n: karsiliksiz.length }, { v: 'hepsi', l: 'Tümü', n: list.length },
           ]} />
           <Tabs value={yonF} onChange={setYonF} tabs={[{ v: '', l: 'Alınan + Verilen' }, { v: 'alinan', l: 'Alınan' }, { v: 'verilen', l: 'Verilen' }]} />
         </div>
@@ -185,7 +202,12 @@ export default function CekSenetPage() {
           searchText={c => `${c.no || ''} ${c.banka || ''} ${cariAd[c.cari_id] || ''} ${c.tutar}`} searchPlaceholder="No, banka, cari, tutar..."
           selectable bulkActions={(sel, clear) => {
             const acik = sel.filter(s => s.durum === 'portfoyde')
-            return acik.length ? <button className="adm-btn" style={{ padding: '3px 12px', fontSize: 12, background: 'var(--adm-green)' }} onClick={() => { openIslem(acik, 'tahsil'); clear() }}><CheckCircle2 size={12} />{acik.length} kaydı toplu tahsil/öde</button> : null
+            const alinanAcik = acik.filter(s => s.yon === 'alinan'), bk = sel.filter(s => bankadaMi(s))
+            return (acik.length || bk.length) ? <span style={{ display: 'inline-flex', gap: 6 }}>
+              {acik.length > 0 && <button className="adm-btn" style={{ padding: '3px 12px', fontSize: 12, background: 'var(--adm-green)' }} onClick={() => { openIslem(acik, 'tahsil'); clear() }}><CheckCircle2 size={12} />{acik.length} kaydı toplu tahsil/öde</button>}
+              {alinanAcik.length > 0 && <button className="adm-btn-ghost" style={{ padding: '3px 12px', fontSize: 12 }} onClick={() => { setTakas({ rows: alinanAcik, banka: 'Garanti Bankası', tarih: todayISO() }); clear() }}><Landmark size={12} />{alinanAcik.length} kaydı bankaya takasa ver</button>}
+              {bk.length > 0 && <button className="adm-btn" style={{ padding: '3px 12px', fontSize: 12, background: 'var(--adm-green)' }} onClick={() => { openIslem(bk, 'tahsil'); clear() }}>{bk.length} bankadakini tahsil oldu işle</button>}
+            </span> : null
           }}
           emptyTitle="Bu görünümde kayıt yok" />
       </Page>
@@ -221,6 +243,20 @@ export default function CekSenetPage() {
               ? <Field label="Kasa / Banka" hint="Tutar bu hesaba işlenir"><select className="adm-inp" required value={islem.kasa} onChange={e => setIslem((i: any) => ({ ...i, kasa: e.target.value }))}><option value="">Seçin</option>{kasalar.map(k => <option key={k.id} value={k.id}>{k.ad}</option>)}</select></Field>
               : <Field label="Ciro edilecek tedarikçi" hint="Nakit hareketi olmaz; tedarikçi borcu düşer, müşteri tahsilatı kaydedilir"><select className="adm-inp" required value={islem.cari} onChange={e => setIslem((i: any) => ({ ...i, cari: e.target.value }))}><option value="">Seçin</option>{cariler.filter(c => c.tip !== 'musteri').map(c => <option key={c.id} value={c.id}>{c.ad}</option>)}</select></Field>}
             <Field label="İşlem Tarihi"><input type="date" className="adm-inp" value={islem.tarih} onChange={e => setIslem((i: any) => ({ ...i, tarih: e.target.value }))} /></Field>
+          </FormGrid>
+        )}
+      </Modal>
+      <Modal open={!!takas} onClose={() => setTakas(null)} onSubmit={takasOnayla} width={480} title="Bankaya Takasa / Tahsile Ver"
+        footer={<><button type="button" className="adm-btn-ghost" onClick={() => setTakas(null)}>İptal</button><button type="submit" className="adm-btn" disabled={busy}>Onayla</button></>}>
+        {takas && (
+          <FormGrid cols={1}>
+            <div style={{ padding: 12, borderRadius: 10, background: 'var(--adm-s2)', fontSize: 12.5 }}>
+              {takas.rows.slice(0, 4).map((r: any) => <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}><span>{r.tip === 'cek' ? 'Çek' : 'Senet'} {r.no || ''} · {cariAd[r.cari_id] || '—'}</span><b>{fmt(r.tutar)}</b></div>)}
+              {takas.rows.length > 4 && <div style={{ color: 'var(--adm-tx3)' }}>+ {takas.rows.length - 4} kayıt daha</div>}
+              <div style={{ borderTop: '1px dashed var(--adm-bdr2)', marginTop: 6, paddingTop: 6, display: 'flex', justifyContent: 'space-between' }}><span>Toplam</span><b>{fmt(sum(takas.rows, (r: any) => r.tutar))}</b></div>
+            </div>
+            <Field label="Banka" hint="Nakit hareketi olmaz; çek 'Bankada' sekmesine geçer, banka tahsil edince 'Tahsil oldu' ile kapatılır"><input className="adm-inp" required value={takas.banka} onChange={e => setTakas((t: any) => ({ ...t, banka: e.target.value }))} /></Field>
+            <Field label="Çıkış Tarihi"><input type="date" className="adm-inp" value={takas.tarih} onChange={e => setTakas((t: any) => ({ ...t, tarih: e.target.value }))} /></Field>
           </FormGrid>
         )}
       </Modal>

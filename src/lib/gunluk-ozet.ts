@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { veriTutarlilik } from '@/lib/ai-yonetim'
 
 // Günlük özet: yalnızca veritabanındaki gerçek kayıtlardan, kurallı olarak üretilir (AI yok, uydurma yok).
 // Aynı fonksiyon cron'da service_role ile (tüm veri), panelde kullanıcının oturumuyla (RLS: yalnızca yetkili olduğu veri) çalışır.
@@ -16,6 +17,7 @@ const ILK = 6   // bölüm başına gösterilen satır
 export type Veri = {
   faturalar: any[]; cariler: any[]; cekler: any[]; kritikHam: any[]; kritikUrun: any[]
   satinalma: any[]; satis: any[]; basvurular: any[]; talepler: any[]
+  kasaEksi?: { ad: string; bakiye: number; pb: string }[]; veriSorun?: { yuksek: number; ornekler: string[] }
   satinalmaYaklasan?: any[]; onayBekleyen?: { no: string; tedarikci_id: string | null; tl: number }[]; onayAyar?: { aktif: boolean; limit: number } | null
 }
 
@@ -90,6 +92,11 @@ export function ozetOlustur(v: Veri, bugun: string): Ozet {
   // 7) Teklif bekleyen satınalma talepleri
   if (v.talepler.length) ekle({ anahtar: 'talep', baslik: 'Satınalma talepleri', ton: 'bilgi', sayi: v.talepler.length, ozet: `${v.talepler.length} talep teklif / karar bekliyor`, satirlar: [] })
 
+  // 8) Eksi kasa/banka ve veri güvenilirliği (yüksek seviyeli tutarsızlıklar)
+  const ke = v.kasaEksi || []
+  if (ke.length) ekle({ anahtar: 'kasa', baslik: 'Eksi bakiyeli kasa/banka', ton: 'kirmizi', sayi: ke.length, ozet: `${ke.length} hesap eksiye düşmüş`, satirlar: ke.slice(0, ILK).map(k => `${k.ad}: ${new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 0 }).format(k.bakiye)} ${k.pb}`) })
+  if (v.veriSorun && v.veriSorun.yuksek > 0) ekle({ anahtar: 'veri', baslik: 'Veri güvenilirliği', ton: 'sari', sayi: v.veriSorun.yuksek, ozet: `${v.veriSorun.yuksek} önemli tutarsızlık var (Muhasebe AI'ya "sistemde hata var mı" diye sorun)`, satirlar: v.veriSorun.ornekler.slice(0, ILK) })
+
   const toplamUyari = bolumler.reduce((t, b) => t + b.sayi, 0)
   const baslik = toplamUyari ? `Günlük özet ${trTarih(bugun)}: ${toplamUyari} madde dikkat istiyor` : `Günlük özet ${trTarih(bugun)}: dikkat gerektiren madde yok`
   const ic = bolumler.map(b => `▸ ${b.baslik.toLocaleUpperCase('tr-TR')} — ${b.ozet}${b.satirlar.length ? '\n' + b.satirlar.map(s => `   • ${s}`).join('\n') : ''}`).join('\n\n')
@@ -104,6 +111,12 @@ export async function gunlukOzet(sb: SupabaseClient, bugun = bugunTR()): Promise
     try { const r = await f(); if (r.error) { atlanan.push(ad); return [] as any[] } return r.data || [] } catch { atlanan.push(ad); return [] as any[] }
   }
   const son7 = gunEkle(bugun, 7), dun = new Date(Date.now() - 24 * 3600e3).toISOString()
+  const [kasaHam, veriRap] = await Promise.all([
+    al('kasa', () => sb.from('kasa_banka_hesaplari').select('ad,bakiye,para_birimi,aktif').lt('bakiye', 0).limit(100)),
+    veriTutarlilik(sb).catch(() => null),
+  ])
+  const kasaEksi = kasaHam.filter((k: any) => k.aktif !== false).map((k: any) => ({ ad: k.ad, bakiye: +k.bakiye || 0, pb: k.para_birimi || 'TRY' }))
+  const veriSorun = veriRap ? { yuksek: veriRap.yuksek, ornekler: veriRap.sorunlar.filter(x => x.seviye === 'yuksek').map(x => `${x.konu}: ${x.ozet}`) } : undefined
   const [faturalar, cariler, cekler, kritikHam, kritikUrun, satinalma, satis, basvurular, talepler, satinalmaYaklasan, onayHam, onayAyarSatir] = await Promise.all([
     al('faturalar', () => sb.from('faturalar').select('tip,durum,cari_id,vade,toplam,odenen_tutar').eq('durum', 'onaylandi').in('tip', ['satis', 'alis']).lte('vade', son7).limit(3000)),
     al('cariler', () => sb.from('cari_hesaplar').select('id,ad').limit(5000)),
@@ -121,5 +134,5 @@ export async function gunlukOzet(sb: SupabaseClient, bugun = bugunTR()): Promise
   const onayBekleyen = onayHam.map((o: any) => ({ no: o.no, tedarikci_id: o.tedarikci_id, tl: (o.satinalma_siparisi_kalemleri || []).reduce((t: number, k: any) => t + (+k.miktar || 0) * (+k.birim_fiyat || 0), 0) * (+o.kur || 1) }))
   const av = onayAyarSatir[0]?.value
   const onayAyar = av ? { aktif: !!av.aktif, limit: +av.limit || 0 } : null
-  return { ...ozetOlustur({ faturalar, cariler, cekler, kritikHam, kritikUrun, satinalma, satis, basvurular, talepler, satinalmaYaklasan, onayBekleyen, onayAyar }, bugun), atlanan }
+  return { ...ozetOlustur({ faturalar, cariler, cekler, kritikHam, kritikUrun, satinalma, satis, basvurular, talepler, satinalmaYaklasan, onayBekleyen, onayAyar, kasaEksi, veriSorun }, bugun), atlanan }
 }

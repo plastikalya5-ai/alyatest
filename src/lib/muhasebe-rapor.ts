@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { aiCagir, AiHata, veriBlok } from '@/lib/ai'
+import { veriTutarlilik, nakitTahmini, karlilikAnaliz } from '@/lib/ai-yonetim'
 
 // Muhasebe raporları: veri kullanıcının kendi oturumuyla (rpc_* içinde has_module kontrolü) okunur,
 // tüm aritmetik burada deterministik yapılır; AI yalnızca hazır rakamları yorumlar.
@@ -84,6 +85,31 @@ export async function raporUret(sb: SupabaseClient, tip: string, donem: string):
     const kat = (a: any[]) => (a || []).map(x => [x.k, r2(x.c), r2(x.p), pct(Number(x.c), Number(x.p))])
     const ag = f.aging_alacak || {}
     const cariYas = ((yas || []) as any[]).map(x => ({ ...x, toplam: r2(x.guncel + x.d30 + x.d60 + x.d90 + x.d90p) })).sort((a, b) => b.toplam - a.toplam).slice(0, 15)
+    // Yönetim ekleri: her biri bağımsız; biri okunamazsa rapor yine üretilir ve eksik bölüm notta belirtilir.
+    const ekler: RaporBolum[] = [], ekNot: string[] = []
+    try {
+      const cs = await sb.from('cek_senet').select('tip,yon,tutar,durum,aciklama').in('durum', ['portfoyde', 'ciro_edildi', 'karsiliksiz']).limit(3000)
+      if (cs.error) throw new Error(cs.error.message)
+      const L = (cs.data || []) as any[], top = (a: any[]) => r2(a.reduce((t, x) => t + (+x.tutar || 0), 0))
+      const elde = L.filter(x => x.durum === 'portfoyde' && x.yon === 'alinan'), verilenPort = L.filter(x => x.durum === 'portfoyde' && x.yon === 'verilen')
+      const bankada = L.filter(x => x.durum === 'ciro_edildi' && x.yon === 'alinan' && /takas|tahsile/i.test(x.aciklama || '')), kars = L.filter(x => x.durum === 'karsiliksiz')
+      ekler.push({ baslik: 'Çek / senet durumu (rapor tarihi itibarıyla)', kolonlar: ['Durum', 'Adet', 'Tutar (₺)'], sayisalKolonlar: [1, 2], satirlar: [['Elimizde (portföyde, alınan)', elde.length, top(elde)], ['Bankada tahsilde (takas)', bankada.length, top(bankada)], ['Verdiğimiz çek/senet (vadesi gelmemiş)', verilenPort.length, top(verilenPort)], ['Karşılıksız', kars.length, top(kars)]] })
+    } catch (e: any) { ekNot.push(`Çek/senet bölümü okunamadı: ${String(e?.message || e).slice(0, 80)}`) }
+    try {
+      const n: any = await nakitTahmini(sb, 90)
+      ekler.push({ baslik: 'Nakit tahmini (bugünden itibaren, TL)', kolonlar: ['Dönem', 'Giriş (₺)', 'Çıkış (₺)', 'Net (₺)', 'Tahmini dönem sonu nakit (₺)'], sayisalKolonlar: [1, 2, 3, 4],
+        satirlar: [['Açılış (kasa/banka TL)', '', '', '', n.acilis_tl_kasa_banka], ...n.donemler.map((d: any) => [d.donem, d.giris, d.cikis, d.net, d.tahmini_tl_nakit_donem_sonu])] })
+      ekNot.push('Nakit tahmini; maaş, kira, SGK ve vergi gibi tekrarlayan giderleri içermez ve kasa/banka bakiyesi doğruysa güvenilirdir.')
+    } catch (e: any) { ekNot.push(`Nakit tahmini okunamadı: ${String(e?.message || e).slice(0, 80)}`) }
+    try {
+      const k: any = await karlilikAnaliz(sb, bas, bit)
+      if (k.musteri_yogunlasma?.en_buyuk_5?.length) ekler.push({ baslik: `En büyük müşteriler (dönem içi net satış, KDV hariç; ilk 5 payı %${k.musteri_yogunlasma.ilk5_pay_yuzde ?? '—'})`, kolonlar: ['Müşteri', 'Net satış (₺)', 'Pay %'], sayisalKolonlar: [1, 2], satirlar: k.musteri_yogunlasma.en_buyuk_5.map((x: any) => [x.musteri, x.net_satis, x.pay_yuzde ?? 0]) })
+      else ekNot.push('Bu dönemde sisteme girilmiş onaylı satış faturası olmadığı için müşteri bazlı satış bölümü boş.')
+    } catch (e: any) { ekNot.push(`Müşteri bölümü okunamadı: ${String(e?.message || e).slice(0, 80)}`) }
+    try {
+      const v = await veriTutarlilik(sb)
+      if (v.sorunlar.length) ekler.push({ baslik: 'Veri uyarıları (otomatik kontrol)', kolonlar: ['Önem', 'Konu', 'Açıklama'], satirlar: v.sorunlar.map(x => [x.seviye === 'yuksek' ? 'YÜKSEK' : x.seviye === 'orta' ? 'Orta' : 'Bilgi', x.konu, x.ozet]) })
+    } catch (e: any) { ekNot.push(`Veri uyarıları okunamadı: ${String(e?.message || e).slice(0, 80)}`) }
     return {
       tip: 'aylik', baslik: `Aylık Yönetim Raporu — ${donem}`, donem, bas, bit, olusturma,
       bolumler: [
@@ -98,11 +124,13 @@ export async function raporUret(sb: SupabaseClient, tip: string, donem: string):
         { baslik: 'Alacak yaşlandırma (rapor tarihi itibarıyla)', kolonlar: ['Vadesi gelmemiş/güncel', '1–30 gün', '31–60 gün', '61–90 gün', '90+ gün'], sayisalKolonlar: [0, 1, 2, 3, 4], satirlar: [[r2(ag.guncel), r2(ag.d30), r2(ag.d60), r2(ag.d90), r2(ag.d90p)]] },
         { baslik: 'Cari bazında vade durumu (en yüksek 15)', kolonlar: ['Cari', 'Yön', 'Güncel', '1–30', '31–60', '61–90', '90+', 'Toplam'], sayisalKolonlar: [2, 3, 4, 5, 6, 7],
           satirlar: cariYas.map(x => [x.ad, x.yon === 'alacak' ? 'Alacak' : 'Borç', r2(x.guncel), r2(x.d30), r2(x.d60), r2(x.d90), r2(x.d90p), x.toplam]) },
+        ...ekler,
       ],
       notlar: [
         'Gelir/gider rakamları virman, fatura kapama, bakiye düzeltme, açılış bakiyesi ve kur farkı gibi özel kategoriler hariç işlemlerdendir.',
         'Nakit, cari ve yaşlandırma bölümleri seçilen dönemin sonu değil, raporun oluşturulduğu tarih itibarıyladır.',
         'Bu rapor yönetim amaçlıdır; resmî mali tablo veya beyanname yerine geçmez.',
+        ...ekNot,
       ],
     }
   }
