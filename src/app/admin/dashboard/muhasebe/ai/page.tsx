@@ -40,6 +40,12 @@ type BelgeSatir = { ad: string; durum: 'bekliyor' | 'okunuyor' | 'tamam' | 'hata
 
 const bosMevzuat = { kategori: '', anahtar: '', baslik: '', deger: '', gecerlilik_baslangic: '', gecerlilik_bitis: '', kaynak_adi: '', kaynak_url: '', guven: 'tek_kaynak', dogrulama_tarihi: '', notlar: '', aktif: true }
 
+function excelLinkleri(t: string) {
+  const o: { href: string; etiket: string }[] = []
+  for (const m of t.matchAll(/\/api\/admin\/(pos-ekstre|fuar-excel)(\?[\w=&]*)?/g)) if (!o.some(x => x.href === m[0])) o.push({ href: m[0], etiket: m[1] === 'pos-ekstre' ? 'POS ekstresini Excel indir' : 'Fuar listesini Excel indir' })
+  return o
+}
+
 export default function MuhasebeAiPage() {
   const toast = useToast()
   const [tab, setTab] = useState('sor')
@@ -277,7 +283,7 @@ export default function MuhasebeAiPage() {
               )}
               {msgs.map((m, i) => (
                 <div key={i} style={{ alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: 'min(760px, 92%)' }}>
-                  <div style={{ padding: '10px 14px', borderRadius: 12, fontSize: 13.5, lineHeight: 1.65, whiteSpace: 'pre-wrap', background: m.role === 'user' ? 'var(--adm-ac)' : 'var(--adm-s2)', color: m.role === 'user' ? '#fff' : 'var(--adm-tx)' }}>{m.content}{m.role !== 'user' && m.content.includes('/api/admin/pos-ekstre') && <div style={{ marginTop: 8 }}><a className="adm-btn" style={{ textDecoration: 'none', display: 'inline-flex' }} href="/api/admin/pos-ekstre"><FileSpreadsheet size={13} />POS ekstresini Excel indir</a></div>}</div>
+                  <div style={{ padding: '10px 14px', borderRadius: 12, fontSize: 13.5, lineHeight: 1.65, whiteSpace: 'pre-wrap', background: m.role === 'user' ? 'var(--adm-ac)' : 'var(--adm-s2)', color: m.role === 'user' ? '#fff' : 'var(--adm-tx)' }}>{m.content}{m.role !== 'user' && excelLinkleri(m.content).map(l => <div key={l.href} style={{ marginTop: 8 }}><a className="adm-btn" style={{ textDecoration: 'none', display: 'inline-flex' }} href={l.href}><FileSpreadsheet size={13} />{l.etiket}</a></div>)}</div>
                   {m.araclar && m.araclar.length > 0 && <div style={{ fontSize: 10.5, color: 'var(--adm-tx3)', marginTop: 4 }}>Kullanılan araçlar: {Array.from(new Set(m.araclar)).join(', ')}</div>}
                 </div>
               ))}
