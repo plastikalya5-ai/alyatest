@@ -15,6 +15,7 @@ export function soruNiyeti(soru: string): Niyet | null {
   const t = tr(soru)
   if (!t || t.split(' ').length > 18) return null
   if (AYRINTI.test(t)) return null
+  if (/excel|dosya|indir/.test(t)) return null // dosya isteği: yapay zeka excel_olustur ile hazırlar
   // Kira ödeme DÜZENİ (kime, hangi gün, ne kadar banka/elden); belirli bir ay/tutar sorusu değildir
   if (/kira/.test(t) && /nasıl|nasil|düzen|duzen|plan|elden|bankadan|banka/.test(t)) return 'kira_duzeni'
   const cek = /(^|\s)(çek|cek|senet|evrak)/.test(t)
