@@ -1,4 +1,5 @@
 'use client'
+import ExcelDugmeleri from '@/components/admin/ExcelLinkleri'
 import { useEffect, useRef, useState } from 'react'
 import AdminTopBar from '@/components/admin/TopBar'
 import { Page, PageHead, Card, useToast } from '@/components/admin/erp/ui'
@@ -55,7 +56,7 @@ export default function AsistanPage() {
             )}
             {msgs.map((m, i) => (
               <div key={i} style={{ alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: 'min(720px, 90%)' }}>
-                <div style={{ padding: '10px 14px', borderRadius: 12, fontSize: 13.5, lineHeight: 1.65, whiteSpace: 'pre-wrap', background: m.role === 'user' ? 'var(--adm-ac)' : 'var(--adm-s2)', color: m.role === 'user' ? '#fff' : 'var(--adm-tx)' }}>{m.content}</div>
+                <div style={{ padding: '10px 14px', borderRadius: 12, fontSize: 13.5, lineHeight: 1.65, whiteSpace: 'pre-wrap', background: m.role === 'user' ? 'var(--adm-ac)' : 'var(--adm-s2)', color: m.role === 'user' ? '#fff' : 'var(--adm-tx)' }}>{m.content}{m.role !== 'user' && <ExcelDugmeleri metin={m.content} />}</div>
                 {m.araclar && m.araclar.length > 0 && <div style={{ fontSize: 10.5, color: 'var(--adm-tx3)', marginTop: 4 }}>Kaynak: {Array.from(new Set(m.araclar)).join(', ')}</div>}
               </div>
             ))}
