@@ -120,6 +120,8 @@ const tarih = (v: unknown) => { if (typeof v !== 'string' || !D.test(v)) throw n
 const nrm = (v: unknown) => String(v ?? '').toLocaleLowerCase('tr').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ı/g, 'i').trim()
 const esles = (metin: unknown, ara: string) => { const m = nrm(metin), k = nrm(ara).split(/\s+/).filter(Boolean); return k.length > 0 && k.every(t => m.includes(t)) }
 const HAM = new AsyncLocalStorage<boolean>() // Excel için araç çıktısı kısaltılmadan alınır
+export const hamMi = () => !!HAM.getStore()
+const kes = (n: number) => (HAM.getStore() ? 100000 : n) // Excel'de liste sınırı yok
 const kisalt = (x: unknown, n = 7000) => { const s = JSON.stringify(x ?? null); return !HAM.getStore() && s.length > n ? s.slice(0, n) + '…(kısaltıldı)' : s }
 
 // Araçlar kullanıcının KENDİ oturumuyla çalışır: RLS ve rpc_* içindeki has_module kontrolü aynen geçerlidir.
@@ -140,7 +142,7 @@ export async function araciCalistir(sb: SupabaseClient, ad: string, a: Record<st
       case 'yaslandirma': return kisalt(await rpc('rpc_yaslandirma'))
       case 'ziyaret_ozet': return kisalt(await rpc('rpc_ziyaret_ozet', { p_days: Math.min(Math.max(parseInt(a.gun) || 7, 1), 365) }))
       case 'kritik_stok': {
-        const [h, u] = await Promise.all([sel(sb.from('v_kritik_hammaddeler').select('*').limit(25)), sel(sb.from('v_kritik_urunler').select('*').limit(25))])
+        const [h, u] = await Promise.all([sel(sb.from('v_kritik_hammaddeler').select('*').limit(kes(25))), sel(sb.from('v_kritik_urunler').select('*').limit(kes(25)))])
         return kisalt({ hammaddeler: h, mamuller: u })
       }
       case 'cari_ozet': {
@@ -151,7 +153,7 @@ export async function araciCalistir(sb: SupabaseClient, ad: string, a: Record<st
         const para = (alan: string) => {
           const l = (cl as any[]).map(c => ({ ad: c.ad, kod: c.kod, tip: c.tip, tutar: +c[alan] || 0 })).filter(c => Math.abs(c.tutar) > 0.004)
           const bor = l.filter(c => c.tutar < 0).sort((x, y) => x.tutar - y.tutar), alc = l.filter(c => c.tutar > 0).sort((x, y) => y.tutar - x.tutar)
-          const top = (a: typeof l) => a.slice(0, 10).map(c => ({ cari: c.ad, kod: c.kod, tip: c.tip, tutar: Math.round(c.tutar * 100) / 100 }))
+          const top = (a: typeof l) => a.slice(0, kes(10)).map(c => ({ cari: c.ad, kod: c.kod, tip: c.tip, tutar: Math.round(c.tutar * 100) / 100 }))
           const top2 = (x: number[]) => Math.round(x.reduce((t, v) => t + v, 0) * 100) / 100
           return { sirket_borcu_toplam: -top2(bor.map(c => c.tutar)), borclu_cari_sayisi: bor.length, sirket_alacagi_toplam: top2(alc.map(c => c.tutar)), alacakli_cari_sayisi: alc.length, en_buyuk_borclar_biz_borcluyuz: top(bor), en_buyuk_alacaklar: top(alc) }
         }
@@ -164,15 +166,15 @@ export async function araciCalistir(sb: SupabaseClient, ad: string, a: Record<st
         if (tur !== 'mamul') {
           const hm = ((await sel(sb.from('hammaddeler').select('kod,ad,birim,mevcut_stok,min_stok,mekan,aktif').limit(3000))) as any[]).filter(h => h.aktif !== false && (!ar || esles(h.ad + ' ' + h.kod, ar)) && (!mk || h.mekan === mk || h.mekan === 'ortak'))
           const lst = (ar ? hm : hm.filter(h => +h.mevcut_stok > 0)).sort((x, y) => +y.mevcut_stok - +x.mevcut_stok)
-          out.hammadde = { kalem_sayisi: hm.length, stoklu_kalem_sayisi: hm.filter(h => +h.mevcut_stok > 0).length, eslesen_toplam_stok: Math.round(hm.reduce((t, h) => t + (+h.mevcut_stok || 0), 0) * 1000) / 1000, stogu_sifir_olanlar: ar ? hm.filter(h => !(+h.mevcut_stok > 0)).slice(0, 40).map(h => h.ad) : undefined, min_stogun_altinda: hm.filter(h => +h.min_stok > 0 && +h.mevcut_stok < +h.min_stok).slice(0, 20).map(h => ({ ad: h.ad, stok: +h.mevcut_stok, min: +h.min_stok })), listelenen: lst.slice(0, 40).map(h => ({ kod: h.kod, ad: h.ad, birim: h.birim, stok: +h.mevcut_stok, min: +h.min_stok || 0 })), not: lst.length > 40 ? `${lst.length} kalemden ilk 40 gösterildi (stoğu en yüksek)` : undefined }
+          out.hammadde = { kalem_sayisi: hm.length, stoklu_kalem_sayisi: hm.filter(h => +h.mevcut_stok > 0).length, eslesen_toplam_stok: Math.round(hm.reduce((t, h) => t + (+h.mevcut_stok || 0), 0) * 1000) / 1000, stogu_sifir_olanlar: ar ? hm.filter(h => !(+h.mevcut_stok > 0)).slice(0, kes(40)).map(h => h.ad) : undefined, min_stogun_altinda: hm.filter(h => +h.min_stok > 0 && +h.mevcut_stok < +h.min_stok).slice(0, 20).map(h => ({ ad: h.ad, stok: +h.mevcut_stok, min: +h.min_stok })), listelenen: lst.slice(0, kes(40)).map(h => ({ kod: h.kod, ad: h.ad, birim: h.birim, stok: +h.mevcut_stok, min: +h.min_stok || 0 })), not: lst.length > 40 ? `${lst.length} kalemden ilk 40 gösterildi (stoğu en yüksek)` : undefined }
         }
         if (tur !== 'hammadde') {
           const [ps, vs] = await Promise.all([sel(sb.from('products').select('id,name,code,mekan').limit(1000)), sel(sb.from('product_variants').select('product_id,name,color,size,stock').limit(6000))])
           const gr = (ps as any[]).filter(p => (!mk || p.mekan === mk) && (!ar || esles(p.name + ' ' + p.code, ar))).map(p => {
             const v = (vs as any[]).filter(x => x.product_id === p.id)
-            return { urun: p.name, kod: p.code, mekan: p.mekan, toplam_adet: v.reduce((t, x) => t + (+x.stock || 0), 0), varyantlar: v.filter(x => +x.stock !== 0).slice(0, 25).map(x => ({ ad: [x.size, x.color].filter(Boolean).join(' / ') || x.name, adet: +x.stock })) }
+            return { urun: p.name, kod: p.code, mekan: p.mekan, toplam_adet: v.reduce((t, x) => t + (+x.stock || 0), 0), varyantlar: v.filter(x => +x.stock !== 0).slice(0, kes(25)).map(x => ({ ad: [x.size, x.color].filter(Boolean).join(' / ') || x.name, adet: +x.stock })) }
           }).sort((x, y) => y.toplam_adet - x.toplam_adet)
-          out.mamul = { urun_sayisi: gr.length, toplam_adet: gr.reduce((t, x) => t + x.toplam_adet, 0), urunler: gr.slice(0, 30) }
+          out.mamul = { urun_sayisi: gr.length, toplam_adet: gr.reduce((t, x) => t + x.toplam_adet, 0), urunler: gr.slice(0, kes(30)) }
         }
         return kisalt(out, 12000)
       }
@@ -182,7 +184,7 @@ export async function araciCalistir(sb: SupabaseClient, ad: string, a: Record<st
         let l = tum.filter(c => esles(c.ad + ' ' + c.kod, ar)), kullanilan = ar
         // Eşleşme yoksa sondaki kelimeleri atarak dene ("espa plastik ham madde kdv" → "espa plastik"): fazladan kelimeler cari adı olmayabilir
         for (let k = ar.split(/\s+/).length - 1; !l.length && k >= 1; k--) { const q = ar.split(/\s+/).slice(0, k).join(' '); l = tum.filter(c => esles(c.ad + ' ' + c.kod, q)); kullanilan = q }
-        return kisalt({ arama_kullanilan: kullanilan, eslesen: l.length, cariler: l.slice(0, 12).map(c => ({ ad: c.ad, kod: c.kod, tip: c.tip, TL: +c.bakiye || 0, USD: +c.bakiye_usd || 0, EUR: +c.bakiye_eur || 0, not: c.notlar ? String(c.notlar).slice(0, 200) : undefined })), not: 'negatif = şirket borçlu, pozitif = cari şirkete borçlu' })
+        return kisalt({ arama_kullanilan: kullanilan, eslesen: l.length, cariler: l.slice(0, kes(12)).map(c => ({ ad: c.ad, kod: c.kod, tip: c.tip, TL: +c.bakiye || 0, USD: +c.bakiye_usd || 0, EUR: +c.bakiye_eur || 0, not: c.notlar ? String(c.notlar).slice(0, 200) : undefined })), not: 'negatif = şirket borçlu, pozitif = cari şirkete borçlu' })
       }
       case 'cari_ekstre': {
         const ar = nrm(a.arama); if (!ar) throw new Error('arama boş')
@@ -195,8 +197,8 @@ export async function araciCalistir(sb: SupabaseClient, ad: string, a: Record<st
         const bir = async (c: any) => {
           const [eski, fat, isl] = await Promise.all([
             sel(sb.from('cari_eski_hareketler').select('grup,hesap_kodu,tarih,evrak_cinsi,evrak_no,aciklama,tl_borc,tl_alacak,usd_borc,usd_alacak,eur_borc,eur_alacak,nakil').eq('cari_id', c.id).order('tarih', { ascending: false }).order('sira', { ascending: false }).limit(n)),
-            sel(sb.from('v_faturalar_liste').select('no,tip,durum,tarih,vade,toplam,odenen_tutar,para_birimi').eq('cari_id', c.id).order('tarih', { ascending: false }).limit(15)).catch(() => []),
-            sel(sb.from('islemler').select('tip,kategori,tutar,tarih,aciklama').eq('cari_id', c.id).order('tarih', { ascending: false }).limit(15)),
+            sel(sb.from('v_faturalar_liste').select('no,tip,durum,tarih,vade,toplam,odenen_tutar,para_birimi').eq('cari_id', c.id).order('tarih', { ascending: false }).limit(kes(15))).catch(() => []),
+            sel(sb.from('islemler').select('tip,kategori,tutar,tarih,aciklama').eq('cari_id', c.id).order('tarih', { ascending: false }).limit(kes(15))),
           ])
           const tumEski = (await sel(sb.from('cari_eski_hareketler').select('grup,hesap_kodu,hesap_adi,evrak_cinsi,tl_borc,tl_alacak,usd_borc,usd_alacak,eur_borc,eur_alacak').eq('cari_id', c.id).limit(3000))) as any[]
           const oz: Record<string, { adet: number; borc: number; alacak: number }> = {}, hs: Record<string, { ad: string; tl_borc: number; tl_alacak: number; usd_borc: number; usd_alacak: number }> = {}
@@ -256,7 +258,8 @@ export async function araciCalistir(sb: SupabaseClient, ad: string, a: Record<st
         let sayfalar: any[] = Array.isArray(a.sayfalar) ? a.sayfalar : []
         if (a.arac) {
           if (a.arac === 'excel_olustur') throw new Error('Geçersiz araç')
-          const ham = await HAM.run(true, () => araciCalistir(sb, String(a.arac), (a.arac_args && typeof a.arac_args === 'object' ? a.arac_args : {}) as Record<string, any>))
+          const arg = (a.arac_args && typeof a.arac_args === 'object' ? a.arac_args : {}) as Record<string, any>
+          const ham = await HAM.run(true, async () => (a.arac === 'fatura_ara' || a.arac === 'islem_ara') ? (await import('@/lib/ai-muhasebe')).muhAraci(sb, String(a.arac), arg) : araciCalistir(sb, String(a.arac), arg))
           let j: unknown; try { j = JSON.parse(ham) } catch { throw new Error('Araç çıktısı tabloya çevrilemedi') }
           if (typeof j === 'string' || (j as any)?.hata) throw new Error(typeof j === 'string' ? j : String((j as any).hata))
           sayfalar = jsonTablolar(j)
@@ -279,7 +282,7 @@ export async function araciCalistir(sb: SupabaseClient, ad: string, a: Record<st
           yatan_toplam_TL: top(yat), yatan_adet: yat.length,
           ekstre: a.ekstre ? (() => { const e = posEkstre(hepsi as any); return { toplam_borc: e.borc, toplam_alacak: e.alacak, son_bakiye_bankaya_gecmeyi_bekleyen: e.bakiye, excel_yolu: '/api/admin/pos-ekstre', son_satirlar: e.satirlar.slice(-36).map(x => `${x.tarih} | ${x.ba === 'Borç' ? 'TAHSİLAT' : 'BANKAYA YATTI'} | ${x.karsi.slice(0, 28)} | borç ${x.borc} | alacak ${x.alacak} | bakiye ${x.bakiye}`) } })() : undefined,
           bekleyenler: dur !== 'yatti' && !a.ekstre ? bek.map(sat) : undefined,
-          yatanlar: dur !== 'bekliyor' && !a.ekstre ? yat.slice(-40).map(r => ({ musteri: r.musteri, tahsilat: String(r.tarih).slice(0, 10), yatis: r.yatis_tarihi ? String(r.yatis_tarihi).slice(0, 10) : null, tl: +r.tutar })) : undefined,
+          yatanlar: dur !== 'bekliyor' && !a.ekstre ? yat.slice(HAM.getStore() ? 0 : -40).map(r => ({ musteri: r.musteri, tahsilat: String(r.tarih).slice(0, 10), yatis: r.yatis_tarihi ? String(r.yatis_tarihi).slice(0, 10) : null, tl: +r.tutar })) : undefined,
           not: 'Beklenen yatış = tahsilat + 30 gün (ekstredeki vade gün alanı güvenilmez). Bankaya yatana kadar bu tutar kasa/banka bakiyesinde veya gelirde sayılmaz; çift sayma.' }, 9000)
       }
       case 'ihracat_gecmis': {
@@ -288,7 +291,7 @@ export async function araciCalistir(sb: SupabaseClient, ad: string, a: Record<st
         const yr = (k: number) => rows.filter(r => r.defter_yili === k)
         const top = (l: any[]) => { const m = new Map<string, number>(); l.forEach(r => m.set(r.unvan, (m.get(r.unvan) || 0) + (+r.tl_tutar || 0))); return [...m].sort((x, y) => y[1] - x[1]).slice(0, 5).map(([ad, tl]) => ({ musteri: ad, tl: Math.round(tl) })) }
         const ozet = [...new Set(rows.map(r => r.defter_yili))].sort().map(k => { const l = yr(k), pb = (c: string) => Math.round(l.filter(r => r.para_birimi === c).reduce((t, r) => t + (+r.tutar || 0), 0) * 100) / 100;  return { yil: k, fatura_sayisi: l.length, adet: Math.round(l.reduce((t, r) => t + (+r.miktar || 0), 0)), usd: pb('USD'), eur: pb('EUR'), try: pb('TRY'), toplam_tl: Math.round(l.reduce((t, r) => t + (+r.tl_tutar || 0), 0) * 100) / 100, en_buyuk_musteriler: top(l) } })
-        return kisalt({ ozet, not: 'toplam_tl = gümrük beyan kuruyla TL karşılığı. Kambio (kur farkı) bu sistemde takip edilmez, rakam verme.', faturalar: a.detay ? rows.slice(0, 60).map(r => ({ tarih: r.fatura_tarihi, no: r.fatura_no, musteri: r.unvan, pb: r.para_birimi, tutar: +r.tutar, kur: r.kur ? +r.kur : null, tl: Math.round(+r.tl_tutar) })) : undefined }, 9000)
+        return kisalt({ ozet, not: 'toplam_tl = gümrük beyan kuruyla TL karşılığı. Kambio (kur farkı) bu sistemde takip edilmez, rakam verme.', faturalar: a.detay ? rows.slice(0, kes(60)).map(r => ({ tarih: r.fatura_tarihi, no: r.fatura_no, musteri: r.unvan, pb: r.para_birimi, tutar: +r.tutar, kur: r.kur ? +r.kur : null, tl: Math.round(+r.tl_tutar) })) : undefined }, 9000)
       }
       case 'cek_senet_liste': {
         let q = sb.from('cek_senet').select('tip,yon,no,banka,tutar,vade_tarihi,durum,aciklama,cari_id,resmiyet').order('vade_tarihi').limit(1000)
@@ -307,7 +310,7 @@ export async function araciCalistir(sb: SupabaseClient, ad: string, a: Record<st
         // Çek ve senet ayrı sayılır: "5 evrak = 4 çek + 1 senet" gibi
         const tipOz = (arr: any[]) => { const o: Record<string, { adet: number; toplam_TL: number }> = { cek: { adet: 0, toplam_TL: 0 }, senet: { adet: 0, toplam_TL: 0 } }; arr.forEach(x => { const k = /senet/i.test(x.tip || '') ? 'senet' : 'cek'; o[k].adet++; o[k].toplam_TL = Math.round((o[k].toplam_TL + (+x.tutar || 0)) * 100) / 100 }); return o }
         const karsL = l.filter(x => x.durum === 'karsiliksiz')
-        return kisalt({ adet: l.length, GENEL_TOPLAM_TL: genel, ELDE_PORTFOYDE: { adet: eldeL.length, toplam_TL: eldeToplam, cek_senet_dagilimi: tipOz(eldeL), liste: eldeL.map(x => ({ tip: x.tip, cari: x.cari, no: x.no, banka: x.banka, tutar: x.tutar, vade: x.vade_tarihi, resmiyet: x.resmiyet })) }, KARSILIKSIZ: { adet: karsL.length, toplam_TL: Math.round(karsL.reduce((t, x) => t + (+x.tutar || 0), 0) * 100) / 100, cek_senet_dagilimi: tipOz(karsL) }, BANKADA_TAHSILDE_garanti_takas: { adet: bankada.length, toplam_TL: bankadaToplam, cek_senet_dagilimi: tipOz(bankada), liste: bankada.map(x => ({ tip: x.tip, cari: x.cari, no: x.no, banka: x.banka, tutar: x.tutar, vade: x.vade_tarihi })) }, alinan_portfoy_resmi_gayri_resmi: rs, toplam_durum_yon: tp, not: 'Toplamı satırlardan kendin toplama; GENEL_TOPLAM_TL, ELDE_PORTFOYDE ve toplam_durum_yon kullan. "Elimizde kalan" = yalnızca ELDE_PORTFOYDE (durum portfoyde). Durumu ciro_edildi olup açıklamasında "Garanti Bankası takas" yazanlar bankaya tahsile verilmiştir: elde değildir, bir tedarikçiye verilmiş de değildir; BANKADA_TAHSILDE olarak ayrı söyle. Liste en fazla 40 satır gösterir. "Takas/takasta/bankada/tahsilde" sorulursa YALNIZCA BANKADA_TAHSILDE listesini ver (vade sırasıyla, tip ve banka ile); ELDE_PORTFOYDE takasta değildir, karıştırma. "Elde/kasada/portföyde" sorulursa yalnızca ELDE_PORTFOYDE. Çek ve senet AYRI evraklardır: adet söylerken cek_senet_dagilimi kullan ve "4 çek + 1 senet" gibi ayır; senetleri asla "çek" diye adlandırma (ör. karşılıksız çıkanlar senetse "karşılıksız senet" de). Bu alanlar yoksa veya tip boşsa tahmin etme.', liste: l.slice(0, 40) }, 8000)
+        return kisalt({ adet: l.length, GENEL_TOPLAM_TL: genel, ELDE_PORTFOYDE: { adet: eldeL.length, toplam_TL: eldeToplam, cek_senet_dagilimi: tipOz(eldeL), liste: eldeL.map(x => ({ tip: x.tip, cari: x.cari, no: x.no, banka: x.banka, tutar: x.tutar, vade: x.vade_tarihi, resmiyet: x.resmiyet })) }, KARSILIKSIZ: { adet: karsL.length, toplam_TL: Math.round(karsL.reduce((t, x) => t + (+x.tutar || 0), 0) * 100) / 100, cek_senet_dagilimi: tipOz(karsL) }, BANKADA_TAHSILDE_garanti_takas: { adet: bankada.length, toplam_TL: bankadaToplam, cek_senet_dagilimi: tipOz(bankada), liste: bankada.map(x => ({ tip: x.tip, cari: x.cari, no: x.no, banka: x.banka, tutar: x.tutar, vade: x.vade_tarihi })) }, alinan_portfoy_resmi_gayri_resmi: rs, toplam_durum_yon: tp, not: 'Toplamı satırlardan kendin toplama; GENEL_TOPLAM_TL, ELDE_PORTFOYDE ve toplam_durum_yon kullan. "Elimizde kalan" = yalnızca ELDE_PORTFOYDE (durum portfoyde). Durumu ciro_edildi olup açıklamasında "Garanti Bankası takas" yazanlar bankaya tahsile verilmiştir: elde değildir, bir tedarikçiye verilmiş de değildir; BANKADA_TAHSILDE olarak ayrı söyle. Liste en fazla 40 satır gösterir. "Takas/takasta/bankada/tahsilde" sorulursa YALNIZCA BANKADA_TAHSILDE listesini ver (vade sırasıyla, tip ve banka ile); ELDE_PORTFOYDE takasta değildir, karıştırma. "Elde/kasada/portföyde" sorulursa yalnızca ELDE_PORTFOYDE. Çek ve senet AYRI evraklardır: adet söylerken cek_senet_dagilimi kullan ve "4 çek + 1 senet" gibi ayır; senetleri asla "çek" diye adlandırma (ör. karşılıksız çıkanlar senetse "karşılıksız senet" de). Bu alanlar yoksa veya tip boşsa tahmin etme.', liste: l.slice(0, kes(40)) }, 8000)
       }
       case 'personel_bordro': {
         const d = String(a.donem || ''); if (!/^\d{4}-\d{2}$/.test(d)) throw new Error('donem YYYY-MM olmalı')
@@ -342,8 +345,8 @@ export async function araciCalistir(sb: SupabaseClient, ad: string, a: Record<st
         const hm = Object.fromEntries((hs as any[]).map(h => [h.id, h.ad]))
         return kisalt({ receteler: rr.map(r => ({ urun: pm[r.urun_id].name, kod: pm[r.urun_id].code, versiyon: r.versiyon, aktif: r.aktif, ebat_notu: r.notlar, kalemler: (ks as any[]).filter(k => k.recete_id === r.id).map(k => ({ hammadde: hm[k.hammadde_id], miktar: +k.miktar, birim: k.birim })) })) }, 9000)
       }
-      case 'acik_siparisler': return kisalt(await sel(sb.from('satis_siparisleri').select('no,durum,tarih,teslim_tarihi,cari_id').in('durum', ['beklemede', 'uretimde', 'kismen_hazir', 'hazir']).order('teslim_tarihi', { ascending: true }).limit(30)))
-      case 'uretim_durumu': return kisalt(await sel(sb.from('uretim_emirleri').select('no,durum,planlanan_miktar,uretilen_miktar,fire_miktar,baslangic,bitis').in('durum', ['planlandi', 'uretimde', 'durduruldu']).order('created_at', { ascending: false }).limit(30)))
+      case 'acik_siparisler': return kisalt(await sel(sb.from('satis_siparisleri').select('no,durum,tarih,teslim_tarihi,cari_id').in('durum', ['beklemede', 'uretimde', 'kismen_hazir', 'hazir']).order('teslim_tarihi', { ascending: true }).limit(kes(30))))
+      case 'uretim_durumu': return kisalt(await sel(sb.from('uretim_emirleri').select('no,durum,planlanan_miktar,uretilen_miktar,fire_miktar,baslangic,bitis').in('durum', ['planlandi', 'uretimde', 'durduruldu']).order('created_at', { ascending: false }).limit(kes(30))))
       case 'veri_tutarlilik': return kisalt(await (await import('@/lib/ai-yonetim')).veriTutarlilik(sb), 9000)
       case 'nakit_tahmini': return kisalt(await (await import('@/lib/ai-yonetim')).nakitTahmini(sb, parseInt(a.gun) || 90), 9000)
       case 'karlilik_analiz': return kisalt(await (await import('@/lib/ai-yonetim')).karlilikAnaliz(sb, tarih(a.bas), tarih(a.bit)), 9000)

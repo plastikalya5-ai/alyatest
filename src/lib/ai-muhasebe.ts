@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { aiCagir, aiJson, AiHata, S, veriBlok, type AiArac, type AiMesaj } from '@/lib/ai'
-import { ARACLAR, araciCalistir, bugunISO, SIRKET_KURALLARI, type Konusma } from '@/lib/ai-admin'
+import { ARACLAR, araciCalistir, hamMi, bugunISO, SIRKET_KURALLARI, type Konusma } from '@/lib/ai-admin'
 
 /* ───────────────────────── Güncel mevzuat bilgi tabanı ───────────────────────── */
 export type MevzuatKaydi = {
@@ -96,7 +96,7 @@ export async function muhAraci(sb: SupabaseClient, ad: string, a: Record<string,
   try {
     if (ad === 'hesapla') return String(guvenliHesapla(a.ifade))
     if (ad === 'fatura_ara') {
-      let q = sb.from('v_faturalar_liste').select('no,tip,durum,cari_ad,tarih,vade,ara_toplam,kdv_orani,kdv_tutari,toplam,odenen_tutar,para_birimi,kur').order('tarih', { ascending: false }).limit(200)
+      let q = sb.from('v_faturalar_liste').select('no,tip,durum,cari_ad,tarih,vade,ara_toplam,kdv_orani,kdv_tutari,toplam,odenen_tutar,para_birimi,kur').order('tarih', { ascending: false }).limit(hamMi() ? 5000 : 200)
       if (a.cari && temizMetin(a.cari)) q = q.ilike('cari_ad', `%${temizMetin(a.cari)}%`)
       if (a.no && temizMetin(a.no)) q = q.ilike('no', `%${temizMetin(a.no)}%`)
       if (['satis', 'alis', 'iade'].includes(a.tip)) q = q.eq('tip', a.tip)
@@ -105,10 +105,10 @@ export async function muhAraci(sb: SupabaseClient, ad: string, a: Record<string,
       if (D.test(a.bit || '')) q = q.lte('tarih', a.bit)
       const { data, error } = await q; if (error) throw new Error(error.message)
       const r = data || []
-      return JSON.stringify({ adet: r.length, kesildi: r.length >= 200, toplam: topla(r, 'toplam'), ara_toplam: topla(r, 'ara_toplam'), kdv_tutari: topla(r, 'kdv_tutari'), odenen: topla(r, 'odenen_tutar'), not: 'Toplamlar yalnızca döndürülen kayıtları kapsar; farklı para birimleri karışık olabilir.', satirlar: r.slice(0, 20) }).slice(0, 7000)
+      return JSON.stringify({ adet: r.length, kesildi: r.length >= (hamMi() ? 5000 : 200), toplam: topla(r, 'toplam'), ara_toplam: topla(r, 'ara_toplam'), kdv_tutari: topla(r, 'kdv_tutari'), odenen: topla(r, 'odenen_tutar'), not: 'Toplamlar yalnızca döndürülen kayıtları kapsar; farklı para birimleri karışık olabilir.', satirlar: hamMi() ? r : r.slice(0, 20) }).slice(0, hamMi() ? 5e7 : 7000)
     }
     if (ad === 'islem_ara') {
-      let q = sb.from('v_islemler_liste').select('tip,kategori,tutar,aciklama,tarih,odeme_yontemi,cari_ad,kasa_ad').order('tarih', { ascending: false }).limit(200)
+      let q = sb.from('v_islemler_liste').select('tip,kategori,tutar,aciklama,tarih,odeme_yontemi,cari_ad,kasa_ad').order('tarih', { ascending: false }).limit(hamMi() ? 5000 : 200)
       if (a.kategori && temizMetin(a.kategori)) q = q.ilike('kategori', `%${temizMetin(a.kategori)}%`)
       if (a.cari && temizMetin(a.cari)) q = q.ilike('cari_ad', `%${temizMetin(a.cari)}%`)
       if (['gelir', 'gider'].includes(a.tip)) q = q.eq('tip', a.tip)
@@ -116,7 +116,7 @@ export async function muhAraci(sb: SupabaseClient, ad: string, a: Record<string,
       if (D.test(a.bit || '')) q = q.lte('tarih', a.bit)
       const { data, error } = await q; if (error) throw new Error(error.message)
       const r = data || []
-      return JSON.stringify({ adet: r.length, kesildi: r.length >= 200, gelir_toplam: topla(r.filter((x: any) => x.tip === 'gelir'), 'tutar'), gider_toplam: topla(r.filter((x: any) => x.tip === 'gider'), 'tutar'), not: 'Virman/fatura kapama gibi özel kategoriler dahil olabilir.', satirlar: r.slice(0, 25) }).slice(0, 7000)
+      return JSON.stringify({ adet: r.length, kesildi: r.length >= (hamMi() ? 5000 : 200), gelir_toplam: topla(r.filter((x: any) => x.tip === 'gelir'), 'tutar'), gider_toplam: topla(r.filter((x: any) => x.tip === 'gider'), 'tutar'), not: 'Virman/fatura kapama gibi özel kategoriler dahil olabilir.', satirlar: hamMi() ? r : r.slice(0, 25) }).slice(0, hamMi() ? 5e7 : 7000)
     }
     if (MUH_ARAC_ADLARI.has(ad)) return await araciCalistir(sb, ad, a)
     return 'Bilinmeyen araç'
