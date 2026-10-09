@@ -40,6 +40,7 @@ const NAV = [
     { href:'/admin/dashboard/muhasebe/fiyat-listeleri', label:'Fiyat Listeleri', Icon:Tag, mod:['muhasebe','satis'] },
     { href:'/admin/dashboard/muhasebe/raporlar', label:'Raporlar',     Icon:PieChart,    mod:['muhasebe'] },
     { href:'/admin/dashboard/muhasebe/ai', label:'Muhasebe AI', Icon:Sparkles, mod:['muhasebe'] },
+    { href:'/admin/dashboard/muhasebe/pos-tahsilat', label:'POS Tahsilatları', Icon:Landmark, mod:['muhasebe'] },
     { href:'/admin/dashboard/muhasebe/kira-plani', label:'Kira Planı', Icon:Building2, mod:['muhasebe'] },
     { href:'/admin/dashboard/muhasebe/ai-egit', label:'Yapay Zekayı Eğit', Icon:GraduationCap, mod:['muhasebe'] },
   ]},

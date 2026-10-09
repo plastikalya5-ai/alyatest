@@ -317,6 +317,18 @@ export const YARDIM: Record<string, YardimIcerik> = {
     ],
   },
 
+  'pos-tahsilat': {
+    baslik: 'POS Tahsilatları',
+    ozet: 'Kredi kartıyla (POS) yaptığın tahsilatların bankaya yatana kadar takibi. Bankaya geçmeyen, vadesi gelmemiş tutarı burada ve yapay zekada görürsün. Bu sayfa kasa, banka veya kâr-zarara dokunmaz.',
+    akis: ['POS tahsilatı yapıldı', 'Buraya "bekliyor" yaz', 'Bankaya yatınca "Yattı"'],
+    adimlar: [
+      { t: 'Yeni tahsilat ekle', a: 'Müşteriyi cariden seç (ya da adını yaz), tarih ve tutarı gir, kaç günde yatacağını yaz (genelde 30). "Ekle"ye bas.' },
+      { t: 'Bankaya yatınca işaretle', a: 'Bekleyenler listesinde ilgili satırda "Yattı"ya bas, yattığı tarihi yaz.' },
+      { t: 'Excel al', a: 'Sağ üstteki "Excel indir"e bas. Muhasebe programındaki gibi Borç / Alacak / Bakiye ekstresi iner. Son bakiye bankaya geçmeyi bekleyen tutardır.' },
+    ],
+    dikkat: ['Beklenen yatış tarihi bir tahmindir; banka genelde 26-42 günde yatırıyor.', 'Vadesi geçtiği halde yatmayan tutarı bankaya sor.', 'Bu sayfa bilgi amaçlıdır; para bankaya girince banka hesabına ayrıca kaydedersin.'],
+  },
+
   'kira-plani': {
     baslik: 'Kira Planı',
     ozet: 'Şirketin kirasını kime, hangi gün, ne kadar bankadan ne kadar elden ödediğini yazdığın yer. Yapay zeka "kira ödemelerimi nasıl yapıyorum" sorusunu buradan cevaplar. Yeni kira gelirse buraya eklersin, yapay zeka hemen bilir.',
