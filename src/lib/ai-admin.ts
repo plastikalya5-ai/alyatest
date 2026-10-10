@@ -284,6 +284,7 @@ export async function araciCalistir(sb: SupabaseClient, ad: string, a: Record<st
           const ebat = ic ? ((r.notlar || '').split(': ')[1] || '').split(' [')[0] : ''
           gram[kod] = { urun: (p.name + ' ' + ebat).trim(), kg: kgOf[r.id] || 0 }
         }
+        for (const e of (await sel(sb.from('gramaj_ek').select('kod,ad,kg').limit(1000))) as any[]) if (!gram[e.kod] && +e.kg > 0) gram[e.kod] = { urun: e.ad, kg: +e.kg }
         const ar = a.arama ? nrm(a.arama) : ''
         const uz = sat.filter(x => !ar || esles(`${x.ad} ${x.kod} ${gram[x.recete_kodu]?.urun || ''}`, ar))
         type G = { urun: string; mekan: string; gramaj_kg: number; adet: number; hammadde_kg: number; tutar_tl: number }
