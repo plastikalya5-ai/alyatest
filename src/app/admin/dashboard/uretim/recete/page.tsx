@@ -184,7 +184,7 @@ export default function RecetePage() {
           <tbody>{kalemler.map((k, i) => {
             const h = hm[k.hammadde_id]; const kgMi = (h?.birim || '').toLowerCase() === 'kg'
             return <tr key={i}>
-              <td><select className="adm-inp" style={{ padding: '6px 8px', fontSize: 12.5 }} value={k.hammadde_id} onChange={e => setKalem(i, { hammadde_id: e.target.value, giris: '' })}><option value="">Seçin</option>{d.hammaddeler.map((x: any) => <option key={x.id} value={x.id}>{x.ad} ({x.birim})</option>)}</select></td>
+              <td><select className="adm-inp" style={{ padding: '6px 8px', fontSize: 12.5 }} value={k.hammadde_id} onChange={e => setKalem(i, { hammadde_id: e.target.value, giris: '' })}><option value="">Seçin</option>{d.hammaddeler.filter((x: any) => x.kullanim !== 'kullanilmiyor' || x.id === k.hammadde_id).map((x: any) => <option key={x.id} value={x.id}>{x.ad} ({x.birim})</option>)}</select></td>
               <td><input type="number" step="0.0001" min="0" className="adm-inp" style={{ padding: '6px 8px', fontSize: 12.5 }} value={k.miktar} onChange={e => setKalem(i, { miktar: e.target.value })} /></td>
               <td>{kgMi ? <select className="adm-inp" style={{ padding: '6px 6px', fontSize: 12.5 }} value={k.giris || 'kg'} onChange={e => setKalem(i, { giris: e.target.value })}><option value="kg">kg</option><option value="gr">gr</option></select> : <span style={{ fontSize: 12, color: 'var(--adm-tx3)' }}>{h?.birim || '—'}</span>}</td>
               <td style={{ textAlign: 'right' }}><Money v={gercekMiktar(k) * (+h?.ortalama_maliyet || 0)} bold={false} size={12} /></td>
