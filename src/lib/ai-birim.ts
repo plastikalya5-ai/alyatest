@@ -16,7 +16,7 @@ const var_ = (m: string[], ...x: string[]) => tamYetki(m) || x.some(k => m.inclu
 const ARAC_MOD: Record<string, string[]> = {
   finans_ozet: ['muhasebe'], fatura_ozet: ['muhasebe'], kdv_ozet: ['muhasebe'], kasa_akis: ['muhasebe'], yaslandirma: ['muhasebe'],
   cari_ozet: ['muhasebe', 'muhasebe_cari', 'satis'], satis_analiz: ['satis', 'muhasebe'], acik_siparisler: ['satis', 'sevkiyat'],
-  kritik_stok: ['stok', 'uretim', 'satinalma', 'kalite'], stok_durumu: ['stok', 'uretim', 'satinalma', 'kalite', 'satis'], cari_ara: ['muhasebe', 'muhasebe_cari', 'satis'], kasa_banka_bakiye: ['muhasebe'], cari_ekstre: ['muhasebe', 'muhasebe_cari'], mekan_satis: ['muhasebe'], cek_senet_liste: ['muhasebe'], ihracat_gecmis: ['muhasebe', 'satis'], kategori_aylik: ['muhasebe'], kdv_iade_durum: ['muhasebe'], pos_bekleyen: ['muhasebe'], kira_plani: ['muhasebe'], satis_hammadde: ['muhasebe', 'uretim'], musteri_satis: ['muhasebe', 'satis'], excel_olustur: ['muhasebe', 'satis', 'stok', 'uretim', 'satinalma', 'sevkiyat', 'kalite', 'dashboard'], fuar_ozet: ['muhasebe','satis'], personel_bordro: ['bordro'], recete_ara: ['uretim', 'stok', 'muhasebe'], uretim_durumu: ['uretim'], ziyaret_ozet: ['dashboard'],
+  kritik_stok: ['stok', 'uretim', 'satinalma', 'kalite'], stok_durumu: ['stok', 'uretim', 'satinalma', 'kalite', 'satis'], cari_ara: ['muhasebe', 'muhasebe_cari', 'satis'], kasa_banka_bakiye: ['muhasebe'], cari_ekstre: ['muhasebe', 'muhasebe_cari'], mekan_satis: ['muhasebe'], cek_senet_liste: ['muhasebe'], ihracat_gecmis: ['muhasebe', 'satis'], kategori_aylik: ['muhasebe'], kdv_iade_durum: ['muhasebe'], pos_bekleyen: ['muhasebe'], kira_plani: ['muhasebe'], satis_hammadde: ['muhasebe', 'uretim', 'satis'], musteri_satis: ['muhasebe', 'satis'], excel_olustur: ['muhasebe', 'satis', 'stok', 'uretim', 'satinalma', 'sevkiyat', 'kalite', 'dashboard'], fuar_ozet: ['muhasebe','satis'], personel_bordro: ['bordro'], recete_ara: ['uretim', 'stok', 'muhasebe'], uretim_durumu: ['uretim'], ziyaret_ozet: ['dashboard'],
   guncel_kur: ['muhasebe', 'satis', 'satinalma', 'dashboard'],
   veri_tutarlilik: ['muhasebe'], nakit_tahmini: ['muhasebe'], karlilik_analiz: ['muhasebe', 'satis'], hammadde_etki: ['uretim', 'stok', 'muhasebe'],
   hesapla: ['muhasebe'], fatura_ara: ['muhasebe'], islem_ara: ['muhasebe'],
@@ -76,8 +76,8 @@ export const varsayilanBirim = (m: string[]): Birim => izinliBirimler(m)[0]
 export function birimAraclari(birim: Birim, m: string[]): AiArac[] {
   switch (birim) {
     case 'muhasebe': return MUH_ARACLAR
-    case 'satis': return [...ERP('satis_analiz', 'acik_siparisler', 'cari_ozet', 'cari_ara', 'stok_durumu'), EK_ARACLAR.urun_ara]
-    case 'operasyon': return [...ERP('kritik_stok', 'stok_durumu', 'recete_ara', 'uretim_durumu'), EK_ARACLAR.urun_ara]
+    case 'satis': return [...ERP('satis_analiz', 'acik_siparisler', 'cari_ozet', 'cari_ara', 'stok_durumu', 'musteri_satis', 'satis_hammadde'), EK_ARACLAR.urun_ara]
+    case 'operasyon': return [...ERP('kritik_stok', 'stok_durumu', 'recete_ara', 'uretim_durumu', 'satis_hammadde'), EK_ARACLAR.urun_ara]
     case 'sosyal': return [EK_ARACLAR.urun_ara, EK_ARACLAR.sosyal_takvim, EK_ARACLAR.sosyal_taslak_kaydet]
     default: return [...araclariSuz(m), EK_ARACLAR.urun_ara, ...(var_(m, 'sosyal') ? [EK_ARACLAR.sosyal_takvim] : [])]
   }
