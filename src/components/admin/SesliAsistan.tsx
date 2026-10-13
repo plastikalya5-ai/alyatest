@@ -101,7 +101,7 @@ export default function SesliAsistan({ birim: sabitBirim, baslik = 'Sesli Asista
       const r = R.current
       Object.assign(r, { pc, dc, stream, audio, basla: Date.now(), son: Date.now(), oturum: j.oturum_id, arac: 0, bekleyen: 0, maxSn: j.maxSn || 600, bosSn: j.bosSn || 90, birim: j.birim || birim })
       dc.onmessage = olay
-      dc.onopen = () => { setDurum('dinliyor'); gonder({ type: 'response.create', response: { instructions: 'Kullanıcıyı bir cümleyle selamla ve nasıl yardımcı olabileceğini sor.' } }) }
+      dc.onopen = () => { setDurum('dinliyor'); gonder({ type: 'response.create', response: { instructions: 'Kendini "Ben Alya" diye kısaca tanıtarak kullanıcıyı bir cümleyle selamla ve nasıl yardımcı olabileceğini sor.' } }) }
       pc.onconnectionstatechange = () => { if (['failed', 'disconnected', 'closed'].includes(pc.connectionState) && R.current.pc === pc) durdur('Bağlantı koptu.') }
       const offer = await pc.createOffer(); await pc.setLocalDescription(offer)
       const sdp = await fetch(j.sdpUrl, { method: 'POST', body: offer.sdp, headers: { Authorization: `Bearer ${j.token}`, 'Content-Type': 'application/sdp' } })
