@@ -9,7 +9,7 @@ export const maxDuration = 30
 // Sesli asistan (OpenAI Realtime, WebRTC): tarayıcı doğrudan OpenAI'a bağlanır, ama yalnızca burada üretilen KISA ÖMÜRLÜ anahtarla.
 // Gerçek API anahtarı tarayıcıya hiç gitmez. Anahtar; kullanıcının birimine özel talimat ve araç listesiyle oluşturulur.
 const MODEL = () => process.env.OPENAI_REALTIME_MODEL || 'gpt-realtime-2.1-mini'
-const SES = () => process.env.OPENAI_REALTIME_VOICE || 'marin'
+const SES = () => process.env.OPENAI_REALTIME_VOICE || 'cedar'
 const MAX_SN = 600        // tek oturum en fazla 10 dk (istemci de kapatır)
 const BOS_SN = 90         // konuşma yoksa 90 sn sonra kapanır
 const IP_SAAT = 8, GUN = 40   // kullanıcı başına saatlik / günlük oturum başlatma sınırı (maliyet koruması)
