@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
           },
           output: { voice: SES() },
         },
-        tools, tool_choice: 'auto', max_output_tokens: 700,
+        tools, tool_choice: 'auto', max_output_tokens: 4096,
       },
     }),
   })
