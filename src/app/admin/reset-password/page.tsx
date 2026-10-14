@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { sifreKontrol } from '@/lib/sifre-kurali'
+import { sifreKontrol, sizdirilmisMi, SIZDIRILMIS_HATA } from '@/lib/sifre-kurali'
 
 export default function ResetPasswordPage() {
   const [pass, setPass] = useState('')
@@ -25,6 +25,7 @@ export default function ResetPasswordPage() {
     const kural = sifreKontrol(pass); if (kural) { setErr(kural); return }
     if (pass !== pass2) { setErr('Şifreler eşleşmiyor.'); return }
     setLoading(true)
+    if (await sizdirilmisMi(pass)) { setLoading(false); setErr(SIZDIRILMIS_HATA); return }
     const { error } = await createClient().auth.updateUser({ password: pass })
     setLoading(false)
     if (error) setErr('Bir hata oluştu, bağlantının süresi dolmuş olabilir. Tekrar deneyin.')

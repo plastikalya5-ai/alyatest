@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { sifreKontrol } from '@/lib/sifre-kurali'
+import { sifreKontrol, sizdirilmisMi, SIZDIRILMIS_HATA } from '@/lib/sifre-kurali'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { istemciIp } from '@/lib/rate-limit'
@@ -80,6 +80,7 @@ export async function POST(req: NextRequest) {
       const { email, full_name, role_id, password } = body
       if (!email) return NextResponse.json({ error: 'E-posta gerekli' }, { status: 400 })
       { const k = sifreKontrol(password || ''); if (k) return NextResponse.json({ error: k }, { status: 400 }) }
+      if (await sizdirilmisMi(password)) return NextResponse.json({ error: SIZDIRILMIS_HATA }, { status: 400 })
       if (!tam && await rolTamMi(admin, role_id)) return TAM_YETKI_HATA()
       const { data, error } = await admin.auth.admin.createUser({
         email, password, email_confirm: true,
@@ -95,6 +96,7 @@ export async function POST(req: NextRequest) {
       const { id, password } = body
       if (!tam && await hedefTamMi(admin, id)) return TAM_YETKI_HATA()
       { const k = sifreKontrol(password || ''); if (k) return NextResponse.json({ error: k }, { status: 400 }) }
+      if (await sizdirilmisMi(password)) return NextResponse.json({ error: SIZDIRILMIS_HATA }, { status: 400 })
       const { error } = await admin.auth.admin.updateUserById(id, { password, email_confirm: true })
       if (error) throw new Error(error.message)
       await yoneticiOlayi(kim, 'sifre_sifirlandi', await hedef(id), ip)

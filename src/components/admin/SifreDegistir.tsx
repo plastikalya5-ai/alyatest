@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Modal, Field } from '@/components/admin/erp/ui'
 
-import { MIN_SIFRE, sifreKontrol } from '@/lib/sifre-kurali'
+import { MIN_SIFRE, sifreKontrol, sizdirilmisMi, SIZDIRILMIS_HATA } from '@/lib/sifre-kurali'
 
 // Oturumdaki kullanıcının kendi şifresini değiştirmesi. Güvenlik için mevcut şifre yeniden doğrulanır;
 // değişiklikten sonra diğer cihazlardaki oturumlar kapatılır.
@@ -24,6 +24,7 @@ export default function SifreDegistir({ open, onClose, email }: { open: boolean;
     if (yeni !== yeni2) return setHata('Yeni şifreler eşleşmiyor.')
     if (yeni === mevcut) return setHata('Yeni şifre mevcut şifreyle aynı olamaz.')
     setBusy(true)
+    if (await sizdirilmisMi(yeni)) { setBusy(false); return setHata(SIZDIRILMIS_HATA) }
     const sb = createClient()
     const dogrula = await sb.auth.signInWithPassword({ email, password: mevcut })
     if (dogrula.error) { setBusy(false); return setHata('Mevcut şifre hatalı.') }

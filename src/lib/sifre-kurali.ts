@@ -20,3 +20,18 @@ export function sifreKontrol(sifre: string): string | null {
   if (!(/[a-zçğıöşü]/i.test(s) && /\d/.test(s)) && s.length < 16) return 'Harf ve rakam birlikte kullanın (veya 16+ karakterlik uzun bir şifre seçin).'
   return null
 }
+
+// Şifre internette sızmış listelerde var mı? (Have I Been Pwned, k-anonimlik: şifrenin kendisi değil,
+// SHA-1 özetinin ilk 5 karakteri gönderilir.) Servise ulaşılamazsa engellemez (null).
+export async function sizdirilmisMi(sifre: string): Promise<boolean> {
+  try {
+    const buf = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(sifre))
+    const hex = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase()
+    const on = hex.slice(0, 5), son = hex.slice(5)
+    const r = await fetch(`https://api.pwnedpasswords.com/range/${on}`, { headers: { 'Add-Padding': 'true' }, signal: AbortSignal.timeout(4000) })
+    if (!r.ok) return false
+    const t = await r.text()
+    return t.split('\n').some(l => { const [h, n] = l.trim().split(':'); return h === son && Number(n) > 0 })
+  } catch { return false }
+}
+export const SIZDIRILMIS_HATA = 'Bu şifre internette sızmış şifre listelerinde bulunuyor. Lütfen farklı bir şifre seçin.'
