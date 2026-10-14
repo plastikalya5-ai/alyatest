@@ -1,7 +1,20 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+// CSRF'e karşı ek koruma: tarayıcıdan başka bir siteden gelen yazma (POST/PUT/PATCH/DELETE) istekleri reddedilir.
+// Origin başlığı yoksa (sunucudan sunucuya, cron vb.) dokunulmaz; bunlar kendi anahtarlarıyla yetkilendirilir.
+function ayniKaynakDegil(request: NextRequest) {
+  if (['GET', 'HEAD', 'OPTIONS'].includes(request.method)) return false
+  const origin = request.headers.get('origin')
+  if (!origin) return false
+  try { return new URL(origin).host !== (request.headers.get('x-forwarded-host') || request.headers.get('host')) } catch { return true }
+}
+
 export async function proxy(request: NextRequest) {
+  if (request.nextUrl.pathname.startsWith('/api/') && ayniKaynakDegil(request)) {
+    return NextResponse.json({ error: 'Geçersiz istek kaynağı' }, { status: 403 })
+  }
+  if (request.nextUrl.pathname.startsWith('/api/') && !/^\/api\/(admin|muhasebe|erp)\//.test(request.nextUrl.pathname)) return NextResponse.next()
   let response = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -44,5 +57,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/api/admin/:path*', '/api/muhasebe/:path*', '/api/erp/:path*'],
+  matcher: ['/admin/:path*', '/api/:path*'],
 }
