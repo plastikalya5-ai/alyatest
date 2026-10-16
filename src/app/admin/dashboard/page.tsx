@@ -41,7 +41,7 @@ export default function AdminDashboardPage() {
       const ops: Promise<any>[] = []; const keys: string[] = []
       const add = (k: string, p: Promise<any>) => { keys.push(k); ops.push(p.then(r => (Array.isArray(r) ? r : r?.data || [])).catch(() => [])) }
       add('products', muh.from('products').select('id,name,code').limit(1000)); add('variants', muh.from('product_variants').select('id,product_id,stock'))
-      if (A.stok || A.uretim || A.satin || A.kalite) add('hammaddeler', erp.from('hammaddeler').select('id,ad,mevcut_stok,min_stok,aktif,ortalama_maliyet').limit(1000))
+      if (A.stok || A.uretim || A.satin || A.kalite) add('hammaddeler', erp.from('hammaddeler').select('id,kod,ad,mevcut_stok,min_stok,aktif,ortalama_maliyet').limit(1000))
       if (A.uretim) { add('makineler', erp.from('makineler').select('*')); add('kaliplar', erp.from('kaliplar').select('*')); add('receteler', erp.from('urun_receteleri').select('id,urun_id,aktif').limit(1000)); add('hareketler', erp.from('uretim_hareketleri').select('tarih,uretilen_adet,fire_adet').gte('tarih', gunOnce(14)).limit(1000)) }
       if (A.uretim || A.satis || A.kalite) { add('emirler', erp.from('uretim_emirleri').select('*').in('durum', ['planlandi', 'uretimde', 'durduruldu']).limit(1000)); add('emirlerBitmis', erp.from('uretim_emirleri').select('id,no,urun_id,durum,uretilen_miktar,bitis').eq('durum', 'tamamlandi').gte('bitis', gunOnce(90)).limit(1000)) }
       if (A.satis || A.sevk) { add('siparisler', erp.from('satis_siparisleri').select('*').in('durum', SIPARIS_ACIK).limit(1000)) }
@@ -108,6 +108,9 @@ export default function AdminDashboardPage() {
   const gecS = openS.filter((s: any) => s.teslim_tarihi && s.teslim_tarihi < bugun)
   const hazirBekleyen = g('siparisler').filter((s: any) => s.durum === 'hazir')
   const kritik = g('hammaddeler').filter((h: any) => h.aktif !== false && (+h.mevcut_stok || 0) <= (+h.min_stok || 0))
+  // Koli stoğu: min. stok girilmemişse 300 adedin altı uyarı (koli kartları 730 01 ile başlar)
+  const KOLI_ESIK = 300
+  const azKoli = g('hammaddeler').filter((h: any) => h.aktif !== false && String(h.kod || '').startsWith('730 01') && (+h.mevcut_stok || 0) <= (+h.min_stok || 0) === false && (+h.mevcut_stok || 0) < ((+h.min_stok || 0) > 0 ? +h.min_stok : KOLI_ESIK)).sort((a: any, b: any) => (+a.mevcut_stok || 0) - (+b.mevcut_stok || 0))
   const tukenMamul = g('variants').filter((v: any) => (+v.stock || 0) <= 0)
   const uretimde = g('emirler').filter((e: any) => e.durum === 'uretimde')
   const bugunH = g('hareketler').filter((h: any) => (h.tarih || '').startsWith(bugun))
@@ -140,6 +143,7 @@ export default function AdminDashboardPage() {
     if (F.taslak) alerts.push({ tone: 'blue', text: `${F.taslak} taslak fatura onay bekliyor`, href: '/admin/dashboard/muhasebe/faturalar', mod: 'muhasebe' })
   }
   if (A.stok && kritik.length) alerts.push({ tone: 'red', text: `${kritik.length} hammadde kritik seviyede: ${kritik.slice(0, 3).map((h: any) => h.ad).join(', ')}${kritik.length > 3 ? '…' : ''}`, href: '/admin/dashboard/stok/hammadde', mod: 'stok' })
+  if (A.stok && azKoli.length) alerts.push({ tone: 'amber', text: `${azKoli.length} koli azalıyor, yeni koli gerekebilir: ${azKoli.slice(0, 3).map((h: any) => `${String(h.ad).replace(/^Koli \(Baskılı\) - /, '')} (${+h.mevcut_stok})`).join(', ')}${azKoli.length > 3 ? '…' : ''}`, href: '/admin/dashboard/stok/hammadde', mod: 'stok' })
   if (A.satis && gecS.length) alerts.push({ tone: 'red', text: `${gecS.length} satış siparişinin termini geçmiş`, href: '/admin/dashboard/satis/siparisler', mod: 'satis' })
   if (A.satis && hazirBekleyen.length) alerts.push({ tone: 'amber', text: `${hazirBekleyen.length} sipariş hazır, sevk bekliyor`, href: '/admin/dashboard/sevkiyat', mod: 'sevkiyat' })
   if (A.uretim && arizaMakine.length) alerts.push({ tone: 'red', text: `${arizaMakine.length} makine arızalı: ${arizaMakine.map((m: any) => m.ad).join(', ')}`, href: '/admin/dashboard/uretim/makine', mod: 'uretim' })
