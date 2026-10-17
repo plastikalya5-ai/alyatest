@@ -302,7 +302,7 @@ function ImhaKarti() {
       <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--adm-tx3)' }}>Önce yukarıdan tam yedeği indirdiğinizden ve yeni sistemin çalıştığını doğruladığınızdan emin olun.</p>
       {sonuc ? (
         <div style={{ fontSize: 13 }}>
-          <b>{sonuc.ok ? 'İmha tamamlandı.' : 'İmha kısmen tamamlandı.'}</b> {sonuc.tablo} tablo, {sonuc.dosya} dosya ve {sonuc.kullanici} hesap silindi; GitHub deposu {sonuc.github ? 'silindi' : 'silinmedi'}.
+          <b>{sonuc.ok ? 'İmha tamamlandı.' : 'İmha kısmen tamamlandı.'}</b> {sonuc.tablo} tablo, {sonuc.dosya} dosya ve {sonuc.kullanici} hesap silindi; GitHub deposu {sonuc.github ? 'silindi' : 'silinmedi'}.{sonuc.yapiKaldi ? ' Tablo yapısı (boş tablolar) korundu; tamamen kaldırmak için Supabase projesini silin.' : ''}
           {sonuc.hatalar?.length > 0 && <ul style={{ color: 'var(--adm-red)' }}>{sonuc.hatalar.map((h: string, i: number) => <li key={i}>{h}</li>)}</ul>}
           <div style={{ marginTop: 8 }}><a href="/admin/login">Giriş sayfasına git</a></div>
         </div>

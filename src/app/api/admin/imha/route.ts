@@ -21,6 +21,40 @@ async function yetkili() {
   return { user, admin: createServiceClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!) }
 }
 
+
+// OpenAPI şemasından tablo + birincil anahtar listesi (görünümler hariç)
+async function tabloListesi(): Promise<{ ad: string; sutun: string }[]> {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!
+  const r = await fetch(`${process.env.SUPABASE_URL}/rest/v1/`, { headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: 'no-store' })
+  const j: any = await r.json()
+  const defs = j.definitions || j.components?.schemas || {}
+  const out: { ad: string; sutun: string }[] = []
+  for (const [ad, d] of Object.entries<any>(defs)) {
+    if (ad.startsWith('v_') || ad.startsWith('rpc_')) continue // görünümler silinemez
+    const props = d?.properties || {}
+    const pk = Object.keys(props).find(k => String(props[k]?.description || '').includes('<pk/>')) || Object.keys(props)[0]
+    if (pk) out.push({ ad, sutun: pk })
+  }
+  return out
+}
+
+// Yabancı anahtar sırası bilinmediği için birkaç tur dener; her turda silinebilenler silinir
+async function tablolariBosalt(admin: any) {
+  let liste = await tabloListesi()
+  const gorulen = new Set<string>()
+  for (let tur = 0; tur < 10 && liste.length; tur++) {
+    const kalan: typeof liste = []
+    for (const t of liste) {
+      const { error } = await admin.from(t.ad).delete().not(t.sutun, 'is', null)
+      if (error) { kalan.push(t); continue }
+      const { count } = await admin.from(t.ad).select('*', { count: 'exact', head: true })
+      if (count) kalan.push(t); else gorulen.add(t.ad)
+    }
+    liste = kalan
+  }
+  return { tablo: gorulen.size, kalan: liste.map(t => t.ad) }
+}
+
 async function kovaYollari(admin: any, kova: string, onek = '', out: string[] = []) {
   for (let off = 0; ; off += 1000) {
     const { data, error } = await admin.storage.from(kova).list(onek, { limit: 1000, offset: off })
@@ -43,7 +77,7 @@ export async function POST(req: NextRequest) {
   if (String(body?.onay || '').trim().toLocaleLowerCase('tr-TR') !== ONAY)
     return NextResponse.json({ error: `Onay için "${ONAY}" yazılmalı` }, { status: 400 })
 
-  const sonuc = { tablo: 0, dosya: 0, kullanici: 0, github: false, hatalar: [] as string[] }
+  const sonuc: any = { tablo: 0, dosya: 0, kullanici: 0, github: false, yapiKaldi: false, hatalar: [] as string[] }
   try {
     // Önce bildirim (bildirim ayarları tablolarla birlikte silineceği için en başta)
     await yoneticiOlayi(user.email || user.id, 'sistem_imha_edildi', 'Veritabanı, dosyalar, hesaplar ve GitHub deposu silindi', istemciIp(req)).catch(() => {})
@@ -51,10 +85,15 @@ export async function POST(req: NextRequest) {
     // 1) Veritabanı yapısı + veriler
     const { data: n, error: e1 } = await admin.rpc('imha_verileri')
     if (e1) {
-      // Veritabanı silinemediyse dosya ve hesaplara DOKUNULMAZ (yarım imha olmasın)
-      return NextResponse.json({ error: `Veritabanı silinemedi, hiçbir şey silinmedi: ${e1.message}` }, { status: 500 })
-    }
-    sonuc.tablo = Number(n) || 0
+      // Veritabanı fonksiyonu yoksa: tabloları panelin kendi silme yoluyla (service-role) tek tek boşalt. Yapı (boş tablolar) kalır.
+      const bos = await tablolariBosalt(admin)
+      if (bos.kalan.length) {
+        return NextResponse.json({ error: `Tablolar tamamen boşaltılamadı, dosya ve hesaplara dokunulmadı: ${bos.kalan.join(', ')}` }, { status: 500 })
+      }
+      sonuc.tablo = bos.tablo
+      sonuc.yapiKaldi = true
+    } else sonuc.tablo = Number(n) || 0
+
 
     // 2) Depolama dosyaları ve kovalar
     const { data: kovalar } = await admin.storage.listBuckets()
