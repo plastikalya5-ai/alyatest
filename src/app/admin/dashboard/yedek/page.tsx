@@ -266,8 +266,56 @@ export default function YedekPage() {
             </Card>
           </>
         )}
+        <div style={{ height: 14 }} />
+        <ImhaKarti />
       </Page>
       {toast.node}
     </div>
+  )
+}
+
+// GERİ DÖNÜŞÜ YOK: tüm tablo verisi, yüklenen dosyalar ve tüm giriş hesapları silinir.
+function ImhaKarti() {
+  const [metin, setMetin] = useState('')
+  const [calisiyor, setCalisiyor] = useState(false)
+  const [sonuc, setSonuc] = useState<any>(null)
+  const [hata, setHata] = useState('')
+  const hazir = metin.trim().toLocaleLowerCase('tr-TR') === 'imha et'
+
+  async function imhaEt() {
+    if (!hazir || calisiyor) return
+    if (!window.confirm('SON UYARI: Tüm veriler, dosyalar ve giriş hesapları (siz dahil) KALICI olarak silinecek. Geri alınamaz. Yedeği aldığınızdan emin misiniz?')) return
+    setCalisiyor(true); setHata(''); setSonuc(null)
+    try {
+      const r = await fetch('/api/admin/imha', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ onay: metin }) })
+      const j = await r.json().catch(() => ({ error: 'Yanıt okunamadı' }))
+      if (r.status === 200 || r.status === 207) setSonuc(j)
+      else setHata(j.error || `Hata ${r.status}`)
+    } catch (e: any) { setHata(e?.message || 'İşlem başarısız') }
+    setCalisiyor(false)
+  }
+
+  return (
+    <Card title={<><AlertTriangle size={15} style={{ color: 'var(--adm-red)' }} />Tehlikeli Bölge — Her Şeyi İmha Et</>} pad={16} style={{ border: '1px solid var(--adm-red)' }}>
+      <p style={{ margin: '0 0 8px', fontSize: 13 }}>
+        Bu işlem <b>geri alınamaz</b>. Tüm tabloların içi boşaltılır, yüklenen tüm dosyalar silinir ve <b>tüm giriş hesapları (sizinki dahil)</b> silinir. Tablo yapısı ve kod kalır; sisteme yeniden girmek için Supabase’de yeni kullanıcı oluşturmanız gerekir.
+      </p>
+      <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--adm-tx3)' }}>Önce yukarıdan tam yedeği indirdiğinizden ve yeni sistemin çalıştığını doğruladığınızdan emin olun.</p>
+      {sonuc ? (
+        <div style={{ fontSize: 13 }}>
+          <b>{sonuc.ok ? 'İmha tamamlandı.' : 'İmha kısmen tamamlandı.'}</b> {sonuc.tablo} tablo boşaltıldı, {sonuc.dosya} dosya ve {sonuc.kullanici} hesap silindi.
+          {sonuc.hatalar?.length > 0 && <ul style={{ color: 'var(--adm-red)' }}>{sonuc.hatalar.map((h: string, i: number) => <li key={i}>{h}</li>)}</ul>}
+          <div style={{ marginTop: 8 }}><a href="/admin/login">Giriş sayfasına git</a></div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input className="adm-input" style={{ width: 220 }} placeholder='Onay için "imha et" yazın' value={metin} onChange={e => setMetin(e.target.value)} disabled={calisiyor} autoComplete="off" />
+          <button type="button" className="adm-btn-primary" style={{ background: 'var(--adm-red)', opacity: hazir && !calisiyor ? 1 : 0.4 }} disabled={!hazir || calisiyor} onClick={imhaEt}>
+            {calisiyor ? 'İmha ediliyor…' : 'HER ŞEYİ İMHA ET'}
+          </button>
+        </div>
+      )}
+      {hata && <div style={{ color: 'var(--adm-red)', fontSize: 13, marginTop: 8 }}>{hata}</div>}
+    </Card>
   )
 }
