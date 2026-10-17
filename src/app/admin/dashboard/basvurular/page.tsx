@@ -54,6 +54,11 @@ export default function BasvurularPage() {
   async function ac(b: any) { setSel(b); setNotes(b.notes || ''); if (st(b) === 'new') durum(b, 'read', true) }
   async function notKaydet() { if (!sel) return; const { error } = await web.from('contact_submissions').update({ notes, updated_at: new Date().toISOString() }).eq('id', sel.id); toast.show(error ? error.message : 'Not kaydedildi', !!error) }
   async function sil(b: any) { if (!confirm(`${b.name} başvurusu kalıcı silinsin mi?`)) return; await web.from('contact_submissions').delete().eq('id', b.id); toast.show('Başvuru silindi'); setSel(null); load() }
+  async function topluSil(rows: any[]): Promise<string | void> {
+    const { error } = await web.from('contact_submissions').delete().in('id', rows.map(r => r.id))
+    if (error) return error.message
+    toast.show(`${rows.length} başvuru silindi`); setSel(null); load()
+  }
   async function carEkle(b: any) {
     if (cariMi(b)) return toast.show('Bu kişi zaten cari olarak kayıtlı', true)
     const r: any = await muh.from('cari_hesaplar').insert({ tip: 'musteri', ad: b.company || b.name, telefon: b.phone || null, email: b.email, notlar: `Web başvurusundan eklendi${b.subject ? ` (${b.subject})` : ''}\n${b.message || ''}`.slice(0, 500) })
@@ -88,6 +93,7 @@ export default function BasvurularPage() {
         <DataGrid rows={liste} cols={cols} rowKey={b => b.id} loading={loading} csvName="basvurular" storageKey="basvurular" onRowClick={ac} activeKey={sel?.id} defaultSort={{ key: 'tarih', dir: 'desc' }} selectable
           searchText={b => `${b.name} ${b.email} ${b.company || ''} ${b.subject || ''} ${b.message || ''} ${b.product || ''}`} searchPlaceholder="Ad, e-posta, firma, mesaj..."
           bulkActions={(rows, clear) => <><button className="adm-btn-ghost" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => topluDurum(rows, 'read', clear)}><Eye size={12} />Okundu</button><button className="adm-btn-ghost" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => topluDurum(rows, 'replied', clear)}><CheckCheck size={12} />Yanıtlandı</button><button className="adm-btn-ghost" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => topluDurum(rows, 'archived', clear)}><Archive size={12} />Arşivle</button></>}
+          onBulkDelete={topluSil} deleteNoun="başvuru"
           emptyTitle="Başvuru yok" emptySub="Sitedeki iletişim formundan gelen talepler burada görünür" />
       </Page>
 

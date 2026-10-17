@@ -11,6 +11,7 @@ import { Page, PageHead, Badge, Tabs, Card, Modal, Field, FormGrid, useToast } f
 import Yardim from '@/components/admin/erp/Yardim'
 import MevzuatHaberleri from '@/components/admin/MevzuatHaberleri'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
+import { topluSilCalistir } from '@/lib/toplu-sil'
 import KayitOner from '@/components/admin/KayitOner'
 import SesliAsistan from '@/components/admin/SesliAsistan'
 import { Printer, FileSpreadsheet, History, Sparkles, Send, Trash2, Upload, FileText, Copy, Download, MessageSquare, Plus, Pencil, CheckCircle2, ShieldAlert, X, BookOpen, RefreshCw } from 'lucide-react'
@@ -103,6 +104,12 @@ export default function MuhasebeAiPage() {
       toast.show(r.sonuc ? `Kontrol: ${KONTROL[r.sonuc.sonuc]?.l || r.sonuc.sonuc}` : 'Kontrol edilemedi', r.sonuc?.sonuc === 'degismis_olabilir'); await loadKb()
     } catch (e: any) { toast.show(e.message, true) }
     setKontrolde('')
+  }
+  async function topluSil(sel: any[]): Promise<string | void> {
+    const { silinen, hata } = await topluSilCalistir(sel, async (r: any) => (await web.from('muhasebe_mevzuat').delete().eq('id', r.id)).error?.message, 'kayıt')
+    await loadKb()
+    if (hata) return hata
+    toast.show(`${silinen} kayıt silindi`)
   }
   async function kbSil(k: any) {
     if (!confirm(`"${k.baslik}" kaydı silinsin mi?`)) return
@@ -383,7 +390,7 @@ export default function MuhasebeAiPage() {
             <div style={{ fontSize: 12.5, color: 'var(--adm-tx3)', marginBottom: 12, lineHeight: 1.6 }}>
               AI'ın oran, limit, had, ceza ve faiz gibi değerleri <b>yalnızca bu kayıtlardan</b> aldığı bilgi tabanıdır (kendi hafızasından değil). Her kaydın kaynağı, geçerlilik aralığı ve doğrulama tarihi vardır. Yeni bir tebliğ/karar çıktığında burayı güncelle; eksik bir konu varsa kayıt ekle. Değerleri resmî kaynaktan (GİB, Resmî Gazete, ÇSGB, SGK) teyit ettikten sonra "Bugün doğruladım" ile işaretle.
             </div>
-            <DataGrid rows={kb} cols={kbCols} rowKey={k => k.id} loading={kbYukleniyor} csvName="mevzuat-bilgi-tabani" storageKey="mevzuat"
+            <DataGrid rows={kb} cols={kbCols} rowKey={k => k.id} loading={kbYukleniyor} onBulkDelete={topluSil} deleteNoun="kayıt" csvName="mevzuat-bilgi-tabani" storageKey="mevzuat"
               searchText={k => `${k.baslik} ${k.deger} ${k.kategori} ${k.anahtar}`} searchPlaceholder="Kayıt ara…"
               actions={<button className="adm-btn" onClick={() => kbAc()}><Plus size={14} />Kayıt Ekle</button>} emptyTitle="Bilgi tabanı boş" />
           </>

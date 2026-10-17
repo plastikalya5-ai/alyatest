@@ -257,12 +257,14 @@ export default function AdminUrunlerPage() {
     if (error) return toast.show(error.message, true)
     toast.show('Ürün silindi'); setDetay(null); load(); reloadERP()
   }
-  async function topluSil(sel: any[], clear: () => void) {
+  async function topluSil(sel: any[]): Promise<string | void> {
     const engel = sel.map(silinebilir).filter(Boolean)
-    if (engel.length) return toast.show(engel[0] as string + (engel.length > 1 ? ` (+${engel.length - 1} ürün daha)` : ''), true)
-    if (!confirm(`${sel.length} ürün silinsin mi?`)) return
-    for (const p of sel) await web.from('products').delete().eq('id', p.id)
-    toast.show(`${sel.length} ürün silindi`); clear(); load(); reloadERP()
+    if (engel.length) return (engel[0] as string) + (engel.length > 1 ? ` (+${engel.length - 1} ürün daha)` : '')
+    let hata = 0, ilk = ''
+    for (const p of sel) { const { error } = await web.from('products').delete().eq('id', p.id); if (error) { hata++; ilk ||= error.message } }
+    load(); reloadERP()
+    if (hata) return `${sel.length - hata} ürün silindi, ${hata} ürün silinemedi: ${ilk}`
+    toast.show(`${sel.length} ürün silindi`)
   }
   async function topluKategori(e: React.FormEvent) {
     e.preventDefault(); if (!katModal?.kategori) return
@@ -320,8 +322,8 @@ export default function AdminUrunlerPage() {
             <button className="adm-btn-ghost" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => setKatModal({ sel, clear, kategori: '' })}><Tag size={12} />Kategori</button>
             <button className="adm-btn-ghost" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => topluAiAc(sel, clear)}><ImagePlus size={12} />AI Görsel Tasarımı</button>
             <button className="adm-btn-ghost" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => topluAlan(sel, 'is_featured', true, clear)}><Star size={12} />Öne çıkar</button>
-            <button className="adm-btn-ghost" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => topluAlan(sel, 'is_new', true, clear)}><Sparkles size={12} />Yeni işaretle</button>
-            <button className="adm-btn-danger" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => topluSil(sel, clear)}><Trash2 size={12} />Sil</button></>}
+            <button className="adm-btn-ghost" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => topluAlan(sel, 'is_new', true, clear)}><Sparkles size={12} />Yeni işaretle</button></>}
+          onBulkDelete={topluSil} deleteNoun="ürün"
           emptyTitle="Ürün bulunamadı" />
       </Page>
 

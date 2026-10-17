@@ -8,6 +8,7 @@ import { useUretim, byId, gunlukTuketim, rezerveMap, HAREKET_TIP } from '@/lib/u
 import { sum } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, InfoRow, Divider, Empty, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
+import { topluSilCalistir } from '@/lib/toplu-sil'
 import TopluDuzenle from '@/components/admin/TopluDuzenle'
 import { ListChecks, Plus, Pencil, Trash2, Boxes, AlertTriangle, Coins, Timer, ArrowDownCircle, ArrowUpCircle, ClipboardCheck, ShoppingCart, Power, Package, Layers } from 'lucide-react'
 
@@ -128,6 +129,12 @@ export default function HammaddePage() {
   }
 
   async function aktifToggle(h: any) { await erp.from('hammaddeler').update({ aktif: h.aktif === false }).eq('id', h.id); toast.show(h.aktif === false ? 'Aktif yapıldı' : 'Pasife alındı'); reload() }
+  async function topluSil(sel: any[]): Promise<string | void> {
+    const { silinen, hata } = await topluSilCalistir(sel, async (r: any) => (d.receteKalemleri.some((k: any) => k.hammadde_id === r.id) ? `${r.ad}: reçetede kullanılıyor, silinemez` : (await erp.from('hammaddeler').delete().eq('id', r.id))?.error), 'hammadde')
+    await reload(); setDetay(null)
+    if (hata) return hata
+    toast.show(`${silinen} hammadde silindi`)
+  }
   async function del(h: any) {
     const cn: any = await erp.from('stok_hareketleri').select('id', { count: 'exact', head: true }).eq('hammadde_id', h.id)
     const n = cn?.count || 0
@@ -202,7 +209,7 @@ export default function HammaddePage() {
         {tab === 'mamul'
           ? <DataGrid rows={mamul.filter((v: any) => !mekan || v.mekan === mekan)} cols={mCols} rowKey={v => v.id} loading={loading} csvName="mamul-stok" storageKey="mamul" searchText={v => v.ad} searchPlaceholder="Ürün ara..." emptyTitle="Ürün varyantı yok" emptySub="Ürünler → Varyantlar'dan stok varyantı ekle"
             footerNote={<span>· Satılabilir = fiziksel stok − açık siparişlerde sevk edilmemiş miktar</span>} />
-          : <DataGrid rows={liste} cols={cols} rowKey={h => h.id} loading={loading} csvName="hammaddeler" storageKey="hammadde" onRowClick={h => { setDetay(h); setDTab('ozet') }} activeKey={detay?.id}
+          : <DataGrid rows={liste} cols={cols} rowKey={h => h.id} loading={loading} onBulkDelete={topluSil} deleteNoun="hammadde" deleteNote="Reçetede kullanılan hammaddeler atlanır. Stok hareketi geçmişi olan hammaddelerin geçmiş kayıtları kalemsiz kalır; pasife almak daha güvenlidir." csvName="hammaddeler" storageKey="hammadde" onRowClick={h => { setDetay(h); setDTab('ozet') }} activeKey={detay?.id}
             searchText={h => `${h.ad} ${h.kod} ${h.barkod || ''} ${cari[h.tedarikci_id]?.ad || ''}`} searchPlaceholder="Ad, kod, barkod, tedarikçi..." selectable
             bulkActions={(sel, clear) => <><button className="adm-btn" style={{ padding: '3px 12px', fontSize: 12 }} disabled={busy} onClick={async () => { await satinalmaAc(sel); clear() }}><ShoppingCart size={12} />Seçilenler için satınalma siparişi</button><button className="adm-btn-ghost" style={{ padding: '3px 12px', fontSize: 12 }} onClick={() => setToplu(sel)}><ListChecks size={12} />Toplu düzenle</button></>}
             actions={kritik.length > 0 ? <button className="adm-btn-ghost" style={{ fontSize: 12, color: 'var(--adm-red)' }} disabled={busy} onClick={() => satinalmaAc(kritik)}><ShoppingCart size={13} />Kritikler için sipariş aç</button> : undefined}

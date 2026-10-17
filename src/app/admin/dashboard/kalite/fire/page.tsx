@@ -8,6 +8,7 @@ import { useUretim, byId, fireOrani, receteMaliyet } from '@/lib/uretim-utils'
 import { sum, CHART_COLORS, sonAylar, ayAnahtar } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Card, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, InfoRow, Empty, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
+import { topluSilCalistir } from '@/lib/toplu-sil'
 import { TrendChart, BarList } from '@/components/admin/erp/charts'
 import TopluDuzenle from '@/components/admin/TopluDuzenle'
 import { ListChecks, Plus, Trash2, Flame, Coins, Percent, Target, Boxes, Package } from 'lucide-react'
@@ -116,6 +117,12 @@ export default function FirePage() {
     setBusy(false)
   }
 
+  async function topluSil(sel: any[]): Promise<string | void> {
+    const { silinen, hata } = await topluSilCalistir(sel, async (r: any) => (r.src === 'hat' ? `${r.ad}: üretim hattı firesi buradan silinemez` : (await erp.from('fire_kayitlari').delete().eq('id', r.ham.id))?.error), 'fire kaydı')
+    await reload(); setDetay(null)
+    if (hata) return hata
+    toast.show(`${silinen} fire kaydı silindi`)
+  }
   async function del(r: any) {
     if (r.src === 'hat') return toast.show('Üretim hattı firesi buradan silinemez (üretim hareketi)', true)
     const f = r.ham
@@ -171,7 +178,7 @@ export default function FirePage() {
           <select className="adm-sel" value={nedenF} onChange={e => setNedenF(e.target.value)}><option value="">Tüm nedenler</option>{nedenListesi.map(n => <option key={n}>{n}</option>)}</select>
         </div>
 
-        <DataGrid rows={liste} cols={cols} rowKey={r => r.id} loading={loading} csvName="fire" storageKey="fire" onRowClick={setDetay} activeKey={detay?.id}
+        <DataGrid rows={liste} cols={cols} rowKey={r => r.id} loading={loading} onBulkDelete={topluSil} deleteNoun="fire kaydı" deleteNote="Sadece fire kayıtları silinir; stoktan düşülen miktarlar stoğa geri eklenmez." csvName="fire" storageKey="fire" onRowClick={setDetay} activeKey={detay?.id}
           searchText={r => `${r.ad} ${r.neden} ${emir[r.emir_id]?.no || ''} ${makine[r.makine_id]?.ad || ''}`} searchPlaceholder="Kalem, neden, emir, makine..." emptyTitle="Fire kaydı yok" selectable
           bulkActions={sel => { const fr = sel.filter(r => r.src !== 'hat'); return <><button className="adm-btn-ghost" style={{ padding: '3px 12px', fontSize: 12 }} disabled={!fr.length} title={fr.length < sel.length ? 'Üretim hattı satırları hariç tutulur' : undefined} onClick={() => setToplu(fr.map(r => ({ id: r.ham.id })))}><ListChecks size={12} />Toplu düzenle ({fr.length})</button></> }} footerNote={<span>· Üretim hattı firesi Canlı Üretim / Emir ekranından girilen fire adetlerinden gelir</span>} />
       </Page>

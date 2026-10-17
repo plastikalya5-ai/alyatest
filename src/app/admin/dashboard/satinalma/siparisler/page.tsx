@@ -10,6 +10,7 @@ import { useUretim, byId } from '@/lib/uretim-utils'
 import { sum } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, Divider, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
+import { topluSilCalistir } from '@/lib/toplu-sil'
 import { Mail, MessageCircle, RotateCcw, ShieldCheck, Settings as AyarIcon, Plus, PackageSearch, PackageCheck, Truck, Printer, Pencil, Trash2, Ban, AlertTriangle, Coins, ShoppingCart, X, CheckCircle2, Send } from 'lucide-react'
 
 const DURUM: Record<string, { l: string; tone: any }> = { beklemede: { l: 'Beklemede', tone: 'muted' }, onaylandi: { l: 'Onaylandı', tone: 'blue' }, yolda: { l: 'Yolda', tone: 'amber' }, teslim_alindi: { l: 'Teslim Alındı', tone: 'green' }, iptal: { l: 'İptal', tone: 'red' } }
@@ -106,6 +107,12 @@ export default function SatinalmaPage() {
     const r: any = await erp.from('satinalma_siparisleri').update({ durum: yeni }).eq('id', s.id)
     if (r?.error) return toast.show(r.error, true)
     toast.show(`${s.no}: ${DURUM[yeni].l}`); await reload(); setDetay((x: any) => x?.id === s.id ? { ...x, durum: yeni } : x)
+  }
+  async function topluSil(sel: any[]): Promise<string | void> {
+    const { silinen, hata } = await topluSilCalistir(sel, async (r: any) => (P[r.id]?.ks.some((k: any) => +k.teslim_alinan_miktar > 0) ? `${r.no}: teslim alınmış kalem var, silinemez` : (await erp.from('satinalma_siparisleri').delete().eq('id', r.id))?.error), 'sipariş')
+    await reload(); setDetay(null)
+    if (hata) return hata
+    toast.show(`${silinen} sipariş silindi`)
   }
   async function sil(s: any) {
     if (P[s.id].ks.some((k: any) => +k.teslim_alinan_miktar > 0)) return toast.show('Teslim alınmış kalem var — silinemez, iptal edebilirsin', true)
@@ -247,7 +254,7 @@ export default function SatinalmaPage() {
           </div>)}
 
         <div style={{ marginBottom: 12 }}><Tabs value={tab} onChange={setTab} tabs={[{ v: 'acik', l: 'Açık', n: cnt(acik) }, { v: 'beklemede', l: 'Beklemede', n: cnt(s => s.durum === 'beklemede') }, { v: 'onaylandi', l: 'Onaylı', n: cnt(s => s.durum === 'onaylandi') }, { v: 'yolda', l: 'Yolda', n: cnt(s => s.durum === 'yolda') }, { v: 'geciken', l: 'Geciken', n: cnt(gec) }, { v: 'teslim_alindi', l: 'Teslim alındı', n: cnt(s => s.durum === 'teslim_alindi') }, { v: 'iptal', l: 'İptal', n: cnt(s => s.durum === 'iptal') }, { v: 'hepsi', l: 'Tümü', n: d.satinalma.length }]} /></div>
-        <DataGrid rows={liste} cols={cols} rowKey={s => s.id} loading={loading} csvName="satinalma" storageKey="satinalma" onRowClick={setDetay} activeKey={detay?.id}
+        <DataGrid rows={liste} cols={cols} rowKey={s => s.id} loading={loading} onBulkDelete={topluSil} deleteNoun="sipariş" deleteNote="Teslim alınmış kalemi olan siparişler silinmez; onlar için iptal kullanın." csvName="satinalma" storageKey="satinalma" onRowClick={setDetay} activeKey={detay?.id}
           searchText={s => `${s.no} ${cari[s.tedarikci_id]?.ad || ''}`} searchPlaceholder="Sipariş no, tedarikçi..." emptyTitle="Sipariş bulunamadı" emptySub="Yeni Sipariş ya da kritik stoktan otomatik sipariş oluştur" />
       </Page>
 

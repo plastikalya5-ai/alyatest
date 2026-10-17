@@ -9,6 +9,7 @@ import { useUretim, byId, receteMaliyet } from '@/lib/uretim-utils'
 import { sum, CHART_COLORS } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Card, Badge, Tabs, Drawer, Modal, Field, FormGrid, InfoRow, Divider, Empty, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
+import { topluSilCalistir } from '@/lib/toplu-sil'
 import { TrendChart, BarList } from '@/components/admin/erp/charts'
 import TopluDuzenle from '@/components/admin/TopluDuzenle'
 import { ListChecks, Plus, Pencil, Trash2, ShieldCheck, ShieldAlert, PackageX, Percent, ClipboardList, Flame, CheckCircle2 } from 'lucide-react'
@@ -89,6 +90,12 @@ export default function KaliteKontrolPage() {
     if (res?.error) return toast.show(res.error, true)
     setModal(false); toast.show(editing ? 'Kayıt güncellendi' : 'Kontrol kaydı eklendi'); await reload()
   }
+  async function topluSil(sel: any[]): Promise<string | void> {
+    const { silinen, hata } = await topluSilCalistir(sel, async (r: any) => (await erp.from('kalite_kontrol_kayitlari').delete().eq('id', r.id))?.error, 'kontrol kaydı')
+    await reload(); setDetay(null)
+    if (hata) return hata
+    toast.show(`${silinen} kontrol kaydı silindi`)
+  }
   async function del(k: any) {
     if (!confirm('Bu kontrol kaydı silinsin mi?')) return
     const r: any = await erp.from('kalite_kontrol_kayitlari').delete().eq('id', k.id)
@@ -162,7 +169,7 @@ export default function KaliteKontrolPage() {
           <Tabs value={tipF} onChange={setTipF} tabs={[{ v: '', l: 'Tüm tipler' }, ...Object.entries(TIP).map(([k, l]) => ({ v: k, l }))]} />
         </div>
 
-        <DataGrid rows={liste} cols={cols} rowKey={k => k.id} loading={loading} csvName="kalite-kontrol" storageKey="kalite" onRowClick={setDetay} activeKey={detay?.id}
+        <DataGrid rows={liste} cols={cols} rowKey={k => k.id} loading={loading} onBulkDelete={topluSil} deleteNoun="kontrol kaydı" csvName="kalite-kontrol" storageKey="kalite" onRowClick={setDetay} activeKey={detay?.id}
           searchText={k => `${emir[k.uretim_emri_id]?.no || ''} ${urun[k.urun_id || emir[k.uretim_emri_id]?.urun_id]?.name || ''} ${k.red_nedeni || ''} ${k.notlar || ''}`} searchPlaceholder="Emir, ürün, red nedeni..." emptyTitle="Kontrol kaydı yok" selectable
           bulkActions={sel => <button className="adm-btn-ghost" style={{ padding: '3px 12px', fontSize: 12 }} onClick={() => setToplu(sel)}><ListChecks size={12} />Toplu düzenle</button>} />
       </Page>

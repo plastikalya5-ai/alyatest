@@ -10,6 +10,7 @@ import { sum, kalanTutar, acikFatura } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, InfoRow, Divider, Empty, useToast } from '@/components/admin/erp/ui'
 import Yardim from '@/components/admin/erp/Yardim'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
+import { topluSilCalistir } from '@/lib/toplu-sil'
 import TopluDuzenle from '@/components/admin/TopluDuzenle'
 import {
   ListChecks, Plus, Pencil, Trash2, User, Building2, Phone, Mail, MessageCircle, FileBarChart, HandCoins, Users2, AlertTriangle, Scale, Wallet, Printer, Download, Receipt, FileSignature,
@@ -174,6 +175,12 @@ export default function CariPage() {
     setIceAktarBusy(false)
   }
 
+  async function topluSil(sel: any[]): Promise<string | void> {
+    const { silinen, hata } = await topluSilCalistir(sel, async (r: any) => (Math.abs(+r.bakiye) > 0.005 ? `${r.ad}: bakiyesi var, silinemez` : M[r.id]?.fatSay ? `${r.ad}: faturası var, silinemez` : (await muh.from('cari_hesaplar').delete().eq('id', r.id))?.error), 'cari')
+    load(); setDetay(null)
+    if (hata) return hata
+    toast.show(`${silinen} cari silindi`)
+  }
   async function del(c: any) {
     const x = M[c.id]
     if (Math.abs(+c.bakiye) > 0.005 && !confirm(`${c.ad} hesabının ${fmt(c.bakiye)} bakiyesi var. Yine de silinsin mi?`)) return
@@ -272,7 +279,7 @@ export default function CariPage() {
           ]} />
         </div>
 
-        <DataGrid rows={filtered} cols={cols} rowKey={c => c.id} loading={loading} csvName="cari-hesaplar" storageKey="cari"
+        <DataGrid rows={filtered} cols={cols} rowKey={c => c.id} loading={loading} onBulkDelete={topluSil} deleteNoun="cari" deleteNote="Bakiyesi veya faturası olan cariler güvenlik için atlanır; onları tek tek silebilirsiniz." csvName="cari-hesaplar" storageKey="cari"
           searchText={c => `${c.kod || ''} ${c.muhasebe_kodu || ''} ${c.ad} ${c.email || ''} ${c.telefon || ''} ${c.vergi_no || ''}`} searchPlaceholder="Kod, muhasebe kodu (120.03.139), ad, telefon, vergi no..."
           onRowClick={c => { setDetay(c); setDTab('ozet') }} activeKey={detay?.id}
           emptyTitle="Cari bulunamadı" emptySub="Yeni Cari butonuyla ilk hesabı ekle" selectable

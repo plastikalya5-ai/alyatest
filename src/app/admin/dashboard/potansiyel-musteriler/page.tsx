@@ -48,11 +48,15 @@ export default function PotansiyelMusterilerPage() {
     if (error) return toast.show(error.message, true)
     toast.show(`${rows.length} kayıt: ${ST[s].l}`); clear(); load()
   }
-  async function topluSil(rows: any[], clear: () => void) {
-    if (!confirm(`${rows.length} kayıt kalıcı silinsin mi?`)) return
+  async function topluSil(rows: any[]): Promise<string | void> {
     const { error } = await web.from('gelenveriler').delete().in('id', rows.map(r => r.id))
-    if (error) return toast.show(error.message, true)
-    toast.show('Silindi'); clear(); setSel(null); load()
+    if (error) return error.message
+    toast.show(`${rows.length} kayıt silindi`); setSel(null); load()
+  }
+  async function tekSil(b: any) {
+    if (!confirm(`${b.baslik} kaydı kalıcı silinsin mi?`)) return
+    const err = await topluSil([b])
+    if (err) toast.show(err, true)
   }
   async function ac(b: any) { setSel(b); setNotes(b.notlar || '') }
   async function notKaydet() {
@@ -95,13 +99,13 @@ export default function PotansiyelMusterilerPage() {
           searchText={b => `${b.baslik} ${b.telefon || ''} ${b.eposta || ''} ${b.website || ''} ${b.adres || ''} ${b.kategori || ''}`} searchPlaceholder="İşletme, telefon, e-posta, adres, kategori..."
           bulkActions={(rows, clear) => <>
             <button className="adm-btn-ghost" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => topluDurum(rows, 'arandi', clear)}><Phone size={12} />Arandı</button>
-            <button className="adm-btn-ghost" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => topluDurum(rows, 'olumsuz', clear)}>Olumsuz</button>
-            <button className="adm-btn-danger" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => topluSil(rows, clear)}><Trash2 size={12} />Sil</button></>}
+            <button className="adm-btn-ghost" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => topluDurum(rows, 'olumsuz', clear)}>Olumsuz</button></>}
+          onBulkDelete={topluSil} deleteNoun="kayıt"
           emptyTitle="Potansiyel müşteri yok" emptySub="n8n akışı POST /api/webhooks/potansiyel adresine veri gönderdiğinde burada görünür (Bildirimler sayfasındaki bağlantı kartına bakın)" />
       </Page>
 
       <Drawer open={!!sel} onClose={() => setSel(null)} width={500} title={sel && <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>{sel.baslik}<Badge tone={ST[sel.durum]?.tone || 'muted'}>{ST[sel.durum]?.l || sel.durum}</Badge></span>} sub={sel && `${sel.kategori || 'Kategori yok'} · ${fmtDateTime(sel.created_at)}`}
-        footer={sel && <><button className="adm-btn-danger" onClick={() => topluSil([sel], () => {})}><Trash2 size={13} /></button>
+        footer={sel && <><button className="adm-btn-danger" onClick={() => tekSil(sel)}><Trash2 size={13} /></button>
           {cariMi(sel) ? <Badge tone="green">Cari kayıtlı: {cariMi(sel).ad}</Badge> : <button className="adm-btn" onClick={() => cariEkle(sel)}><UserPlus size={14} />Müşteri carisi oluştur</button>}</>}>
         {sel && <div style={{ padding: 20 }}>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>

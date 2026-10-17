@@ -11,6 +11,7 @@ import { useUretim, byId, sevkEdilen, rezerveMap, SIPARIS_ACIK } from '@/lib/ure
 import { sum } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, Divider, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
+import { topluSilCalistir } from '@/lib/toplu-sil'
 import { Plus, ClipboardList, Truck, Factory, Receipt, Ban, CheckCircle2, Pencil, Trash2, AlertTriangle, Coins, X, Copy } from 'lucide-react'
 
 const DURUM: Record<string, { l: string; tone: any }> = { beklemede: { l: 'Beklemede', tone: 'muted' }, uretimde: { l: 'Üretimde', tone: 'blue' }, kismen_hazir: { l: 'Kısmen Hazır', tone: 'amber' }, hazir: { l: 'Hazır', tone: 'green' }, sevk_edildi: { l: 'Sevk Edildi', tone: 'ac' }, tamamlandi: { l: 'Tamamlandı', tone: 'green' }, iptal: { l: 'İptal', tone: 'red' } }
@@ -153,6 +154,12 @@ export default function SatisSiparisleriPage() {
     if (r?.error) return toast.show(r.error, true)
     toast.show(`${s.no}: ${DURUM[yeni].l}`); await reload(); setDetay((x: any) => x?.id === s.id ? { ...x, durum: yeni } : x)
   }
+  async function topluSil(sel: any[]): Promise<string | void> {
+    const { silinen, hata } = await topluSilCalistir(sel, async (r: any) => (!['beklemede', 'iptal'].includes(r.durum) ? `${r.no}: sadece beklemedeki veya iptal siparişler silinebilir` : d.sevkiyatlar.some((x: any) => x.siparis_id === r.id) ? `${r.no}: bağlı sevkiyat var` : (await erp.from('satis_siparisleri').delete().eq('id', r.id))?.error), 'sipariş')
+    await reload(); setDetay(null)
+    if (hata) return hata
+    toast.show(`${silinen} sipariş silindi`)
+  }
   async function sil(s: any) {
     if (!['beklemede', 'iptal'].includes(s.durum)) return toast.show('Sadece beklemedeki veya iptal siparişler silinebilir', true)
     if (d.sevkiyatlar.some((x: any) => x.siparis_id === s.id)) return toast.show('Bu siparişe bağlı sevkiyat var — silinemez', true)
@@ -233,7 +240,7 @@ export default function SatisSiparisleriPage() {
         </KpiGrid>
         <div style={{ marginBottom: 12 }}><Tabs value={tab} onChange={setTab} tabs={[{ v: 'acik', l: 'Açık', n: cnt(acik) }, { v: 'beklemede', l: 'Beklemede', n: cnt(s => s.durum === 'beklemede') }, { v: 'uretimde', l: 'Üretimde', n: cnt(s => s.durum === 'uretimde') }, { v: 'hazir', l: 'Hazır', n: cnt(s => s.durum === 'hazir') }, { v: 'geciken', l: 'Geciken', n: cnt(gec) }, { v: 'sevk_edildi', l: 'Sevk edildi', n: cnt(s => s.durum === 'sevk_edildi') }, { v: 'tamamlandi', l: 'Tamamlanan', n: cnt(s => s.durum === 'tamamlandi') }, { v: 'iptal', l: 'İptal', n: cnt(s => s.durum === 'iptal') }, { v: 'hepsi', l: 'Tümü', n: d.siparisler.length }]} /></div>
 
-        <DataGrid rows={liste} cols={cols} rowKey={s => s.id} loading={loading} csvName="satis-siparisleri" storageKey="satis" onRowClick={setDetay} activeKey={detay?.id}
+        <DataGrid rows={liste} cols={cols} rowKey={s => s.id} loading={loading} onBulkDelete={topluSil} deleteNoun="sipariş" deleteNote="Sadece beklemedeki veya iptal edilmiş, sevkiyatı olmayan siparişler silinir." csvName="satis-siparisleri" storageKey="satis" onRowClick={setDetay} activeKey={detay?.id}
           searchText={s => `${s.no} ${cari[s.cari_id]?.ad || ''}`} searchPlaceholder="Sipariş no, müşteri..." emptyTitle="Sipariş bulunamadı" emptySub="Yeni Sipariş ile başla" />
       </Page>
 

@@ -8,6 +8,7 @@ import { fmt, fmtInt } from '@/lib/fmt'
 import { sum } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Modal, Field, FormGrid, Card, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
+import { topluSilCalistir } from '@/lib/toplu-sil'
 import { Plus, Pencil, Trash2, Layers, Package, ClipboardCheck, Wand2, AlertTriangle, Boxes, ImagePlus, RotateCcw } from 'lucide-react'
 import { aiIstek } from '@/lib/ai-client'
 
@@ -68,6 +69,12 @@ export default function AdminVaryantlarPage() {
       setModal(false); toast.show(editing ? 'Varyant güncellendi' : 'Varyant eklendi'); await reload()
     } catch (err: any) { toast.show(err.message, true) }
     setBusy(false)
+  }
+  async function topluSil(sel: any[]): Promise<string | void> {
+    const { silinen, hata } = await topluSilCalistir(sel, async (r: any) => (+r.stock !== 0 ? `${r.urunAd} — ${r.name}: stoğu var, önce sayımla sıfırla` : (await web.from('product_variants').delete().eq('id', r.id)).error?.message), 'varyant')
+    reload()
+    if (hata) return hata
+    toast.show(`${silinen} varyant silindi`)
   }
   async function sil(v: any) {
     const kc: any = await erp.from('satis_siparisi_kalemleri').select('id', { count: 'exact', head: true }).eq('variant_id', v.id)
@@ -209,7 +216,7 @@ export default function AdminVaryantlarPage() {
           <Tabs value={tab} onChange={setTab} tabs={[{ v: 'hepsi', l: 'Tümü', n: d.variants.length }, { v: 'tukenen', l: 'Tükenen', n: d.variants.filter((v: any) => +v.stock <= 0).length }, { v: 'acik', l: 'Karşılanamayan', n: rows.filter((v: any) => v.stock - v.rezerve < 0).length }, { v: 'barkodsuz', l: 'Barkodsuz', n: d.variants.filter((v: any) => !v.barkod).length }]} />
           <select className="adm-sel" value={urunF} onChange={e => setUrunF(e.target.value)}><option value="">Tüm ürünler</option>{d.products.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
         </div>
-        <DataGrid rows={liste} cols={cols} rowKey={v => v.id} loading={loading} csvName="varyantlar" storageKey="varyantlar" searchText={v => `${v.urunAd} ${v.urunKod || ''} ${v.name} ${v.barkod || ''}`} searchPlaceholder="Ürün, varyant, barkod..." emptyTitle="Varyant bulunamadı" selectable
+        <DataGrid rows={liste} cols={cols} rowKey={v => v.id} loading={loading} onBulkDelete={topluSil} deleteNoun="varyant" deleteNote="Stoğu sıfır olmayan varyantlar atlanır. Sipariş kaleminde geçen varyantlarda kalemdeki varyant bağı kalkar." csvName="varyantlar" storageKey="varyantlar" searchText={v => `${v.urunAd} ${v.urunKod || ''} ${v.name} ${v.barkod || ''}`} searchPlaceholder="Ürün, varyant, barkod..." emptyTitle="Varyant bulunamadı" selectable
           bulkActions={(sel, clear) => <button className="adm-btn-ghost" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => topluVaryantAiAc(sel, clear)}><ImagePlus size={12} />AI ile Stüdyoya Çevir</button>}
           footerNote={<span>· Stok değişikliği için sayım (✓) düğmesini kullan; hareket defterine yazılır</span>} />
       </Page>

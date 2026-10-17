@@ -5,6 +5,7 @@ import { useAcParam } from '@/lib/ac-param'
 import { web } from '@/lib/web-data'
 import { Page, PageHead, Badge, Modal, Field, FormGrid, Tabs, Card, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
+import { topluSilCalistir } from '@/lib/toplu-sil'
 import EvrakGoruntu from '@/components/admin/ihracat/EvrakGoruntu'
 import { INCOTERMS, PARA, TUR_AD, bosKalem, bosVeri, dogrula, hesapla, yuvarla, type Dil, type Kalem, type Tur, type Veri } from '@/lib/ihracat-evrak'
 import { Plus, Copy, Trash2, Printer, Save, FileText } from 'lucide-react'
@@ -89,6 +90,12 @@ export default function IhracatEvraklariPage() {
     if (error) return toast.show(error.message, true)
     setEd({ ...ed, id: data.id, no: data.no }); toast.show(`Kaydedildi: ${data.no}`); yukle()
   }
+  async function topluSil(sel: any[]): Promise<string | void> {
+    const { silinen, hata } = await topluSilCalistir(sel, async (r: any) => (await web.from('ihracat_evraklari').delete().eq('id', r.id)).error?.message, 'evrak')
+    yukle()
+    if (hata) return hata
+    toast.show(`${silinen} evrak silindi`)
+  }
   async function sil(r: any) {
     if (!confirm(`${r.no} silinsin mi? Numara yeniden kullanılmaz.`)) return
     const { error } = await web.from('ihracat_evraklari').delete().eq('id', r.id)
@@ -128,7 +135,7 @@ export default function IhracatEvraklariPage() {
         <PageHead title="İhracat Evrakları" sub="Proforma Invoice · Commercial Invoice · Packing List — satış siparişinden hazırla, Türkçe/İngilizce, yazdır veya PDF olarak kaydet"
           actions={<button className="adm-btn" onClick={() => setYeni({ tur: 'proforma', dil: 'en', siparisId: '' })}><Plus size={14} />Yeni Evrak</button>} />
         <div style={{ marginBottom: 12 }}><Tabs value={filtre} onChange={setFiltre} tabs={[{ v: 'hepsi', l: 'Tümü', n: evraklar.length }, { v: 'proforma', l: 'Proforma', n: evraklar.filter(e => e.tur === 'proforma').length }, { v: 'commercial', l: 'Ticari Fatura', n: evraklar.filter(e => e.tur === 'commercial').length }, { v: 'packing', l: 'Çeki Listesi', n: evraklar.filter(e => e.tur === 'packing').length }]} /></div>
-        <DataGrid rows={liste} cols={cols} rowKey={r => r.id} loading={loading} csvName="ihracat-evraklari" storageKey="ihracat-evraklari" onRowClick={ac}
+        <DataGrid rows={liste} cols={cols} rowKey={r => r.id} loading={loading} onBulkDelete={topluSil} deleteNoun="evrak" deleteNote="Evrak numaraları yeniden kullanılmaz." csvName="ihracat-evraklari" storageKey="ihracat-evraklari" onRowClick={ac}
           searchText={r => `${r.no} ${r.musteri}`} searchPlaceholder="Evrak no, alıcı…" emptyTitle="Evrak yok" emptySub="“Yeni Evrak” ile bir satış siparişinden proforma veya çeki listesi oluşturun" />
         <p style={{ fontSize: 11.5, color: 'var(--adm-tx3)', marginTop: 10 }}>Evraklar bilgilendirme ve ticari belge taslağıdır; gümrük beyanı için GTİP, menşei ve ağırlık bilgilerini gümrük müşavirinizle doğrulayın. Yazdırma penceresinde “PDF olarak kaydet”i seçerek PDF alabilirsiniz.</p>
       </Page>

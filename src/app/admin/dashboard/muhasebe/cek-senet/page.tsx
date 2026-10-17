@@ -8,6 +8,7 @@ import { sum } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Modal, Field, FormGrid, Card, useToast } from '@/components/admin/erp/ui'
 import Yardim from '@/components/admin/erp/Yardim'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
+import { topluSilCalistir } from '@/lib/toplu-sil'
 import { TrendChart } from '@/components/admin/erp/charts'
 import { Plus, Pencil, Trash2, FileSignature, AlertTriangle, CalendarClock, ShieldAlert, Wallet, Repeat, Ban, CheckCircle2, Landmark } from 'lucide-react'
 
@@ -92,6 +93,12 @@ export default function CekSenetPage() {
     setBusy(false)
     if (r?.error) { toast.show(r.error, true); return }
     setModal(false); toast.show(editing ? 'Kayıt güncellendi' : 'Kayıt eklendi'); load()
+  }
+  async function topluSil(sel: any[]): Promise<string | void> {
+    const { silinen, hata } = await topluSilCalistir(sel, async (r: any) => (await muh.from('cek_senet').delete().eq('id', r.id))?.error, 'çek/senet')
+    load()
+    if (hata) return hata
+    toast.show(`${silinen} çek/senet silindi`)
   }
   async function del(c: any) {
     if (!confirm(`${c.tip === 'cek' ? 'Çek' : 'Senet'} ${c.no || ''} silinsin mi?`)) return
@@ -200,7 +207,7 @@ export default function CekSenetPage() {
           <Tabs value={yonF} onChange={setYonF} tabs={[{ v: '', l: 'Alınan + Verilen' }, { v: 'alinan', l: 'Alınan' }, { v: 'verilen', l: 'Verilen' }]} />
         </div>
 
-        <DataGrid rows={filtered} cols={cols} rowKey={c => c.id} loading={loading} csvName="cek-senet" storageKey="ceksenet" defaultSort={{ key: 'vade', dir: 'asc' }}
+        <DataGrid rows={filtered} cols={cols} rowKey={c => c.id} loading={loading} onBulkDelete={topluSil} deleteNoun="çek/senet" csvName="cek-senet" storageKey="ceksenet" defaultSort={{ key: 'vade', dir: 'asc' }}
           searchText={c => `${c.no || ''} ${c.banka || ''} ${cariAd[c.cari_id] || ''} ${c.tutar}`} searchPlaceholder="No, banka, cari, tutar..."
           selectable bulkActions={(sel, clear) => {
             const acik = sel.filter(s => s.durum === 'portfoyde')

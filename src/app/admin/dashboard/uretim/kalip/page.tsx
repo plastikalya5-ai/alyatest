@@ -8,6 +8,7 @@ import { useUretim, byId, KALIP_DURUM, EMIR_DURUM, kalipBaski } from '@/lib/uret
 import { sum } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, InfoRow, Divider, Empty, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
+import { topluSilCalistir } from '@/lib/toplu-sil'
 import TopluDuzenle from '@/components/admin/TopluDuzenle'
 import { ListChecks, Plus, Pencil, Trash2, Wrench, AlertTriangle, Package, Layers, Coins } from 'lucide-react'
 
@@ -78,6 +79,12 @@ export default function KalipPage() {
     if (r?.error) return toast.show(r.error, true)
     toast.show(`${k.ad}: ${KALIP_DURUM[yeni].l}`); await reload(); setDetay((x: any) => (x?.id === k.id ? { ...x, durum: yeni } : x))
   }
+  async function topluSil(sel: any[]): Promise<string | void> {
+    const { silinen, hata } = await topluSilCalistir(sel, async (r: any) => (await erp.from('kaliplar').delete().eq('id', r.id))?.error, 'kalıp')
+    await reload(); setDetay(null)
+    if (hata) return hata
+    toast.show(`${silinen} kalıp silindi`)
+  }
   async function del(k: any) {
     if (!confirm(`${k.ad} kalıbı silinsin mi?${K[k.id]?.emirler.length ? `\n\n${K[k.id].emirler.length} üretim emrinde kullanılmış.` : ''}`)) return
     const r: any = await erp.from('kaliplar').delete().eq('id', k.id)
@@ -145,7 +152,7 @@ export default function KalipPage() {
           <Tabs value={tab} onChange={setTab} tabs={[{ v: 'hepsi', l: 'Tümü', n: d.kaliplar.length }, { v: 'bakim', l: 'Bakım gereken', n: gereken }, ...Object.entries(KALIP_DURUM).map(([k, v]) => ({ v: k, l: v.l, n: cnt(x => x.durum === k) }))]} />
         </div>
 
-        <DataGrid rows={liste} cols={cols} rowKey={k => k.id} loading={loading} csvName="kaliplar" storageKey="kaliplar" onRowClick={k => { setDetay(k); setDTab('bilgi') }} activeKey={detay?.id} selectable bulkActions={(sel) => <button className="adm-btn-ghost" style={{ padding: '3px 12px', fontSize: 12 }} onClick={() => setToplu(sel)}><ListChecks size={12} />Toplu düzenle</button>}
+        <DataGrid rows={liste} cols={cols} rowKey={k => k.id} loading={loading} onBulkDelete={topluSil} deleteNoun="kalıp" deleteNote="Kalıbın kullanıldığı üretim emirlerinde kalıp bilgisi boş kalır." csvName="kaliplar" storageKey="kaliplar" onRowClick={k => { setDetay(k); setDTab('bilgi') }} activeKey={detay?.id} selectable bulkActions={(sel) => <button className="adm-btn-ghost" style={{ padding: '3px 12px', fontSize: 12 }} onClick={() => setToplu(sel)}><ListChecks size={12} />Toplu düzenle</button>}
           searchText={k => `${k.kod} ${k.ad} ${k.lokasyon || ''} ${urun[k.urettigi_urun_id]?.name || ''}`} searchPlaceholder="Kod, ad, ürün, lokasyon..."
           emptyTitle="Kalıp bulunamadı" emptySub="Kalıp Ekle ile envantere ilk kalıbı gir" />
       </Page>

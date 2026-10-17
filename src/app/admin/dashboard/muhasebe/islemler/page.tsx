@@ -137,10 +137,12 @@ export default function IslemlerPage() {
     if (res?.error) { toast.show(res.error, true); return }
     toast.show('İşlem silindi'); setDetay(null); setSurum(v => v + 1)
   }
-  async function bulkDel(sel: any[], clear: () => void) {
-    if (!confirm(`${sel.length} işlem silinsin mi? Bakiyeler otomatik geri alınır.`)) return
-    for (const r of sel) await muh.from('islemler').delete().eq('id', r.id)
-    toast.show(`${sel.length} işlem silindi`); clear(); setSurum(v => v + 1)
+  async function bulkDel(sel: any[]): Promise<string | void> {
+    let hata = 0, ilk = ''
+    for (const r of sel) { const res: any = await muh.from('islemler').delete().eq('id', r.id); if (res?.error) { hata++; ilk ||= String(res.error) } }
+    setSurum(v => v + 1)
+    if (hata) return `${sel.length - hata} işlem silindi, ${hata} işlem silinemedi: ${ilk}`
+    toast.show(`${sel.length} işlem silindi`)
   }
 
   const cols: Col<any>[] = [
@@ -188,7 +190,8 @@ export default function IslemlerPage() {
 
         <DataGrid rows={[]} server={server} cols={cols} rowKey={r => r.id} csvName="gelir-gider" storageKey="islemler-srv" pageSizes={[25, 50, 100, 250]}
           searchPlaceholder="Açıklama, kategori, cari, hesap..." selectable
-          bulkActions={(sel, clear) => <><button className="adm-btn-ghost" style={{ padding: '3px 12px', fontSize: 12 }} onClick={() => setToplu(sel)}><ListChecks size={12} />Toplu düzenle</button><button className="adm-btn-ghost" style={{ padding: '3px 12px', fontSize: 12 }} onClick={() => setAta({ rows: sel, kasaOn: true, kasa: '', cariOn: false, cari: '' })}><Scale size={12} />Hesaba / cariye ata</button><button className="adm-btn-danger" style={{ padding: '3px 10px', fontSize: 12 }} onClick={() => bulkDel(sel, clear)}><Trash2 size={12} />Seçilenleri sil</button></>}
+          bulkActions={(sel, clear) => <><button className="adm-btn-ghost" style={{ padding: '3px 12px', fontSize: 12 }} onClick={() => setToplu(sel)}><ListChecks size={12} />Toplu düzenle</button><button className="adm-btn-ghost" style={{ padding: '3px 12px', fontSize: 12 }} onClick={() => setAta({ rows: sel, kasaOn: true, kasa: '', cariOn: false, cari: '' })}><Scale size={12} />Hesaba / cariye ata</button></>}
+          onBulkDelete={bulkDel} deleteNoun="işlem"
           onRowClick={setDetay} activeKey={detay?.id}
           filters={<>
             <select className="adm-sel" value={kat} onChange={e => setKat(e.target.value)}><option value="">Tüm kategoriler</option>{Array.from(new Set(kats.map(k => k.ad))).sort((a: any, b: any) => a.localeCompare(b, 'tr')).concat(NON_PNL.filter(n => !kats.some(k => k.ad === n))).map((k: any) => <option key={k}>{k}</option>)}</select>

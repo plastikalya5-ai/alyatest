@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useMemo, useRef, useState, type ReactNode, type CSSProperties } from 'react'
-import { ChevronUp, ChevronDown, ChevronsUpDown, Download, Columns3, Rows3, ChevronLeft, ChevronRight, Inbox, AlertTriangle } from 'lucide-react'
-import { SearchBox, Skeleton, Empty } from './ui'
+import { ChevronUp, ChevronDown, ChevronsUpDown, Download, Columns3, Rows3, ChevronLeft, ChevronRight, Inbox, AlertTriangle, Trash2 } from 'lucide-react'
+import { SearchBox, Skeleton, Empty, Modal } from './ui'
 import { csvDownload } from '@/lib/fmt'
 
 // Türkçe harf farkını yok sayan arama: "BERİNVEST" ile "BERINVEST", "şirket" ile "SIRKET" aynı kabul edilir (İ/ı/I karışıklığı yüzünden kayıt bulunamıyordu)
@@ -30,13 +30,18 @@ export type ServerMode<T> = {
 
 export function DataGrid<T>({
   rows = [], cols, rowKey, loading, searchText, searchPlaceholder, filters, actions, pageSizes = [25, 50, 100, 250],
-  onRowClick, activeKey, selectable, bulkActions, csvName, emptyTitle = 'Kayıt bulunamadı', emptySub, defaultSort, storageKey, rowStyle, title, footerNote, server,
+  onRowClick, activeKey, selectable, bulkActions, onBulkDelete, deleteNoun = 'kayıt', deleteNote, csvName, emptyTitle = 'Kayıt bulunamadı', emptySub, defaultSort, storageKey, rowStyle, title, footerNote, server,
 }: {
   rows?: T[]; cols: Col<T>[]; rowKey: (r: T) => string; loading?: boolean
   searchText?: (r: T) => string; searchPlaceholder?: string
   filters?: ReactNode; actions?: ReactNode
   pageSizes?: number[]; onRowClick?: (r: T) => void; activeKey?: string | null
   selectable?: boolean; bulkActions?: (sel: T[], clear: () => void) => ReactNode
+  // Toplu silme: verilirse satır seçimi otomatik açılır, seçim çubuğuna onaylı "Sil" butonu eklenir.
+  // Fonksiyon silme işlemini yapar; hata varsa mesaj döndürür (başarıda boş/undefined). Bitince liste yenilenmelidir.
+  onBulkDelete?: (sel: T[]) => Promise<string | void> | string | void
+  deleteNoun?: string
+  deleteNote?: ReactNode   // silme onay penceresinde ek uyarı (ör. "bakiyeler geri alınır")
   csvName?: string; emptyTitle?: string; emptySub?: string
   defaultSort?: { key: string; dir: 'asc' | 'desc' }; storageKey?: string
   rowStyle?: (r: T) => CSSProperties | undefined; title?: ReactNode; footerNote?: ReactNode
@@ -51,6 +56,11 @@ export function DataGrid<T>({
   const [hiddenCols, setHiddenCols] = useState<string[]>(cols.filter(c => c.hidden).map(c => c.key))
   const [colMenu, setColMenu] = useState(false)
   const [sel, setSel] = useState<Set<string>>(new Set())
+  const [delOpen, setDelOpen] = useState(false)
+  const [delBusy, setDelBusy] = useState(false)
+  const [delErr, setDelErr] = useState('')
+  // Satır seçimi tüm listelerde varsayılan açık (toplu indirme için); kapatmak için selectable={false}
+  const canSelect = selectable !== false
   // sunucu modu durumu
   const [srvRows, setSrvRows] = useState<T[]>([])
   const [srvTotal, setSrvTotal] = useState(0)
@@ -110,8 +120,25 @@ export function DataGrid<T>({
   const pages = Math.max(1, Math.ceil(total / ps))
   const cur = Math.min(page, pages - 1)
   const pageRows = server ? srvRows : filtered.slice(cur * ps, cur * ps + ps)
-  const selRows = pageRows.filter(r => sel.has(rowKey(r)))
+  // İstemci modunda seçim sayfalar arası geçerlidir (filtrelenmiş tüm satırlar); sunucu modunda yalnızca yüklü sayfa
+  const selRows = (server ? pageRows : filtered).filter(r => sel.has(rowKey(r)))
   const allOnPage = pageRows.length > 0 && pageRows.every(r => sel.has(rowKey(r)))
+  const canSelectAll = !server && allOnPage && filtered.length > pageRows.length && selRows.length < filtered.length
+
+  async function runBulkDelete() {
+    if (!onBulkDelete || delBusy) return
+    const rowsToDelete = selRows
+    if (!rowsToDelete.length) { setDelOpen(false); return }
+    setDelBusy(true); setDelErr('')
+    try {
+      const err = await onBulkDelete(rowsToDelete)
+      if (err) { setDelErr(String(err)); setDelBusy(false); return }
+      setSel(new Set()); setDelOpen(false)
+    } catch (e: any) {
+      setDelErr(e?.message || 'Silme sırasında hata oluştu')
+    }
+    setDelBusy(false)
+  }
   const hasTotals = !server && visCols.some(c => c.total)
   const isLoading = server ? srvLoading : loading
   const sortable = (c: Col<T>) => (server ? !!c.sortKey : !!c.sort)
@@ -133,6 +160,14 @@ export function DataGrid<T>({
     }
     const out = data.map(r => Object.fromEntries(visCols.filter(c => c.csv || c.sort).map(c => [c.label, c.csv ? c.csv(r) : c.sort!(r)])))
     csvDownload((csvName || 'liste') + '.csv', out)
+  }
+
+  // Seçili satırları CSV olarak indir (görünür sütunlar, listedeki CSV ile aynı biçim)
+  function exportSelected() {
+    if (!selRows.length) return
+    const out = selRows.map(r => Object.fromEntries(visCols.filter(c => c.csv || c.sort).map(c => [c.label, c.csv ? c.csv(r) : c.sort!(r)])))
+    if (!out.length || !Object.keys(out[0]).length) return
+    csvDownload((csvName || 'liste') + '-secilenler.csv', out)
   }
 
   const toolbar = (
@@ -165,19 +200,31 @@ export function DataGrid<T>({
   return (
     <div className="adm-card" style={{ overflow: 'visible' }}>
       {toolbar}
-      {selectable && selRows.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', background: 'var(--adm-ac2)', fontSize: 12.5, borderBottom: '1px solid var(--adm-bdr)' }}>
+      {canSelect && selRows.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', background: 'var(--adm-ac2)', fontSize: 12.5, borderBottom: '1px solid var(--adm-bdr)', flexWrap: 'wrap' }}>
           <b style={{ color: 'var(--adm-ac)' }}>{selRows.length} kayıt seçili</b>
+          {canSelectAll && <button className="adm-btn-ghost" style={{ padding: '3px 9px', fontSize: 11.5 }} onClick={() => setSel(new Set(filtered.map(rowKey)))}>Listedeki {filtered.length} kaydın tamamını seç</button>}
+          <button className="adm-btn-ghost" style={{ padding: '3px 12px', fontSize: 12 }} onClick={exportSelected}><Download size={12} />Seçilenleri indir (CSV)</button>
           {bulkActions?.(selRows, () => setSel(new Set()))}
+          {onBulkDelete && <button className="adm-btn-danger" style={{ padding: '3px 12px', fontSize: 12 }} onClick={() => { setDelErr(''); setDelOpen(true) }}><Trash2 size={12} />Seçilenleri sil</button>}
           <button className="adm-btn-ghost" style={{ padding: '3px 9px', fontSize: 11.5, marginLeft: 'auto' }} onClick={() => setSel(new Set())}>Seçimi temizle</button>
         </div>
+      )}
+      {onBulkDelete && (
+        <Modal open={delOpen} onClose={() => { if (!delBusy) setDelOpen(false) }} width={460} title={`${selRows.length} ${deleteNoun} silinsin mi?`}
+          onSubmit={e => { e.preventDefault(); runBulkDelete() }}
+          footer={<><button type="button" className="adm-btn-ghost" disabled={delBusy} onClick={() => setDelOpen(false)}>Vazgeç</button><button type="submit" className="adm-btn-danger" disabled={delBusy || !selRows.length}><Trash2 size={13} />{delBusy ? 'Siliniyor…' : `${selRows.length} ${deleteNoun} kalıcı sil`}</button></>}>
+          <p style={{ margin: 0, fontSize: 13, lineHeight: 1.55 }}>Seçilen <b>{selRows.length}</b> {deleteNoun} kalıcı olarak silinecek. Bu işlem geri alınamaz.</p>
+          {deleteNote && <p style={{ margin: '10px 0 0', fontSize: 12.5, lineHeight: 1.5, color: 'var(--adm-tx3)' }}>{deleteNote}</p>}
+          {delErr && <div style={{ marginTop: 12, padding: '9px 12px', fontSize: 12.5, color: 'var(--adm-red)', background: 'var(--adm-red2)', borderRadius: 8, display: 'flex', gap: 8, alignItems: 'flex-start' }}><AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 2 }} /><span>{delErr}</span></div>}
+        </Modal>
       )}
       {srvErr && <div style={{ padding: '10px 14px', fontSize: 12.5, color: 'var(--adm-red)', background: 'var(--adm-red2)', display: 'flex', gap: 8, alignItems: 'center' }}><AlertTriangle size={14} />{srvErr}</div>}
       <div style={{ overflow: 'auto', maxHeight: 'calc(100vh - 290px)', minHeight: 120 }}>
         <table className={`adm-tbl ${compact ? 'compact' : ''}`}>
           <thead>
             <tr>
-              {selectable && <th style={{ width: 36 }}><input type="checkbox" checked={allOnPage} onChange={e => setSel(s => { const n = new Set(s); pageRows.forEach(r => e.target.checked ? n.add(rowKey(r)) : n.delete(rowKey(r))); return n })} /></th>}
+              {canSelect && <th style={{ width: 36 }}><input type="checkbox" checked={allOnPage} onChange={e => setSel(s => { const n = new Set(s); pageRows.forEach(r => e.target.checked ? n.add(rowKey(r)) : n.delete(rowKey(r))); return n })} /></th>}
               {visCols.map(c => (
                 <th key={c.key} className={`${sortable(c) ? 'sortable' : ''} ${c.hideSm ? 'adm-hide-sm' : ''}`} style={{ width: c.width, textAlign: c.align || 'left' }} onClick={() => toggleSort(c)}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
@@ -190,12 +237,12 @@ export function DataGrid<T>({
           </thead>
           <tbody>
             {isLoading && (!server || srvRows.length === 0)
-              ? Array.from({ length: 6 }).map((_, i) => <tr key={i}>{selectable && <td />}{visCols.map(c => <td key={c.key}><Skeleton h={12} w={`${50 + ((i * 13 + c.key.length * 7) % 40)}%`} /></td>)}</tr>)
+              ? Array.from({ length: 6 }).map((_, i) => <tr key={i}>{canSelect && <td />}{visCols.map(c => <td key={c.key}><Skeleton h={12} w={`${50 + ((i * 13 + c.key.length * 7) % 40)}%`} /></td>)}</tr>)
               : pageRows.map(r => {
                 const k = rowKey(r)
                 return (
                   <tr key={k} className={`${onRowClick ? 'clickable' : ''} ${activeKey === k ? 'active' : ''}`} style={{ ...rowStyle?.(r), ...(server && srvLoading ? { opacity: .55 } : {}) }} onClick={() => onRowClick?.(r)}>
-                    {selectable && <td onClick={e => e.stopPropagation()}><input type="checkbox" checked={sel.has(k)} onChange={e => setSel(s => { const n = new Set(s); if (e.target.checked) n.add(k); else n.delete(k); return n })} /></td>}
+                    {canSelect && <td onClick={e => e.stopPropagation()}><input type="checkbox" checked={sel.has(k)} onChange={e => setSel(s => { const n = new Set(s); if (e.target.checked) n.add(k); else n.delete(k); return n })} /></td>}
                     {visCols.map(c => <td key={c.key} className={c.hideSm ? 'adm-hide-sm' : ''} style={{ textAlign: c.align || 'left' }}>{c.render ? c.render(r) : String(c.sort?.(r) ?? '')}</td>)}
                   </tr>
                 )
@@ -204,7 +251,7 @@ export function DataGrid<T>({
           {hasTotals && !isLoading && filtered.length > 0 && (
             <tfoot>
               <tr>
-                {selectable && <td />}
+                {canSelect && <td />}
                 {visCols.map((c, i) => <td key={c.key} className={c.hideSm ? 'adm-hide-sm' : ''} style={{ textAlign: c.align || 'left' }}>{c.total ? c.total(filtered) : i === 0 ? `Toplam (${filtered.length})` : ''}</td>)}
               </tr>
             </tfoot>

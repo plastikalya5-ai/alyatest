@@ -10,6 +10,7 @@ import { kalanTutar, DONEMLER, donemAralik, type Donem } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, InfoRow, Divider, useToast } from '@/components/admin/erp/ui'
 import Yardim from '@/components/admin/erp/Yardim'
 import { DataGrid, type Col, type ServerMode } from '@/components/admin/erp/DataGrid'
+import { topluSilCalistir } from '@/lib/toplu-sil'
 import BelgeOku, { type BelgeSonuc } from '@/components/admin/BelgeOku'
 import TopluDuzenle from '@/components/admin/TopluDuzenle'
 import { ListChecks, Plus, Receipt, HandCoins, AlertTriangle, FileText, Printer, CheckCircle2, Ban, Copy, Trash2, X, Coins, Wallet } from 'lucide-react'
@@ -155,6 +156,17 @@ export default function FaturalarPage() {
     if (r?.error) return toast.show(r.error, true)
     toast.show(d === 'iptal' ? 'Fatura iptal edildi' : 'Fatura onaylandı'); load()
   }
+  async function topluSil(sel: any[]): Promise<string | void> {
+    const { silinen, hata } = await topluSilCalistir(sel, async (r: any) => {
+        if (r.durum !== 'taslak') return `${r.no}: sadece taslak faturalar silinebilir`
+        const { data: ks } = await muh.from('fatura_kalemleri').select('id').eq('fatura_id', r.id)
+        for (const k of ks || []) { const e: any = await muh.from('fatura_kalemleri').delete().eq('id', k.id); if (e?.error) return String(e.error) }
+        return (await muh.from('faturalar').delete().eq('id', r.id))?.error
+      }, 'fatura')
+    load(); setDetay(null)
+    if (hata) return hata
+    toast.show(`${silinen} fatura silindi`)
+  }
   async function sil(f: any) {
     if (f.durum !== 'taslak') return toast.show('Sadece taslak faturalar silinebilir', true)
     if (!confirm(`${f.no} taslağı silinsin mi?`)) return
@@ -296,7 +308,7 @@ export default function FaturalarPage() {
           <select className="adm-sel" value={donem} onChange={e => setDonem(e.target.value as Donem)}>{DONEMLER.map(d => <option key={d.v} value={d.v}>{d.l}</option>)}</select>
         </div>
 
-        <DataGrid rows={[]} server={server} cols={cols} rowKey={f => f.id} csvName="faturalar" storageKey="faturalar-srv" onRowClick={openDetay} activeKey={detay?.id}
+        <DataGrid rows={[]} server={server} cols={cols} rowKey={f => f.id} onBulkDelete={topluSil} deleteNoun="fatura" deleteNote="Sadece taslak faturalar (kalemleriyle birlikte) silinir." csvName="faturalar" storageKey="faturalar-srv" onRowClick={openDetay} activeKey={detay?.id}
           searchPlaceholder="Fatura no, cari..." emptyTitle="Fatura bulunamadı" emptySub="Yeni Fatura ile başla" selectable
           bulkActions={sel => <button className="adm-btn-ghost" style={{ padding: '3px 12px', fontSize: 12 }} onClick={() => setToplu(sel)}><ListChecks size={12} />Toplu düzenle</button>} />
       </Page>

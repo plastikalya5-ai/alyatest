@@ -7,6 +7,7 @@ import { aiIstek, AiKapali } from '@/lib/ai-client'
 import { useUretim, byId } from '@/lib/uretim-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Modal, Field, FormGrid, Card, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
+import { topluSilCalistir } from '@/lib/toplu-sil'
 import TeklifGoruntu from '@/components/admin/teklif/TeklifGoruntu'
 import { DURUM, PARA, bosKalem, bugunTR, dogrula, epostaMetni, gecerlilikDurumu, gunEkle, satirNet, teklifHesapla, yuvarla, type Dil, type TKalem } from '@/lib/teklif'
 import { Plus, Printer, Save, Copy, Sparkles, Trash2, ShoppingCart, FileText, Clock, CheckCircle2, Percent } from 'lucide-react'
@@ -114,6 +115,12 @@ export default function TekliflerPage() {
     if (error) return toast.show(error.message, true)
     setEd(e => e && e.id === t.id ? { ...e, durum } : e); toast.show('Durum güncellendi'); yukle()
   }
+  async function topluSil(sel: any[]): Promise<string | void> {
+    const { silinen, hata } = await topluSilCalistir(sel, async (r: any) => (r.durum === 'kabul' ? `${r.no}: kabul edilmiş teklif silinemez` : (await web.from('teklifler').delete().eq('id', r.id)).error?.message), 'teklif')
+    yukle()
+    if (hata) return hata
+    toast.show(`${silinen} teklif silindi`)
+  }
   async function sil(t: any) {
     if (t.durum === 'kabul') return toast.show('Kabul edilmiş teklif silinemez', true)
     if (!confirm(`${t.no} silinsin mi?`)) return
@@ -180,7 +187,7 @@ export default function TekliflerPage() {
           <Kpi label="Kabul edilen (90 gün, TL)" value={fmt(kabul90.filter(t => t.para_birimi === 'TRY').reduce((a, t) => a + +t.toplam, 0))} Icon={CheckCircle2} color="var(--adm-green)" valueSize={17} />
         </KpiGrid>
         <div style={{ margin: '12px 0' }}><Tabs value={tab} onChange={setTab} tabs={[{ v: 'acik', l: 'Açık', n: liste.filter(t => ['taslak', 'gonderildi'].includes(t.durum)).length }, { v: 'doldu', l: 'Süresi dolan', n: gecen.length }, { v: 'kabul', l: 'Kabul', n: liste.filter(t => t.durum === 'kabul').length }, { v: 'red', l: 'Red', n: liste.filter(t => t.durum === 'red').length }, { v: 'hepsi', l: 'Tümü', n: liste.length }]} /></div>
-        <DataGrid rows={filtreli} cols={cols} rowKey={t => t.id} loading={yuk} csvName="teklifler" storageKey="teklifler" onRowClick={ac} searchText={t => `${t.no} ${t.musteri_adi}`} searchPlaceholder="Teklif no, müşteri…" emptyTitle="Teklif yok" emptySub="“Yeni Teklif” veya Başvurular sayfasındaki “Teklif hazırla” ile başlayın" />
+        <DataGrid rows={filtreli} cols={cols} rowKey={t => t.id} loading={yuk} onBulkDelete={topluSil} deleteNoun="teklif" deleteNote="Kabul edilmiş teklifler silinmez." csvName="teklifler" storageKey="teklifler" onRowClick={ac} searchText={t => `${t.no} ${t.musteri_adi}`} searchPlaceholder="Teklif no, müşteri…" emptyTitle="Teklif yok" emptySub="“Yeni Teklif” veya Başvurular sayfasındaki “Teklif hazırla” ile başlayın" />
       </Page>
 
       <Modal open={!!ed} onClose={() => setEd(null)} width={1000} title={ed ? `Fiyat Teklifi ${ed.no ? '· ' + ed.no : '· yeni (kaydedilmedi)'}` : ''}

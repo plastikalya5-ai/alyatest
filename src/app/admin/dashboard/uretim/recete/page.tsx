@@ -8,6 +8,7 @@ import { useUretim, byId, receteMaliyet } from '@/lib/uretim-utils'
 import { sum } from '@/lib/muh-utils'
 import { Page, PageHead, Kpi, KpiGrid, Badge, Tabs, Money, Drawer, Modal, Field, FormGrid, Divider, useToast } from '@/components/admin/erp/ui'
 import { DataGrid, type Col } from '@/components/admin/erp/DataGrid'
+import { topluSilCalistir } from '@/lib/toplu-sil'
 import { Donut } from '@/components/admin/erp/charts'
 import TopluDuzenle from '@/components/admin/TopluDuzenle'
 import { ListChecks, Plus, Pencil, Trash2, FlaskConical, Copy, Power, Coins, AlertTriangle, X } from 'lucide-react'
@@ -87,6 +88,12 @@ export default function RecetePage() {
     if (u?.error) return toast.show(u.error, true)
     toast.show(r.aktif ? 'Reçete pasife alındı' : `v${r.versiyon} aktif yapıldı`); await reload(); setDetay((x: any) => x?.id === r.id ? { ...x, aktif: !r.aktif } : x)
   }
+  async function topluSil(sel: any[]): Promise<string | void> {
+    const { silinen, hata } = await topluSilCalistir(sel, async (r: any) => (await erp.from('urun_receteleri').delete().eq('id', r.id))?.error, 'reçete')
+    await reload(); setDetay(null)
+    if (hata) return hata
+    toast.show(`${silinen} reçete silindi`)
+  }
   async function del(r: any) {
     const kul = d.emirler.filter((e: any) => e.recete_id === r.id).length
     if (!confirm(`${urun[r.urun_id]?.name} v${r.versiyon} silinsin mi?${kul ? `\n\n${kul} üretim emri bu reçeteyi kullanıyor; emirlerde reçete boş kalır ve hammadde tüketimi yapılmaz.` : ''}`)) return
@@ -124,7 +131,7 @@ export default function RecetePage() {
         </KpiGrid>
         <div style={{ marginBottom: 12 }}><Tabs value={tab} onChange={setTab} tabs={[{ v: 'aktif', l: 'Aktif', n: aktifler.length }, { v: 'pasif', l: 'Pasif / Eski', n: d.receteler.length - aktifler.length }, { v: 'hepsi', l: 'Tümü', n: d.receteler.length }]} /></div>
 
-        <DataGrid rows={liste} cols={cols} rowKey={r => r.id} loading={loading} csvName="receteler" storageKey="receteler" onRowClick={setDetay} activeKey={detay?.id} selectable bulkActions={(sel) => <button className="adm-btn-ghost" style={{ padding: '3px 12px', fontSize: 12 }} onClick={() => setToplu(sel)}><ListChecks size={12} />Toplu düzenle</button>}
+        <DataGrid rows={liste} cols={cols} rowKey={r => r.id} loading={loading} onBulkDelete={topluSil} deleteNoun="reçete" deleteNote="Reçeteyi kullanan üretim emirlerinde reçete boş kalır ve hammadde tüketimi yapılmaz." csvName="receteler" storageKey="receteler" onRowClick={setDetay} activeKey={detay?.id} selectable bulkActions={(sel) => <button className="adm-btn-ghost" style={{ padding: '3px 12px', fontSize: 12 }} onClick={() => setToplu(sel)}><ListChecks size={12} />Toplu düzenle</button>}
           searchText={r => `${urun[r.urun_id]?.name || ''} v${r.versiyon}`} searchPlaceholder="Ürün ara..." emptyTitle="Reçete yok" emptySub="Reçete Oluştur ile ürün için hammadde listesi tanımla; üretim emri bu reçeteye göre stoktan düşer." />
       </Page>
 
