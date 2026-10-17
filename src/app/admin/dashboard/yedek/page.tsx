@@ -7,7 +7,7 @@ import { Download, FileArchive, AlertTriangle, RefreshCw, Database, FolderArchiv
 
 type Tablo = { ad: string; satir: number | null; hata?: string }
 type Kova = { ad: string; acik: boolean }
-type Sonuc = { tablo: number; satir: number; kullanici: number; dosya: number; boyutMb: number; hatalar: string[] }
+type Sonuc = { tablo: number; satir: number; kullanici: number; dosya: number; sema: boolean; boyutMb: number; hatalar: string[] }
 
 async function api(q: string) {
   const r = await fetch('/api/admin/yedek?' + q)
@@ -63,9 +63,11 @@ export default function YedekPage() {
   const [yuzde, setYuzde] = useState(0)
   const [sonuc, setSonuc] = useState<Sonuc | null>(null)
   const [tek, setTek] = useState('')
+  const [sistem, setSistem] = useState<any>(null)
 
   const yukle = useCallback(async () => {
     setYuk(true); setHata('')
+    api('islem=sistem').then(setSistem).catch(() => {})
     try { setListe(await api('islem=liste')) } catch (e: any) { setHata(e.message || 'Liste alınamadı') }
     setYuk(false)
   }, [])
@@ -79,7 +81,7 @@ export default function YedekPage() {
     const zip = new ZipYazici()
     const hatalar: string[] = []
     const ozet: Record<string, number | null> = {}
-    let satir = 0, dosyaSay = 0, bayt = 0, kullaniciSay = 0
+    let satir = 0, dosyaSay = 0, bayt = 0, kullaniciSay = 0, semaVar = false
     try {
       await fetch('/api/admin/yedek', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ islem: 'basla', dosyalar: dosyalarDahil }) })
 
@@ -102,13 +104,25 @@ export default function YedekPage() {
         zip.ekleMetin('kullanicilar.json', JSON.stringify(k.kullanicilar, null, 1)); kullaniciSay = k.kullanicilar.length
       } catch (e: any) { hatalar.push(`kullanıcılar: ${e.message}`) }
 
+      setAdim('Veritabanı yapısı (tablolar, ilişkiler, güvenlik kuralları, fonksiyonlar)'); setYuzde(61)
+      try {
+        const sm = await api('islem=sema')
+        zip.ekleMetin('veritabani-yapisi.sql', sm.sql); semaVar = true
+      } catch (e: any) { hatalar.push(`veritabanı yapısı: ${e.message}`) }
+
+      setAdim('Sistem bilgisi'); setYuzde(62)
+      try {
+        const si = await api('islem=sistem')
+        zip.ekleMetin('sistem.json', JSON.stringify(si, null, 1))
+      } catch (e: any) { hatalar.push(`sistem bilgisi: ${e.message}`) }
+
       if (dosyalarDahil) {
-        setAdim('Dosya listesi hazırlanıyor'); setYuzde(62)
+        setAdim('Dosya listesi hazırlanıyor'); setYuzde(63)
         try {
           const { dosyalar } = await api('islem=dosyalar')
           for (let i = 0; i < dosyalar.length; i++) {
             const d = dosyalar[i]
-            setAdim(`Dosya ${i + 1}/${dosyalar.length}: ${d.kova}/${d.yol}`); setYuzde(62 + Math.round((i / Math.max(dosyalar.length, 1)) * 33))
+            setAdim(`Dosya ${i + 1}/${dosyalar.length}: ${d.kova}/${d.yol}`); setYuzde(63 + Math.round((i / Math.max(dosyalar.length, 1)) * 32))
             try {
               if (!d.url) throw new Error('indirme bağlantısı alınamadı')
               const r = await fetch(d.url)
@@ -121,23 +135,31 @@ export default function YedekPage() {
       }
 
       setAdim('ZIP dosyası hazırlanıyor'); setYuzde(97)
-      zip.ekleMetin('ozet.json', JSON.stringify({ tarih: new Date().toISOString(), tablolar: ozet, kullanici: kullaniciSay, dosya: dosyaSay, hatalar }, null, 1))
+      zip.ekleMetin('ozet.json', JSON.stringify({ tarih: new Date().toISOString(), tablolar: ozet, kullanici: kullaniciSay, dosya: dosyaSay, veritabaniYapisi: semaVar, hatalar }, null, 1))
       zip.ekleMetin('OKU.txt', [
-        'ALYA PANEL — VERİ YEDEĞİ', `Tarih: ${new Date().toLocaleString('tr-TR')}`, '',
+        'ALYA PANEL — SİSTEM YEDEĞİ', `Tarih: ${new Date().toLocaleString('tr-TR')}`, '',
         'İçerik:',
-        '- tablolar/<ad>.json ve .csv : Veritabanı tabloları (tüm sütunlar; id ve ilişki alanları dahil)',
-        '- kullanicilar.json : Giriş hesapları (e-posta, oluşturma ve son giriş tarihi, metadata). ŞİFRELER YEDEKLENEMEZ; yeni sistemde kullanıcıların şifresi yeniden belirlenmelidir.',
+        '- veritabani-yapisi.sql : Veritabanının YAPISI (tablolar, ilişkiler, indeksler, güvenlik kuralları/RLS, fonksiyonlar, tetikleyiciler, görünümler, yetkiler, storage kovaları). Boş bir projede çalıştırılır.',
+        '- tablolar/<ad>.json ve .csv : Tüm tabloların VERİSİ (tüm sütunlar; id ve ilişki alanları dahil)',
+        '- kullanicilar.json : Giriş hesapları (id, e-posta, tarihler, metadata). ŞİFRELER YEDEKLENEMEZ.',
         '- dosyalar/<kova>/... : Depolama dosyaları (ürün görselleri, katalog vb.)',
+        '- sistem.json : Gereken ortam değişkeni ADLARI (değerler yok), Supabase proje bilgisi, Vercel/GitHub bilgisi, zamanlanmış görevler',
         '- ozet.json : tablo satır sayıları ve alınamayan kayıtlar', '',
-        'Taşırken dikkat:',
-        '1. Veritabanı YAPISI (tablo tanımları, ilişkiler, RLS kuralları, fonksiyonlar, tetikleyiciler) bu yedekte yoktur; yeni Supabase projesinde ayrıca kurulmalıdır.',
-        '2. FIELD_ENCRYPTION_KEY ortam değişkeni aynen taşınmalıdır; aksi halde şifreli alanlar (ör. cari vergi no) okunamaz.',
-        '3. Ortam değişkenleri (Vercel > Settings > Environment Variables) ayrıca not alınmalıdır.',
+        'Taşıma sırası:',
+        '1. Yeni Supabase projesi aç. SQL Editor’de önce veritabani-yapisi.sql dosyasını, sonra repodaki supabase/yedek_sema_fonksiyonu.sql dosyasını çalıştır.',
+        '2. Kullanıcıları (kullanicilar.json) AYNI id’lerle oluştur — admin_profiles ve created_by gibi alanlar bu id’lere bağlıdır. Şifreler yeniden belirlenir.',
+        '3. tablolar/*.json verilerini yükle (ilişkiler nedeniyle sıralı ya da session_replication_role = replica ile). Sonra veritabani-yapisi.sql sonundaki setval komutlarını çalıştır.',
+        '4. dosyalar/ klasörünü aynı kova adlarıyla Storage’a yükle.',
+        '5. Vercel’de projeyi GitHub reposuna bağla; sistem.json’daki ortam değişkenlerini yeni değerlerle gir.', '',
+        'Dikkat:',
+        '- FIELD_ENCRYPTION_KEY: cari vergi numaralarının bir kısmı bu anahtarla şifrelidir ("enc:v1:" ile başlar). Anahtar yoksa o alanlar okunamaz; yeniden girilmesi gerekir.',
+        '- Bu yedek tüm cari, bordro ve muhasebe verisini içerir; güvenli bir yerde sakla.',
+        '- Yükleme adımları (3. madde) için ayrıca bir yükleme betiği hazırlanabilir.',
       ].join('\n'))
       const blob = zip.bitir()
       indir(blob, `alya-yedek-${damga()}.zip`)
       setYuzde(100); setAdim('Tamamlandı')
-      setSonuc({ tablo: n, satir, kullanici: kullaniciSay, dosya: dosyaSay, boyutMb: Math.round((blob.size / 1048576) * 10) / 10, hatalar })
+      setSonuc({ tablo: n, satir, kullanici: kullaniciSay, dosya: dosyaSay, sema: semaVar, boyutMb: Math.round((blob.size / 1048576) * 10) / 10, hatalar })
     } catch (e: any) {
       toast.show(e.message || 'Yedek alınamadı', true); setAdim('Hata oluştu')
     }
@@ -158,9 +180,9 @@ export default function YedekPage() {
 
   return (
     <div style={{ flex: 1, overflow: 'auto' }}>
-      <AdminTopBar title="Veri Yedeği" />
+      <AdminTopBar title="Sistem Yedeği" />
       <Page maxWidth={980}>
-        <PageHead title="Veri Yedeği (Taşıma)" sub="Tüm tabloları, kullanıcı listesini ve yüklenen dosyaları tek ZIP olarak indirir"
+        <PageHead title="Sistem Yedeği (Taşıma)" sub="Veritabanı yapısı, tüm tablolar, kullanıcı listesi, yüklenen dosyalar ve sistem bilgisi — tek ZIP"
           actions={<button className="adm-btn-ghost" onClick={yukle} disabled={yuk || calisiyor}><RefreshCw size={14} />Yenile</button>} />
 
         {hata && <div style={{ padding: '10px 14px', fontSize: 13, color: 'var(--adm-red)', background: 'var(--adm-red2)', borderRadius: 10, marginBottom: 14, display: 'flex', gap: 8, alignItems: 'center' }}><AlertTriangle size={15} />{hata}</div>}
@@ -187,7 +209,7 @@ export default function YedekPage() {
           {sonuc && (
             <div style={{ marginTop: 16, padding: '12px 14px', borderRadius: 10, background: sonuc.hatalar.length ? 'var(--adm-amber2, rgba(245,158,11,.12))' : 'var(--adm-green2, rgba(34,197,94,.12))', fontSize: 13, lineHeight: 1.6 }}>
               <b>{sonuc.hatalar.length ? 'Yedek indirildi ama bazı kayıtlar alınamadı' : 'Yedek indirildi'}</b>
-              <div>{sonuc.tablo} tablo · {sonuc.satir.toLocaleString('tr-TR')} satır · {sonuc.kullanici} kullanıcı · {sonuc.dosya} dosya · {sonuc.boyutMb} MB</div>
+              <div>{sonuc.tablo} tablo · {sonuc.satir.toLocaleString('tr-TR')} satır · {sonuc.kullanici} kullanıcı · {sonuc.dosya} dosya · veritabanı yapısı {sonuc.sema ? 'var' : 'YOK'} · {sonuc.boyutMb} MB</div>
               {sonuc.hatalar.length > 0 && <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 12.5 }}>{sonuc.hatalar.slice(0, 12).map((h, i) => <li key={i}>{h}</li>)}{sonuc.hatalar.length > 12 && <li>…ve {sonuc.hatalar.length - 12} hata daha (ozet.json içinde)</li>}</ul>}
             </div>
           )}
@@ -196,11 +218,23 @@ export default function YedekPage() {
         <div style={{ height: 14 }} />
         <Card title={<><AlertTriangle size={15} />Taşımadan önce bilmen gerekenler</>} pad={16}>
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 1.7 }}>
-            <li><b>Şifreler yedeklenemez.</b> Kullanıcı listesi gelir, ama yeni sistemde herkesin şifresi yeniden belirlenmelidir.</li>
-            <li><b>Veritabanı yapısı</b> (tablo tanımları, ilişkiler, RLS kuralları, fonksiyonlar) bu dosyada yoktur; yeni Supabase projesinde ayrıca kurulmalıdır.</li>
-            <li><b>FIELD_ENCRYPTION_KEY</b> değerini Vercel ortam değişkenlerinden mutlaka not al; kaybedilirse şifreli alanlar (ör. cari vergi no) okunamaz.</li>
+            <li><b>Şifreler yedeklenemez.</b> Kullanıcı listesi gelir, ama yeni sistemde herkesin şifresi yeniden belirlenmelidir. Kullanıcılar aynı id’lerle oluşturulmalıdır (kayıtlar bu id’lere bağlı).</li>
+            <li><b>Cari vergi numaraları</b> kısmen şifrelidir. Şifreleme anahtarı (<code>FIELD_ENCRYPTION_KEY</code>) bulunamazsa o alanlar okunamaz; yeniden girilir. Diğer veriler etkilenmez.</li>
+            <li>İçindeki <b>veritabani-yapisi.sql</b> dosyası boş bir Supabase projesinde çalıştırılır; verileri yüklemeden önce kurulmalıdır. Üretilmiş bir dosyadır, taşımadan önce boş bir projede deneyin.</li>
             <li>Yedek dosyası tüm cari, bordro ve muhasebe verisini içerir; güvenli bir yerde sakla. İndirme anında yöneticilere bildirim gider.</li>
           </ul>
+        </Card>
+
+        <div style={{ height: 14 }} />
+        <Card title={<><Database size={15} />Sistem bilgisi</>} pad={16}>
+          {!sistem ? <span style={{ fontSize: 13, color: 'var(--adm-tx3)' }}>Yükleniyor…</span> : (
+            <div style={{ fontSize: 13, lineHeight: 1.7 }}>
+              <div>Supabase projesi: <code>{sistem.supabase?.proje || '—'}</code> · Vercel ortamı: <code>{sistem.vercel?.ortam || '—'}</code>{sistem.vercel?.repo && <> · GitHub: <code>{sistem.vercel.repo}</code> ({sistem.vercel.dal || '—'}{sistem.vercel.commit ? ` @ ${String(sistem.vercel.commit).slice(0, 7)}` : ''})</>}</div>
+              {sistem.zamanlanmisGorevler?.length > 0 && <div>Zamanlanmış görevler: {sistem.zamanlanmisGorevler.map((g: any) => <code key={g.path} style={{ marginRight: 8 }}>{g.path} ({g.schedule})</code>)}</div>}
+              <div style={{ marginTop: 10, marginBottom: 4, fontWeight: 600 }}>Ortam değişkenleri <span style={{ fontWeight: 400, color: 'var(--adm-tx3)' }}>(yeni sistemde de girilmeli; değerler burada gösterilmez)</span></div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{(sistem.env || []).map((e: any) => <Badge key={e.ad} tone={e.tanimli ? 'green' : 'muted'}>{e.ad}{e.tanimli ? '' : ' · tanımsız'}</Badge>)}</div>
+            </div>
+          )}
         </Card>
 
         <div style={{ height: 14 }} />

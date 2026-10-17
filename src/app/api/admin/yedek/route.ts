@@ -3,6 +3,7 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { istemciIp } from '@/lib/rate-limit'
 import { yoneticiOlayi } from '@/lib/olay'
+import vercelJson from '../../../../../vercel.json'
 
 // Tam veri yedeği (taşıma için): yalnızca TAM YETKİLİ (*) yönetici. Tüm public tabloları sayfa sayfa,
 // kullanıcı listesini ve depolama dosyalarını (imzalı bağlantılarla) döner. Service-role anahtarı istemciye gitmez.
@@ -28,6 +29,15 @@ const YEDEK_TABLOLAR = [
   'personel_odemeleri', 'cari_eski_hareketler', 'ai_hafiza', 'mevzuat_haberleri', 'mevzuat_tarama', 'kira_plani', 'ihracat_gecmis',
   'kdv_iade_hareket', 'kredi_karti_satislari', 'pos_tahsilat', 'fuar', 'fuar_odeme', 'ai_excel', 'satis_adetleri', 'satis_cari',
   'gramaj_ek', 'cari_ibanlar',
+]
+
+// Sistemin çalışması için gereken ortam değişkenleri — yalnızca AD ve "tanımlı mı" bilgisi döner, değerler asla dönmez
+const ENV_ADLARI = [
+  'SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+  'FIELD_ENCRYPTION_KEY', 'CRON_SECRET', 'SMTP_HOST', 'SMTP_USER', 'SMTP_PASS',
+  'N8N_WHATSAPP_WEBHOOK_URL', 'N8N_WEBHOOK_SECRET', 'N8N_LEAD_API_TOKEN', 'N8N_SOSYAL_API_TOKEN', 'N8N_SOSYAL_WEBHOOK_URL', 'N8N_SOSYAL_WEBHOOK_SECRET',
+  'OPENAI_API_KEY', 'OPENAI_BASE_URL', 'OPENAI_MODEL', 'OPENAI_MODEL_GORSEL', 'OPENAI_IMAGE_MODEL',
+  'OPENAI_REALTIME_MODEL', 'OPENAI_REALTIME_MODEL_YUKSEK', 'OPENAI_REALTIME_VOICE',
 ]
 
 type Meta = { ad: string; pk: string[] }
@@ -135,6 +145,29 @@ export async function GET(req: NextRequest) {
           email_confirmed_at: u.email_confirmed_at, banned_until: u.banned_until || null,
           app_metadata: u.app_metadata, user_metadata: u.user_metadata,
         })),
+      })
+    }
+
+    if (islem === 'sema') {
+      // Veritabanı yapısı: public.yedek_sema_olustur() (supabase/yedek_sema_fonksiyonu.sql) okuyup SQL metni üretir
+      const { data, error } = await admin.rpc('yedek_sema_olustur')
+      if (error) throw new Error(`Şema üretilemedi: ${error.message} — supabase/yedek_sema_fonksiyonu.sql dosyasının veritabanında kurulu olması gerekir`)
+      return NextResponse.json({ sql: data })
+    }
+
+    if (islem === 'sistem') {
+      let supabaseRef: string | null = null
+      try { supabaseRef = new URL(process.env.SUPABASE_URL || '').hostname.split('.')[0] } catch { /* yok */ }
+      return NextResponse.json({
+        zaman: new Date().toISOString(),
+        env: ENV_ADLARI.map(ad => ({ ad, tanimli: !!process.env[ad] })),
+        supabase: { url: process.env.SUPABASE_URL || null, proje: supabaseRef },
+        vercel: {
+          ortam: process.env.VERCEL_ENV || null, bolge: process.env.VERCEL_REGION || null,
+          repo: process.env.VERCEL_GIT_REPO_OWNER && process.env.VERCEL_GIT_REPO_SLUG ? `${process.env.VERCEL_GIT_REPO_OWNER}/${process.env.VERCEL_GIT_REPO_SLUG}` : null,
+          dal: process.env.VERCEL_GIT_COMMIT_REF || null, commit: process.env.VERCEL_GIT_COMMIT_SHA || null,
+        },
+        zamanlanmisGorevler: (vercelJson as any).crons || [],
       })
     }
 

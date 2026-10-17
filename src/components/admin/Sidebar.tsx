@@ -79,7 +79,7 @@ const NAV = [
     { href:'/admin/dashboard/tema',         label:'Tema Yönetimi',   Icon:Palette,  mod:['yonetim'] },
     { href:'/admin/dashboard/kullanicilar', label:'Kullanıcılar',    Icon:UserCog,  mod:['yonetim'] },
     { href:'/admin/dashboard/ayarlar',      label:'Ayarlar',         Icon:Settings, mod:['yonetim'] },
-    { href:'/admin/dashboard/yedek',        label:'Veri Yedeği',     Icon:Database, mod:['yonetim'] },
+    { href:'/admin/dashboard/yedek',        label:'Sistem Yedeği',   Icon:Database, mod:['yonetim'] },
     { href:'/admin/dashboard/bildirimler',  label:'Bildirimler',     Icon:Bell,     mod:['yonetim'] },
   ]},
 ]
