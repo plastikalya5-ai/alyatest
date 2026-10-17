@@ -4,7 +4,8 @@ import { createServerSupabase } from '@/lib/supabase/server'
 import { istemciIp } from '@/lib/rate-limit'
 import { yoneticiOlayi } from '@/lib/olay'
 
-// GERİ DÖNÜŞÜ OLMAYAN işlem: tüm tabloların içini, depolama dosyalarını ve tüm giriş hesaplarını siler.
+// GERİ DÖNÜŞÜ OLMAYAN işlem: veritabanı yapısını (tablolar dahil), depolama dosyalarını/kovalarını, tüm giriş hesaplarını
+// ve (GITHUB_TOKEN tanımlıysa) GitHub deposunu siler.
 // Yalnızca TAM YETKİLİ (*) yönetici; sunucu tarafında "imha et" yazılı onayı da aranır.
 export const maxDuration = 60
 
@@ -42,20 +43,20 @@ export async function POST(req: NextRequest) {
   if (String(body?.onay || '').trim().toLocaleLowerCase('tr-TR') !== ONAY)
     return NextResponse.json({ error: `Onay için "${ONAY}" yazılmalı` }, { status: 400 })
 
-  const sonuc = { tablo: 0, dosya: 0, kullanici: 0, hatalar: [] as string[] }
+  const sonuc = { tablo: 0, dosya: 0, kullanici: 0, github: false, hatalar: [] as string[] }
   try {
     // Önce bildirim (bildirim ayarları tablolarla birlikte silineceği için en başta)
-    await yoneticiOlayi(user.email || user.id, 'sistem_imha_edildi', 'Tüm veriler, dosyalar ve hesaplar silindi', istemciIp(req)).catch(() => {})
+    await yoneticiOlayi(user.email || user.id, 'sistem_imha_edildi', 'Veritabanı, dosyalar, hesaplar ve GitHub deposu silindi', istemciIp(req)).catch(() => {})
 
-    // 1) Tablolar
+    // 1) Veritabanı yapısı + veriler
     const { data: n, error: e1 } = await admin.rpc('imha_verileri')
     if (e1) {
-      // Tablolar boşaltılamadıysa dosya ve hesaplara DOKUNULMAZ (yarım imha olmasın)
-      return NextResponse.json({ error: `Tablolar boşaltılamadı, hiçbir şey silinmedi: ${e1.message}` }, { status: 500 })
+      // Veritabanı silinemediyse dosya ve hesaplara DOKUNULMAZ (yarım imha olmasın)
+      return NextResponse.json({ error: `Veritabanı silinemedi, hiçbir şey silinmedi: ${e1.message}` }, { status: 500 })
     }
     sonuc.tablo = Number(n) || 0
 
-    // 2) Depolama dosyaları (kovalar kalır, içleri boşalır)
+    // 2) Depolama dosyaları ve kovalar
     const { data: kovalar } = await admin.storage.listBuckets()
     for (const k of kovalar || []) {
       try {
@@ -65,6 +66,8 @@ export async function POST(req: NextRequest) {
           if (error) sonuc.hatalar.push(`${k.name}: ${error.message}`)
           else sonuc.dosya += Math.min(100, yollar.length - i)
         }
+        const { error: kerr } = await admin.storage.deleteBucket(k.name)
+        if (kerr) sonuc.hatalar.push(`${k.name} kovası: ${kerr.message}`)
       } catch (e: any) { sonuc.hatalar.push(e?.message || `${k.name} silinemedi`) }
     }
 
@@ -81,6 +84,16 @@ export async function POST(req: NextRequest) {
       const { error } = await admin.auth.admin.deleteUser(id)
       if (error) sonuc.hatalar.push(`Kullanıcı ${id}: ${error.message}`)
       else sonuc.kullanici++
+    }
+
+    // 4) GitHub deposu — en son (Vercel ortam değişkeni GITHUB_TOKEN: repo silme yetkili)
+    const repo = process.env.GITHUB_REPO || 'plastikalya5-ai/alyatest'
+    const gh = process.env.GITHUB_TOKEN
+    if (!gh) sonuc.hatalar.push('GitHub deposu silinmedi: Vercel’de GITHUB_TOKEN tanımlı değil')
+    else {
+      const r = await fetch(`https://api.github.com/repos/${repo}`, { method: 'DELETE', headers: { Authorization: `Bearer ${gh}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' } })
+      if (r.status === 204) sonuc.github = true
+      else sonuc.hatalar.push(`GitHub deposu silinemedi (${r.status}): ${(await r.text().catch(() => '')).slice(0, 160)}`)
     }
   } catch (e: any) {
     sonuc.hatalar.push(e?.message || 'Beklenmeyen hata')

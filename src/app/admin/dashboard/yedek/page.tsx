@@ -284,7 +284,7 @@ function ImhaKarti() {
 
   async function imhaEt() {
     if (!hazir || calisiyor) return
-    if (!window.confirm('SON UYARI: Tüm veriler, dosyalar ve giriş hesapları (siz dahil) KALICI olarak silinecek. Geri alınamaz. Yedeği aldığınızdan emin misiniz?')) return
+    if (!window.confirm('SON UYARI: Veritabanı, dosyalar, giriş hesapları (siz dahil) ve GitHub deposu KALICI olarak silinecek. Geri alınamaz. Yedeği aldığınızdan emin misiniz?')) return
     setCalisiyor(true); setHata(''); setSonuc(null)
     try {
       const r = await fetch('/api/admin/imha', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ onay: metin }) })
@@ -298,12 +298,11 @@ function ImhaKarti() {
   return (
     <Card title={<><AlertTriangle size={15} style={{ color: 'var(--adm-red)' }} />Tehlikeli Bölge — Her Şeyi İmha Et</>} pad={16} style={{ border: '1px solid var(--adm-red)' }}>
       <p style={{ margin: '0 0 8px', fontSize: 13 }}>
-        Bu işlem <b>geri alınamaz</b>. Tüm tabloların içi boşaltılır, yüklenen tüm dosyalar silinir ve <b>tüm giriş hesapları (sizinki dahil)</b> silinir. Tablo yapısı ve kod kalır; sisteme yeniden girmek için Supabase’de yeni kullanıcı oluşturmanız gerekir.
-      </p>
+        Bu işlem <b>geri alınamaz</b>. Veritabanının tamamı (tablolar, veriler, güvenlik kuralları, fonksiyonlar) silinir, yüklenen tüm dosyalar ve dosya klasörleri silinir, <b>tüm giriş hesapları (sizinki dahil)</b> silinir ve GitHub deposu (kodlar ve geçmişi) silinir. Sonrasında sistem çalışmaz; yeniden kurmak için yedek ve indirdiğiniz kod gerekir.</p>
       <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--adm-tx3)' }}>Önce yukarıdan tam yedeği indirdiğinizden ve yeni sistemin çalıştığını doğruladığınızdan emin olun.</p>
       {sonuc ? (
         <div style={{ fontSize: 13 }}>
-          <b>{sonuc.ok ? 'İmha tamamlandı.' : 'İmha kısmen tamamlandı.'}</b> {sonuc.tablo} tablo boşaltıldı, {sonuc.dosya} dosya ve {sonuc.kullanici} hesap silindi.
+          <b>{sonuc.ok ? 'İmha tamamlandı.' : 'İmha kısmen tamamlandı.'}</b> {sonuc.tablo} tablo, {sonuc.dosya} dosya ve {sonuc.kullanici} hesap silindi; GitHub deposu {sonuc.github ? 'silindi' : 'silinmedi'}.
           {sonuc.hatalar?.length > 0 && <ul style={{ color: 'var(--adm-red)' }}>{sonuc.hatalar.map((h: string, i: number) => <li key={i}>{h}</li>)}</ul>}
           <div style={{ marginTop: 8 }}><a href="/admin/login">Giriş sayfasına git</a></div>
         </div>
