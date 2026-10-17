@@ -76,7 +76,7 @@ export const varsayilanBirim = (m: string[]): Birim => izinliBirimler(m)[0]
 export function birimAraclari(birim: Birim, m: string[]): AiArac[] {
   switch (birim) {
     case 'muhasebe': return MUH_ARACLAR
-    case 'satis': return [...ERP('satis_analiz', 'acik_siparisler', 'cari_ozet', 'cari_ara', 'stok_durumu', 'musteri_satis', 'satis_hammadde', 'excel_olustur'), EK_ARACLAR.urun_ara]
+    case 'satis': return [...ERP('satis_analiz', 'acik_siparisler', 'cari_ozet', 'cari_ara', 'stok_durumu', 'musteri_satis', 'satis_hammadde', 'urun_satis', 'excel_olustur'), EK_ARACLAR.urun_ara]
     case 'operasyon': return [...ERP('kritik_stok', 'stok_durumu', 'recete_ara', 'uretim_durumu', 'satis_hammadde', 'excel_olustur'), EK_ARACLAR.urun_ara]
     case 'sosyal': return [EK_ARACLAR.urun_ara, EK_ARACLAR.sosyal_takvim, EK_ARACLAR.sosyal_taslak_kaydet]
     default: return [...araclariSuz(m), EK_ARACLAR.urun_ara, ...(var_(m, 'sosyal') ? [EK_ARACLAR.sosyal_takvim] : [])]
