@@ -14,6 +14,7 @@ export const OLAY_AD = {
   kullanici_aktif: 'Kullanıcı yeniden aktifleştirildi',
   kullanici_silindi: 'Kullanıcı SİLİNDİ',
   yedek_alindi: 'Tüm veri yedeği indirildi',
+  veriler_silindi: 'Tüm tablo verileri silindi',
   sistem_imha_edildi: 'SİSTEM İMHA EDİLDİ: tüm veri, dosya ve hesaplar silindi',
 } as const
 export type Olay = keyof typeof OLAY_AD

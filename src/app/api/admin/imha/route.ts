@@ -10,6 +10,8 @@ import { yoneticiOlayi } from '@/lib/olay'
 export const maxDuration = 60
 
 const ONAY = 'imha et'
+const ONAY_VERI = 'verileri sil'
+const KORUNAN = new Set(['admin_profiles', 'roller']) // girişi kilitlememek için
 
 async function yetkili() {
   const sb = await createServerSupabase()
@@ -39,8 +41,8 @@ async function tabloListesi(): Promise<{ ad: string; sutun: string }[]> {
 }
 
 // Yabancı anahtar sırası bilinmediği için birkaç tur dener; her turda silinebilenler silinir
-async function tablolariBosalt(admin: any) {
-  let liste = await tabloListesi()
+async function tablolariBosalt(admin: any, koru: Set<string> = new Set()) {
+  let liste = (await tabloListesi()).filter(t => !koru.has(t.ad))
   const gorulen = new Set<string>()
   for (let tur = 0; tur < 10 && liste.length; tur++) {
     const kalan: typeof liste = []
@@ -74,8 +76,23 @@ export async function POST(req: NextRequest) {
   const y = await yetkili(); if (y.hata) return y.hata
   const { user, admin } = y as any
   const body = await req.json().catch(() => ({}))
-  if (String(body?.onay || '').trim().toLocaleLowerCase('tr-TR') !== ONAY)
-    return NextResponse.json({ error: `Onay için "${ONAY}" yazılmalı` }, { status: 400 })
+  const sadeceVeri = body?.kapsam === 'veri'
+  const gerekli = sadeceVeri ? ONAY_VERI : ONAY
+  if (String(body?.onay || '').trim().toLocaleLowerCase('tr-TR') !== gerekli)
+    return NextResponse.json({ error: `Onay için "${gerekli}" yazılmalı` }, { status: 400 })
+
+  // Yalnızca tablo verileri: giriş yetkisi (admin_profiles, roller) korunur ki panele girmeye devam edilebilsin.
+  // Dosyalara, hesaplara, tablo yapısına ve GitHub'a dokunulmaz.
+  if (sadeceVeri) {
+    try {
+      await yoneticiOlayi(user.email || user.id, 'veriler_silindi', 'Tüm tablo verileri silindi', istemciIp(req)).catch(() => {})
+      const bos = await tablolariBosalt(admin, KORUNAN)
+      if (bos.kalan.length) return NextResponse.json({ ok: false, tablo: bos.tablo, hatalar: [`Boşaltılamayan tablolar: ${bos.kalan.join(', ')}`] }, { status: 207 })
+      return NextResponse.json({ ok: true, tablo: bos.tablo, hatalar: [] })
+    } catch (e: any) {
+      return NextResponse.json({ error: e?.message || 'Veriler silinemedi' }, { status: 500 })
+    }
+  }
 
   const sonuc: any = { tablo: 0, dosya: 0, kullanici: 0, github: false, yapiKaldi: false, hatalar: [] as string[] }
   try {

@@ -267,6 +267,8 @@ export default function YedekPage() {
           </>
         )}
         <div style={{ height: 14 }} />
+        <VeriSilKarti />
+        <div style={{ height: 14 }} />
         <ImhaKarti />
       </Page>
       {toast.node}
@@ -311,6 +313,50 @@ function ImhaKarti() {
           <input className="adm-input" style={{ width: 220 }} placeholder='Onay için "imha et" yazın' value={metin} onChange={e => setMetin(e.target.value)} disabled={calisiyor} autoComplete="off" />
           <button type="button" className="adm-btn-primary" style={{ background: 'var(--adm-red)', opacity: hazir && !calisiyor ? 1 : 0.4 }} disabled={!hazir || calisiyor} onClick={imhaEt}>
             {calisiyor ? 'İmha ediliyor…' : 'HER ŞEYİ İMHA ET'}
+          </button>
+        </div>
+      )}
+      {hata && <div style={{ color: 'var(--adm-red)', fontSize: 13, marginTop: 8 }}>{hata}</div>}
+    </Card>
+  )
+}
+
+// Yalnızca tablo verilerini siler (dosya, hesap, tablo yapısı ve GitHub kalır; giriş yetkisi tabloları korunur)
+function VeriSilKarti() {
+  const [metin, setMetin] = useState('')
+  const [calisiyor, setCalisiyor] = useState(false)
+  const [sonuc, setSonuc] = useState<any>(null)
+  const [hata, setHata] = useState('')
+  const hazir = metin.trim().toLocaleLowerCase('tr-TR') === 'verileri sil'
+
+  async function sil() {
+    if (!hazir || calisiyor) return
+    if (!window.confirm('Tüm tablolardaki veriler (cari, fatura, ürün, stok, personel, ayarlar vb.) KALICI olarak silinecek. Dosyalar, hesaplar ve roller kalır. Yedeği aldığınızdan emin misiniz?')) return
+    setCalisiyor(true); setHata(''); setSonuc(null)
+    try {
+      const r = await fetch('/api/admin/imha', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ onay: metin, kapsam: 'veri' }) })
+      const j = await r.json().catch(() => ({ error: 'Yanıt okunamadı' }))
+      if (r.status === 200 || r.status === 207) setSonuc(j)
+      else setHata(j.error || `Hata ${r.status}`)
+    } catch (e: any) { setHata(e?.message || 'İşlem başarısız') }
+    setCalisiyor(false)
+  }
+
+  return (
+    <Card title={<><AlertTriangle size={15} style={{ color: 'var(--adm-red)' }} />Sadece Verileri Sil</>} pad={16} style={{ border: '1px solid var(--adm-red)' }}>
+      <p style={{ margin: '0 0 12px', fontSize: 13 }}>
+        Tüm tabloların içindeki kayıtları <b>geri alınamaz</b> şekilde siler (cari, fatura, ürün, stok, personel, ayarlar…). <b>Dosyalar, giriş hesapları, tablo yapısı, GitHub</b> ve giriş yetkisi tabloları (yönetici profilleri, roller) <b>silinmez</b>; panele girmeye devam edersiniz.
+      </p>
+      {sonuc ? (
+        <div style={{ fontSize: 13 }}>
+          <b>{sonuc.ok ? 'Veriler silindi.' : 'Kısmen silindi.'}</b> {sonuc.tablo} tablo boşaltıldı.
+          {sonuc.hatalar?.length > 0 && <ul style={{ color: 'var(--adm-red)' }}>{sonuc.hatalar.map((h: string, i: number) => <li key={i}>{h}</li>)}</ul>}
+        </div>
+      ) : (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input className="adm-input" style={{ width: 220 }} placeholder='Onay için "verileri sil" yazın' value={metin} onChange={e => setMetin(e.target.value)} disabled={calisiyor} autoComplete="off" />
+          <button type="button" className="adm-btn-primary" style={{ background: 'var(--adm-red)', opacity: hazir && !calisiyor ? 1 : 0.4 }} disabled={!hazir || calisiyor} onClick={sil}>
+            {calisiyor ? 'Siliniyor…' : 'VERİLERİ SİL'}
           </button>
         </div>
       )}
