@@ -59,6 +59,10 @@ export function DataGrid<T>({
   const [delOpen, setDelOpen] = useState(false)
   const [delBusy, setDelBusy] = useState(false)
   const [delErr, setDelErr] = useState('')
+  const [allOpen, setAllOpen] = useState(false)
+  const [allTxt, setAllTxt] = useState('')
+  const [allBusy, setAllBusy] = useState(false)
+  const [allErr, setAllErr] = useState('')
   // Satır seçimi tüm listelerde varsayılan açık (toplu indirme için); kapatmak için selectable={false}
   const canSelect = selectable !== false
   // sunucu modu durumu
@@ -139,6 +143,28 @@ export function DataGrid<T>({
     }
     setDelBusy(false)
   }
+  // Listedeki TÜM kayıtları sil (arama/filtreden bağımsız); "sil" yazılı onay ister
+  async function tumunuSil() {
+    if (!onBulkDelete || allBusy || allTxt.trim().toLocaleLowerCase('tr-TR') !== 'sil') return
+    setAllBusy(true); setAllErr('')
+    try {
+      let hepsi: T[] = rows
+      if (server) {
+        hepsi = []
+        const max = server.exportMax ?? 20000
+        for (let p = 0; hepsi.length < max; p++) {
+          const r = await server.fetch({ page: p, size: 1000, q: '', sort: null })
+          hepsi.push(...r.rows)
+          if (r.rows.length < 1000) break
+        }
+      }
+      if (!hepsi.length) { setAllOpen(false); setAllBusy(false); return }
+      const err = await onBulkDelete(hepsi)
+      if (err) { setAllErr(String(err)); setAllBusy(false); return }
+      setSel(new Set()); setAllOpen(false); setAllTxt('')
+    } catch (e: any) { setAllErr(e?.message || 'Silme sırasında hata oluştu') }
+    setAllBusy(false)
+  }
   const hasTotals = !server && visCols.some(c => c.total)
   const isLoading = server ? srvLoading : loading
   const sortable = (c: Col<T>) => (server ? !!c.sortKey : !!c.sort)
@@ -194,6 +220,7 @@ export function DataGrid<T>({
       </div>
       <button className="adm-btn-ghost" style={{ padding: '6px 9px' }} title="Satır yoğunluğu" onClick={() => setCompact(v => !v)}><Rows3 size={14} /></button>
       {csvName && <button className="adm-btn-ghost" style={{ padding: '6px 10px', fontSize: 12 }} onClick={exportCsv} disabled={!total} title={server ? `En fazla ${(server.exportMax ?? 20000).toLocaleString('tr-TR')} satır` : undefined}><Download size={13} />CSV</button>}
+      {canSelect && onBulkDelete && <button className="adm-btn-danger" style={{ padding: '6px 10px', fontSize: 12 }} onClick={() => { setAllErr(''); setAllTxt(''); setAllOpen(true) }} disabled={!total} title="Bu listedeki tüm kayıtları sil"><Trash2 size={13} />Tüm verileri sil</button>}
     </div>
   )
 
@@ -217,6 +244,17 @@ export function DataGrid<T>({
           <p style={{ margin: 0, fontSize: 13, lineHeight: 1.55 }}>Seçilen <b>{selRows.length}</b> {deleteNoun} kalıcı olarak silinecek. Bu işlem geri alınamaz.</p>
           {deleteNote && <p style={{ margin: '10px 0 0', fontSize: 12.5, lineHeight: 1.5, color: 'var(--adm-tx3)' }}>{deleteNote}</p>}
           {delErr && <div style={{ marginTop: 12, padding: '9px 12px', fontSize: 12.5, color: 'var(--adm-red)', background: 'var(--adm-red2)', borderRadius: 8, display: 'flex', gap: 8, alignItems: 'flex-start' }}><AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 2 }} /><span>{delErr}</span></div>}
+        </Modal>
+      )}
+      {onBulkDelete && (
+        <Modal open={allOpen} onClose={() => { if (!allBusy) setAllOpen(false) }} width={460} title={`Tüm ${deleteNoun} silinsin mi?`}
+          onSubmit={e => { e.preventDefault(); tumunuSil() }}
+          footer={<><button type="button" className="adm-btn-ghost" disabled={allBusy} onClick={() => setAllOpen(false)}>Vazgeç</button><button type="submit" className="adm-btn-danger" disabled={allBusy || allTxt.trim().toLocaleLowerCase('tr-TR') !== 'sil'}><Trash2 size={13} />{allBusy ? 'Siliniyor…' : `Tüm ${deleteNoun} kalıcı sil`}</button></>}>
+          <p style={{ margin: 0, fontSize: 13, lineHeight: 1.55 }}>Bu listedeki <b>tüm {total.toLocaleString('tr-TR')} {deleteNoun}</b> (arama ve filtreden bağımsız) kalıcı olarak silinecek. Bu işlem geri alınamaz.</p>
+          {deleteNote && <p style={{ margin: '10px 0 0', fontSize: 12.5, lineHeight: 1.5, color: 'var(--adm-tx3)' }}>{deleteNote}</p>}
+          <p style={{ margin: '12px 0 6px', fontSize: 12.5 }}>Onaylamak için <b>sil</b> yazın:</p>
+          <input className="adm-input" style={{ width: '100%' }} value={allTxt} onChange={e => setAllTxt(e.target.value)} disabled={allBusy} autoComplete="off" autoFocus />
+          {allErr && <div style={{ marginTop: 12, padding: '9px 12px', fontSize: 12.5, color: 'var(--adm-red)', background: 'var(--adm-red2)', borderRadius: 8, display: 'flex', gap: 8, alignItems: 'flex-start' }}><AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 2 }} /><span>{allErr}</span></div>}
         </Modal>
       )}
       {srvErr && <div style={{ padding: '10px 14px', fontSize: 12.5, color: 'var(--adm-red)', background: 'var(--adm-red2)', display: 'flex', gap: 8, alignItems: 'center' }}><AlertTriangle size={14} />{srvErr}</div>}
