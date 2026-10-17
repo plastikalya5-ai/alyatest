@@ -13,6 +13,7 @@ export const OLAY_AD = {
   kullanici_pasif: 'Kullanıcı pasife alındı',
   kullanici_aktif: 'Kullanıcı yeniden aktifleştirildi',
   kullanici_silindi: 'Kullanıcı SİLİNDİ',
+  yedek_alindi: 'Tüm veri yedeği indirildi',
 } as const
 export type Olay = keyof typeof OLAY_AD
 export const ISTEMCI_OLAYLARI: Olay[] = ['sifre_degisti', 'mfa_acildi', 'mfa_kapandi']
